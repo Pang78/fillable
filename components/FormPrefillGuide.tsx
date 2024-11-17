@@ -233,42 +233,6 @@ const FormPrefillGuide = () => {
           </div>
           <div className="flex gap-2">
             <UsageGuide />
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={undo}
-              disabled={historyIndex <= 0}
-              title="Undo last action"
-            >
-              <RotateCcw className="h-4 w-4" />
-            </Button>
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={exportConfig}
-              title="Export configuration"
-            >
-              <Download className="h-4 w-4" />
-            </Button>
-            <label className="cursor-pointer">
-              <Input
-                type="file"
-                accept=".json"
-                className="hidden"
-                onChange={importConfig}
-              />
-              <Button
-                variant="outline"
-                size="icon"
-                onClick={() => {}}
-                title="Import configuration"
-                asChild
-              >
-                <span>
-                  <Upload className="h-4 w-4" />
-                </span>
-              </Button>
-            </label>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" size="icon">
@@ -321,10 +285,50 @@ const FormPrefillGuide = () => {
             </div>
           </CardContent>
         </Card>
-
+        
         <Card>
           <CardHeader>
-            <CardTitle>URL Generator</CardTitle>
+            <CardTitle className="flex justify-between items-center">
+              <span>URL Generator</span>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={undo}
+                  disabled={historyIndex <= 0}
+                  title="Undo last action"
+                >
+                  <RotateCcw className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={exportConfig}
+                  title="Export configuration"
+                >
+                  <Download className="h-4 w-4" />
+                </Button>
+                <label className="cursor-pointer">
+                  <Input
+                    type="file"
+                    accept=".json"
+                    className="hidden"
+                    onChange={importConfig}
+                  />
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => {}}
+                    title="Import configuration"
+                    asChild
+                  >
+                    <span>
+                      <Upload className="h-4 w-4" />
+                    </span>
+                  </Button>
+                </label>
+              </div>
+            </CardTitle>
           </CardHeader>
           <CardContent>
             <Tabs value={activeTab} onValueChange={setActiveTab}>
@@ -408,6 +412,7 @@ const FormPrefillGuide = () => {
                     onClick={() => {
                       navigator.clipboard.writeText(generatedUrl);
                       toast({
+                        title: "Success",
                         description: "URL copied to clipboard",
                       });
                     }}
