@@ -1,7 +1,18 @@
 'use client'
 
 import React, { useState, useEffect } from 'react';
-import { Plus, Trash2, Copy, Moon, Sun, Info, HelpCircle, RotateCcw, Download } from 'lucide-react';
+import { Trash2, Copy, Moon, Sun, Info, HelpCircle, RotateCcw, Download, X } from 'lucide-react';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -273,6 +284,20 @@ const FormPrefillGuide = () => {
       return;
     }
 
+    const deleteSavedUrl = (index: number) => {
+      setSavedUrls(prev => prev.filter((_, i) => i !== index));
+      toast({
+        description: "URL deleted successfully",
+      });
+    };
+  
+    const clearAllUrls = () => {
+      setSavedUrls([]);
+      toast({
+        description: "All saved URLs cleared successfully",
+      });
+    };
+
     const newFields = result.params.length ? result.params : [INITIAL_FIELD];
     setFormUrl(result.baseUrl);
     setFields(newFields);
@@ -473,7 +498,33 @@ const FormPrefillGuide = () => {
         
         <Card>
           <CardHeader>
-            <CardTitle>URL Exporter</CardTitle>
+            <CardTitle className="flex justify-between items-center">
+              <span>URL Exporter</span>
+              {savedUrls.length > 0 && (
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="outline" size="sm">
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      Clear All
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Clear all saved URLs?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        This action cannot be undone. All your saved URLs will be permanently deleted.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction onClick={clearAllUrls}>
+                        Clear All
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              )}
+            </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             {generatedUrl && (
@@ -533,9 +584,9 @@ const FormPrefillGuide = () => {
                   {savedUrls.map((savedUrl, index) => (
                     <div
                       key={index}
-                      className="p-4 bg-muted rounded-lg flex justify-between items-center"
+                      className="p-4 bg-muted rounded-lg flex justify-between items-center group"
                     >
-                      <div className="space-y-1">
+                      <div className="space-y-1 flex-1 mr-4">
                         <div className="font-medium">{savedUrl.name}</div>
                         <div className="text-sm text-muted-foreground truncate">
                           {savedUrl.url}
@@ -544,18 +595,45 @@ const FormPrefillGuide = () => {
                           Created: {new Date(savedUrl.createdAt).toLocaleString()}
                         </div>
                       </div>
-                      <Button
-                        size="icon"
-                        variant="outline"
-                        onClick={() => {
-                          navigator.clipboard.writeText(savedUrl.url);
-                          toast({
-                            description: "URL copied to clipboard",
-                          });
-                        }}
-                      >
-                        <Copy className="h-4 w-4" />
-                      </Button>
+                      <div className="flex gap-2">
+                        <Button
+                          size="icon"
+                          variant="outline"
+                          onClick={() => {
+                            navigator.clipboard.writeText(savedUrl.url);
+                            toast({
+                              description: "URL copied to clipboard",
+                            });
+                          }}
+                        >
+                          <Copy className="h-4 w-4" />
+                        </Button>
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button
+                              size="icon"
+                              variant="outline"
+                              className="text-destructive hover:text-destructive"
+                            >
+                              <X className="h-4 w-4" />
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Delete this saved URL?</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                This action cannot be undone. The URL will be permanently deleted.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancel</AlertDialogCancel>
+                              <AlertDialogAction onClick={() => deleteSavedUrl(index)}>
+                                Delete
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -567,7 +645,6 @@ const FormPrefillGuide = () => {
     </div>
   );
 };
-
 
 const UsageGuide = () => (
   <Dialog>
@@ -621,8 +698,9 @@ const UsageGuide = () => (
             <li>View all your saved URLs in the list below</li>
             <li>Export your URLs to CSV format using the export button</li>
             <li>Copy any saved URL using the copy button next to it</li>
+            <li>Delete individual URLs using the delete button (X)</li>
+            <li>Clear all saved URLs using the "Clear All" button</li>
           </ol>
-        </div>
 
         <div>
           <h3 className="text-lg font-semibold mb-2">Additional Features</h3>
@@ -642,7 +720,7 @@ const UsageGuide = () => (
             Your configurations and saved URLs are automatically saved in your browser. They will persist even if you close and reopen the page.
           </AlertDescription>
         </Alert>
-      </div>
+        </div>
     </DialogContent>
   </Dialog>
 );
