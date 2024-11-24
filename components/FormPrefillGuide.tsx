@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState, useEffect } from 'react';
-import { Plus, Trash2, Copy, Moon, Sun, Info, HelpCircle, RotateCcw, Download, Upload } from 'lucide-react';
+import { Plus, Trash2, Copy, Moon, Sun, Info, HelpCircle, RotateCcw, Download } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -30,6 +30,12 @@ interface Field {
   label: string;
 }
 
+interface SavedUrl {
+  url: string;
+  name: string;
+  createdAt: string;
+}
+
 interface FormState {
   formUrl: string;
   fields: Field[];
@@ -37,6 +43,7 @@ interface FormState {
 
 const INITIAL_FIELD: Field = { id: '', value: '', label: '' };
 const LOCAL_STORAGE_KEY = 'formPrefillState';
+const SAVED_URLS_KEY = 'savedPrefillUrls';
 
 const FormPrefillGuide = () => {
   const [mounted, setMounted] = useState(false);
@@ -47,6 +54,8 @@ const FormPrefillGuide = () => {
   const [activeTab, setActiveTab] = useState('construct');
   const [history, setHistory] = useState<FormState[]>([]);
   const [historyIndex, setHistoryIndex] = useState(-1);
+  const [savedUrls, setSavedUrls] = useState<SavedUrl[]>([]);
+  const [urlName, setUrlName] = useState('');
 
   useEffect(() => {
     setMounted(true);
@@ -55,6 +64,8 @@ const FormPrefillGuide = () => {
     
     // Load saved state
     const savedState = localStorage.getItem(LOCAL_STORAGE_KEY);
+    const savedUrlsStr = localStorage.getItem(SAVED_URLS_KEY);
+    
     if (savedState) {
       try {
         const { formUrl: savedUrl, fields: savedFields } = JSON.parse(savedState);
@@ -64,18 +75,81 @@ const FormPrefillGuide = () => {
         console.error('Error loading saved state:', error);
       }
     }
+
+    if (savedUrlsStr) {
+      try {
+        setSavedUrls(JSON.parse(savedUrlsStr));
+      } catch (error) {
+        console.error('Error loading saved URLs:', error);
+      }
+    }
   }, []);
 
-  // Save state to localStorage when it changes
   useEffect(() => {
     if (mounted) {
       localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify({ formUrl, fields }));
+      localStorage.setItem(SAVED_URLS_KEY, JSON.stringify(savedUrls));
     }
-  }, [formUrl, fields, mounted]);
+  }, [formUrl, fields, savedUrls, mounted]);
 
   const handleThemeChange = (newTheme: Theme) => {
     setCurrentTheme(newTheme);
     setTheme(newTheme);
+  };
+
+  const saveGeneratedUrl = () => {
+    if (!generatedUrl) return;
+    
+    const newSavedUrl: SavedUrl = {
+      url: generatedUrl,
+      name: urlName || `Prefill URL ${savedUrls.length + 1}`,
+      createdAt: new Date().toISOString(),
+    };
+    
+    setSavedUrls(prev => [newSavedUrl, ...prev]);
+    setUrlName('');
+    
+    toast({
+      description: "URL saved successfully",
+    });
+  };
+
+  const exportUrls = (format: 'csv' | 'xlsx') => {
+    if (savedUrls.length === 0) {
+      toast({
+        description: "No URLs to export",
+        variant: "warning",
+      });
+      return;
+    }
+
+    const headers = ['Name', 'URL', 'Created At'];
+    const rows = savedUrls.map(url => [
+      url.name,
+      url.url,
+      new Date(url.createdAt).toLocaleString()
+    ]);
+
+    if (format === 'csv') {
+      const csvContent = [
+        headers.join(','),
+        ...rows.map(row => row.map(cell => `"${cell}"`).join(','))
+      ].join('\n');
+
+      const blob = new Blob([csvContent], { type: 'text/csv' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'prefill-urls.csv';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }
+
+    toast({
+      description: `URLs exported as ${format.toUpperCase()}`,
+    });
   };
 
   const addToHistory = (state: FormState) => {
@@ -290,7 +364,6 @@ const FormPrefillGuide = () => {
           <CardHeader>
             <CardTitle className="flex justify-between items-center">
               <span>URL Generator</span>
-              <div className="flex gap-2">
                 <Button
                   variant="outline"
                   size="icon"
@@ -300,34 +373,6 @@ const FormPrefillGuide = () => {
                 >
                   <RotateCcw className="h-4 w-4" />
                 </Button>
-                <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={exportConfig}
-                  title="Export configuration"
-                >
-                  <Download className="h-4 w-4" />
-                </Button>
-                <label className="cursor-pointer">
-                  <Input
-                    type="file"
-                    accept=".json"
-                    className="hidden"
-                    onChange={importConfig}
-                  />
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    onClick={() => {}}
-                    title="Import configuration"
-                    asChild
-                  >
-                    <span>
-                      <Upload className="h-4 w-4" />
-                    </span>
-                  </Button>
-                </label>
-              </div>
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -425,10 +470,104 @@ const FormPrefillGuide = () => {
             )}
           </CardContent>
         </Card>
+        
+        <Card>
+          <CardHeader>
+            <CardTitle>URL Exporter</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {generatedUrl && (
+              <div className="space-y-4">
+                <div className="flex gap-2">
+                  <Input
+                    placeholder="Give this URL a name (optional)"
+                    value={urlName}
+                    onChange={(e) => setUrlName(e.target.value)}
+                  />
+                  <Button onClick={saveGeneratedUrl}>Save URL</Button>
+                </div>
+                <div className="p-4 bg-muted rounded-lg">
+                  <div className="flex items-center justify-between">
+                    <span className="truncate">{generatedUrl}</span>
+                    <Button
+                      size="icon"
+                      variant="outline"
+                      onClick={() => {
+                        navigator.clipboard.writeText(generatedUrl);
+                        toast({
+                          description: "URL copied to clipboard",
+                        });
+                      }}
+                    >
+                      <Copy className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <div className="space-y-4">
+              <div className="flex justify-between items-center">
+                <h3 className="text-lg font-semibold">Saved URLs</h3>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    onClick={() => exportUrls('csv')}
+                    disabled={savedUrls.length === 0}
+                  >
+                    <Download className="h-4 w-4 mr-2" />
+                    Export CSV
+                  </Button>
+                </div>
+              </div>
+
+              {savedUrls.length === 0 ? (
+                <Alert>
+                  <Info className="h-4 w-4" />
+                  <AlertDescription>
+                    No URLs saved yet. Generate and save a URL to see it here.
+                  </AlertDescription>
+                </Alert>
+              ) : (
+                <div className="space-y-2">
+                  {savedUrls.map((savedUrl, index) => (
+                    <div
+                      key={index}
+                      className="p-4 bg-muted rounded-lg flex justify-between items-center"
+                    >
+                      <div className="space-y-1">
+                        <div className="font-medium">{savedUrl.name}</div>
+                        <div className="text-sm text-muted-foreground truncate">
+                          {savedUrl.url}
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          Created: {new Date(savedUrl.createdAt).toLocaleString()}
+                        </div>
+                      </div>
+                      <Button
+                        size="icon"
+                        variant="outline"
+                        onClick={() => {
+                          navigator.clipboard.writeText(savedUrl.url);
+                          toast({
+                            description: "URL copied to clipboard",
+                          });
+                        }}
+                      >
+                        <Copy className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );
 };
+
 
 const UsageGuide = () => (
   <Dialog>
@@ -474,6 +613,18 @@ const UsageGuide = () => (
         </div>
 
         <div>
+          <h3 className="text-lg font-semibold mb-2">URL Exporter</h3>
+          <ol className="list-decimal pl-6 space-y-2">
+            <li>Generate a URL using the URL Generator</li>
+            <li>Optionally give your URL a memorable name</li>
+            <li>Click "Save URL" to add it to your saved URLs list</li>
+            <li>View all your saved URLs in the list below</li>
+            <li>Export your URLs to CSV format using the export button</li>
+            <li>Copy any saved URL using the copy button next to it</li>
+          </ol>
+        </div>
+
+        <div>
           <h3 className="text-lg font-semibold mb-2">Additional Features</h3>
           <ul className="list-disc pl-6 space-y-2">
             <li>
@@ -482,16 +633,13 @@ const UsageGuide = () => (
             <li>
               <span className="font-medium">Undo:</span> Reverse your last action with the undo button
             </li>
-            <li>
-              <span className="font-medium">Export/Import:</span> Save and load your configurations using the download/upload buttons
-            </li>
           </ul>
         </div>
 
         <Alert>
           <Info className="h-4 w-4" />
           <AlertDescription>
-            Your configurations are automatically saved in your browser. They will persist even if you close and reopen the page.
+            Your configurations and saved URLs are automatically saved in your browser. They will persist even if you close and reopen the page.
           </AlertDescription>
         </Alert>
       </div>
