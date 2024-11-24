@@ -662,7 +662,8 @@ const UsageGuide = () => (
           <h3 className="text-lg font-semibold mb-2">Construct Mode</h3>
           <ol className="list-decimal pl-6 space-y-2">
             <li>Enter your form's base URL in the "Form URL" field</li>
-            <li>Add fields that you want to pre-fill:
+            <li>
+              Add fields that you want to pre-fill:
               <ul className="list-disc pl-6 mt-1">
                 <li>Field ID: The form field's identifier for short answer field (An example: '672883a69a27ad6eb73362ff')</li>
                 <li>Value: The data you want to pre-fill</li>
@@ -679,7 +680,8 @@ const UsageGuide = () => (
           <ol className="list-decimal pl-6 space-y-2">
             <li>Switch to the "Deconstruct Mode" tab</li>
             <li>Paste a pre-filled URL into the input field</li>
-            <li>The tool will automatically:
+            <li>
+              The tool will automatically:
               <ul className="list-disc pl-6 mt-1">
                 <li>Extract the base form URL</li>
                 <li>Identify all pre-filled parameters</li>
@@ -701,6 +703,7 @@ const UsageGuide = () => (
             <li>Delete individual URLs using the delete button (X)</li>
             <li>Clear all saved URLs using the "Clear All" button</li>
           </ol>
+        </div>
 
         <div>
           <h3 className="text-lg font-semibold mb-2">Additional Features</h3>
@@ -720,9 +723,9 @@ const UsageGuide = () => (
             Your configurations and saved URLs are automatically saved in your browser. They will persist even if you close and reopen the page.
           </AlertDescription>
         </Alert>
-        </div>
+      </div>
     </DialogContent>
   </Dialog>
 );
 
-export default FormPrefillGuide;
+export default UsageGuide;
