@@ -387,7 +387,7 @@ const FormPrefillGuide = () => {
                   <label htmlFor="formUrl" className="block mb-2">Form URL</label>
                   <Input
                     id="formUrl"
-                    placeholder="Enter form URL (e.g., https://example.com/form)"
+                    placeholder="Enter form URL (e.g., https://form.gov.sg/1234567890123455678901234)"
                     value={formUrl}
                     onChange={(e) => setFormUrl(e.target.value)}
                     aria-label="Form URL"
@@ -397,7 +397,7 @@ const FormPrefillGuide = () => {
                 {fields.map((field, index) => (
                   <div key={index} className="flex gap-2">
                     <Input
-                      placeholder="Field ID (e.g., name)"
+                      placeholder="Field ID (e.g., 672883d1aa22e8a167d22f56)"
                       value={field.id}
                       onChange={(e) => updateField(index, 'id', e.target.value)}
                       aria-label={`Field ${index + 1} ID`}
