@@ -539,58 +539,63 @@ const FormPrefillGuide = () => {
                 <div className="space-y-2">
                   {savedUrls.map((savedUrl, index) => (
                     <div
-                      key={index}
-                      className="p-4 bg-muted rounded-lg flex justify-between items-center group"
-                    >
-                      <div className="space-y-1 flex-1 mr-4">
-                        <div className="font-medium">{savedUrl.name}</div>
-                        <div className="text-sm text-muted-foreground truncate">
-                          {savedUrl.url}
-                        </div>
-                        <div className="text-xs text-muted-foreground">
-                          Created: {new Date(savedUrl.createdAt).toLocaleString()}
-                        </div>
+                    key={index}
+                    className="p-4 bg-muted rounded-lg flex justify-between items-center group"
+                  >
+                    <div className="space-y-1 flex-1 mr-4">
+                      <div className="font-medium">{savedUrl.name}</div>
+                      <div 
+                        className="text-sm text-muted-foreground truncate max-w-full"
+                        title={savedUrl.url}
+                      >
+                        {savedUrl.url.length > 50 
+                          ? `${savedUrl.url.slice(0, 25)}...${savedUrl.url.slice(-25)}` 
+                          : savedUrl.url}
                       </div>
-                      <div className="flex gap-2">
-                        <Button
-                          size="icon"
-                          variant="outline"
-                          onClick={() => {
-                            navigator.clipboard.writeText(savedUrl.url);
-                            toast({
-                              description: "URL copied to clipboard",
-                            });
-                          }}
-                        >
-                          <Copy className="h-4 w-4" />
-                        </Button>
-                        <AlertDialog>
-                          <AlertDialogTrigger asChild>
-                            <Button
-                              size="icon"
-                              variant="outline"
-                              className="text-destructive hover:text-destructive"
-                            >
-                              <X className="h-4 w-4" />
-                            </Button>
-                          </AlertDialogTrigger>
-                          <AlertDialogContent>
-                            <AlertDialogHeader>
-                              <AlertDialogTitle>Delete this saved URL?</AlertDialogTitle>
-                              <AlertDialogDescription>
-                                This action cannot be undone. The URL will be permanently deleted.
-                              </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                              <AlertDialogCancel>Cancel</AlertDialogCancel>
-                              <AlertDialogAction onClick={() => deleteSavedUrl(index)}>
-                                Delete
-                              </AlertDialogAction>
-                            </AlertDialogFooter>
-                          </AlertDialogContent>
-                        </AlertDialog>
+                      <div className="text-xs text-muted-foreground">
+                        Created: {new Date(savedUrl.createdAt).toLocaleString()}
                       </div>
                     </div>
+                    <div className="flex gap-2">
+                      <Button
+                        size="icon"
+                        variant="outline"
+                        onClick={() => {
+                          navigator.clipboard.writeText(savedUrl.url);
+                          toast({
+                            description: "URL copied to clipboard",
+                          });
+                        }}
+                      >
+                        <Copy className="h-4 w-4" />
+                      </Button>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button
+                            size="icon"
+                            variant="outline"
+                            className="text-destructive hover:text-destructive"
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Delete this saved URL?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              This action cannot be undone. The URL will be permanently deleted.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction onClick={() => deleteSavedUrl(index)}>
+                              Delete
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </div>
+                  </div>
                   ))}
                 </div>
               )}
