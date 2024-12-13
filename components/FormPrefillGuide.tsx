@@ -1,7 +1,8 @@
 'use client'
 
-import React, { useState, useEffect } from 'react';
-import { Trash2, Copy, Moon, Sun, Info, HelpCircle, RotateCcw, Download, X, Plus } from 'lucide-react';
+import React, { useState, useRef, useEffect } from 'react';
+import Papa from 'papaparse';
+import { Trash2, Copy, Moon, Sun, Info, HelpCircle, RotateCcw, Download, Plus } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -13,8 +14,17 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import {
+  Dialog, 
+  DialogContent, 
+  DialogHeader, 
+  DialogTitle, 
+  DialogDescription,
+  DialogTrigger 
+} from "@/components/ui/dialog";
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Upload, FileSpreadsheet, X } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -45,6 +55,170 @@ interface FormState {
   formUrl: string;
   fields: Field[];
 }
+
+interface ImportableField {
+  value: string;
+  label?: string;
+}
+
+const CSVImportDialog: React.FC<{
+  onImport: (fields: Field[]) => void;
+}> = ({ onImport }) => {
+  const [importedData, setImportedData] = useState<ImportableField[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    Papa.parse(file, {
+      header: true,
+      complete: (results) => {
+        const validData = results.data.filter(
+          (row: any) => row.value && row.value.trim() !== ''
+        ) as ImportableField[];
+
+        if (validData.length === 0) {
+          toast({
+            title: "Invalid CSV",
+            description: "No valid data found. Ensure 'value' column exists.",
+            variant: "destructive"
+          });
+          return;
+        }
+
+        const formFields: Field[] = validData.map((item, index) => ({
+          id: `imported-${index}`,
+          value: item.value,
+          label: item.label || ''
+        }));
+
+        setImportedData(validData);
+        onImport(formFields);
+        toast({
+          description: `Imported ${formFields.length} fields successfully`,
+        });
+      },
+      error: (error) => {
+        toast({
+          title: "CSV Import Error",
+          description: error.message,
+          variant: "destructive"
+        });
+      }
+    });
+  };
+
+  const handleClearImport = () => {
+    setImportedData([]);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  const exampleCSVTemplate = `value,label
+John Doe,Full Name
+john.doe@example.com,Email Address
++1 (555) 123-4567,Phone Number`;
+
+  const downloadTemplate = () => {
+    const blob = new Blob([exampleCSVTemplate], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', 'prefill_template.csv');
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  return (
+    <Dialog>
+      <DialogTrigger asChild>
+        <Button variant="outline">
+          <FileSpreadsheet className="mr-2 h-4 w-4" />
+          Import CSV
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-[600px]">
+        <DialogHeader>
+          <DialogTitle>Import Fields from CSV</DialogTitle>
+          <DialogDescription>
+            Upload a CSV file to auto-populate form fields
+          </DialogDescription>
+        </DialogHeader>
+        
+        <div className="space-y-4">
+          <div className="flex items-center gap-2">
+            <input 
+              type="file" 
+              accept=".csv" 
+              ref={fileInputRef}
+              onChange={handleFileUpload}
+              className="hidden" 
+            />
+            <Button 
+              onClick={() => fileInputRef.current?.click()}
+            >
+              <Upload className="mr-2 h-4 w-4" />
+              Select CSV File
+            </Button>
+            <Button 
+              variant="outline" 
+              onClick={downloadTemplate}
+            >
+              Download Template
+            </Button>
+          </div>
+
+          {importedData.length > 0 && (
+            <div className="border rounded-lg p-4">
+              <div className="flex justify-between items-center mb-2">
+                <h4 className="font-semibold">Imported Fields</h4>
+                <Button 
+                  variant="destructive" 
+                  size="sm"
+                  onClick={handleClearImport}
+                >
+                  <X className="mr-2 h-4 w-4" />
+                  Clear
+                </Button>
+              </div>
+              <div className="max-h-48 overflow-y-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr>
+                      <th className="text-left">Value</th>
+                      <th className="text-left">Label</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {importedData.map((item, index) => (
+                      <tr key={index} className="border-t">
+                        <td>{item.value}</td>
+                        <td>{item.label || '-'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          <div className="bg-muted p-4 rounded-lg">
+            <h4 className="font-semibold mb-2">CSV File Requirements</h4>
+            <ul className="list-disc pl-5 text-sm space-y-1">
+              <li>Must contain a 'value' column</li>
+              <li>'label' column is optional</li>
+              <li>Supports comma-separated values</li>
+            </ul>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+};
 
 const INITIAL_FIELD: Field = { id: '', value: '', label: '' };
 const LOCAL_STORAGE_KEY = 'formPrefillState';
@@ -205,6 +379,24 @@ const FormPrefillGuide = () => {
     }
   };
 
+  const clearAllFields = () => {
+    setFormUrl('');
+    setFields([INITIAL_FIELD]);
+    setGeneratedUrl('');
+    setUrlName('');
+    addToHistory({ formUrl: '', fields: [INITIAL_FIELD] });
+    
+    toast({
+      description: "All fields cleared",
+    });
+  };
+
+  const handleCSVImport = (importedFields: Field[]) => {
+    setFields(importedFields);
+    setActiveTab('construct');
+    addToHistory({ formUrl, fields: importedFields });
+  };
+
   const updateField = (index: number, key: keyof Field, value: string) => {
     const newFields = fields.map((field, i) => 
       i === index ? { ...field, [key]: value } : field
@@ -357,10 +549,36 @@ const FormPrefillGuide = () => {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <Tabs value={activeTab} onValueChange={setActiveTab}>
-              <TabsList className="mb-4">
-                <TabsTrigger value="construct">Construct Mode</TabsTrigger>
-                <TabsTrigger value="deconstruct">Deconstruct Mode</TabsTrigger>
+          <Tabs value={activeTab} onValueChange={setActiveTab}>
+              <TabsList className="mb-4 bg-muted p-1 rounded-full">
+                <TabsTrigger 
+                  value="construct" 
+                  className="
+                    data-[state=active]:bg-primary 
+                    data-[state=active]:text-primary-foreground 
+                    data-[state=active]:shadow-sm
+                    rounded-full
+                    px-4
+                    transition-all
+                    duration-300
+                  "
+                >
+                  Construct Mode
+                </TabsTrigger>
+                <TabsTrigger 
+                  value="deconstruct" 
+                  className="
+                    data-[state=active]:bg-primary 
+                    data-[state=active]:text-primary-foreground 
+                    data-[state=active]:shadow-sm
+                    rounded-full
+                    px-4
+                    transition-all
+                    duration-300
+                  "
+                >
+                  Deconstruct Mode
+                </TabsTrigger>
               </TabsList>
 
               <TabsContent value="construct" className="space-y-4">
@@ -406,12 +624,21 @@ const FormPrefillGuide = () => {
                   </div>
                 ))}
 
-                <div className="flex gap-2">
+              <div className="flex gap-2 items-center">
                   <Button onClick={addField} variant="outline">
                     <Plus className="h-4 w-4 mr-2" />
                     Add Field
                   </Button>
                   <Button onClick={generateUrl}>Generate URL</Button>
+                  <CSVImportDialog onImport={handleCSVImport} />
+                  <Button 
+                    variant="destructive" 
+                    onClick={clearAllFields}
+                    className="ml-auto"
+                  >
+                    <X className="h-4 w-4 mr-2" />
+                    Clear All
+                  </Button>
                 </div>
               </TabsContent>
 
