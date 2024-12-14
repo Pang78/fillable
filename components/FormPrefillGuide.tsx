@@ -29,6 +29,7 @@ import { Input } from '@/components/ui/input';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from '@/components/ui/use-toast';
+import BatchFormPrefill from '@/components/BatchFormPrefill';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -579,6 +580,21 @@ const FormPrefillGuide = () => {
                 >
                   Deconstruct Mode
                 </TabsTrigger>
+                <TabsTrigger 
+                value="batch"
+                className="
+                    data-[state=active]:bg-primary 
+                    data-[state=active]:text-primary-foreground 
+                    data-[state=active]:shadow-sm
+                    rounded-full
+                    px-4
+                    transition-all
+                    duration-300
+                  "
+                > 
+                  Batch Mode
+                </TabsTrigger>
+
               </TabsList>
 
               <TabsContent value="construct" className="space-y-4">
@@ -653,6 +669,9 @@ const FormPrefillGuide = () => {
                   />
                 </div>
               </TabsContent>
+              <TabsContent value="batch" className="space-y-4">
+              <BatchFormPrefill />
+              </TabsContent> 
             </Tabs>
 
             {generatedUrl && (
