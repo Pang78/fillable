@@ -28,8 +28,8 @@ const BatchFormPrefill = () => {
 
   // Template structure for CSV
   const templateStructure = [
-    { FieldId: '67491204088e833537b43311', values: 'John,Jane,Alex', description: 'Names' },
-    { FieldId: '67491204088e833537ba3312', values: 'HR,IT,Finance', description: 'Departments' }
+    { FieldID: '67488bb37e8c75e33b9f9191', values: 'John,Jane,Alex', description: 'Names' },
+    { FieldID: '67488f8e088e833537af24aa', values: 'john@agency.gov.sg,jane@agency.gov.sg,alex@agency.gov.sg', description: 'Email' }
   ];
 
   const validateFormUrl = (url) => {
@@ -63,7 +63,7 @@ const BatchFormPrefill = () => {
       throw new Error('CSV file is empty or invalid');
     }
 
-    const requiredColumns = ['FieldId', 'values'];
+    const requiredColumns = ['FieldID', 'values'];
     const headers = Object.keys(data[0]);
     
     for (const column of requiredColumns) {
@@ -72,12 +72,21 @@ const BatchFormPrefill = () => {
       }
     }
 
-    // Validate FieldId format
+    // Validate FieldID format
     data.forEach((row, index) => {
-      if (!/^[a-f0-9]{24}$/i.test(row.FieldId)) {
-        throw new Error(`Invalid FieldId format in row ${index + 1}. Must be a 24-digit hexadecimal.`);
+      if (!/^[a-f0-9]{24}$/i.test(row.FieldID)) {
+        throw new Error(`Invalid FieldID format in row ${index + 1}. Must be a 24-digit hexadecimal.`);
       }
     });
+
+    // Validate that all fields have the same number of values
+    const valuesCounts = data.map(row => 
+      (row.values || '').split(delimiter).map(v => v.trim()).filter(Boolean).length
+    );
+    
+    if (!valuesCounts.every(count => count === valuesCounts[0])) {
+      throw new Error('All fields must have the same number of values for matching mode');
+    }
   };
 
   const handleFileUpload = (event) => {
@@ -95,9 +104,9 @@ const BatchFormPrefill = () => {
           const parsedFields = results.data
             .filter(row => Object.values(row).some(val => val))
             .map(row => ({
-              FieldId: row.FieldId || '',
+              FieldID: row.FieldID || '',
               values: (row.values || '').split(delimiter).map(v => v.trim()).filter(Boolean),
-              description: row.description || row.FieldId // Use description if available, otherwise use FieldId
+              description: row.description || row.FieldID
             }));
           
           setFields(parsedFields);
@@ -128,32 +137,34 @@ const BatchFormPrefill = () => {
       validateFormUrl(formUrl);
       if (fields.length === 0) throw new Error('No fields imported');
       
-      const fieldArrays = fields.map(field => 
-        field.values.map(value => ({ 
-          id: field.FieldId, 
-          value,
-          description: field.description 
-        }))
-      );
+      // Get the number of entries (should be the same for all fields after validation)
+      const numEntries = fields[0].values.length;
       
-      const combinations = generateCombinations(fieldArrays);
-      
-      const links = combinations.map(combo => {
-        const queryParams = combo
+      // Generate matched combinations
+      const links = [];
+      for (let i = 0; i < numEntries; i++) {
+        const combination = fields.map(field => ({
+          id: field.FieldID,
+          value: field.values[i],
+          description: field.description
+        }));
+        
+        const queryParams = combination
           .map(({ id, value }) => `${id}=${encodeURIComponent(value)}`)
           .join('&');
-        return {
+          
+        links.push({
           url: `${formUrl}?${queryParams}`,
-          fields: combo.reduce((acc, { id, value, description }) => ({
+          fields: combination.reduce((acc, { id, value, description }) => ({
             ...acc,
             [id]: value,
             [`${id}_description`]: description
           }), {})
-        };
-      });
+        });
+      }
       
       setGeneratedLinks(links);
-      showSuccess(`Generated ${links.length} links successfully!`);
+      showSuccess(`Generated ${links.length} matched links successfully!`);
     } catch (error) {
       setError(error.message);
       setGeneratedLinks([]);
@@ -161,7 +172,7 @@ const BatchFormPrefill = () => {
       setIsProcessing(false);
     }
   };
-
+  
   const generateCombinations = (fieldArrays) => {
     if (fieldArrays.length === 0) return [[]];
     
@@ -183,10 +194,10 @@ const BatchFormPrefill = () => {
     if (exportConfig.includeUrl) {
       headers.push('Form URL');
     }
-    exportConfig.additionalFields.forEach(fieldId => {
-      const field = fields.find(f => f.FieldId === fieldId);
+    exportConfig.additionalFields.forEach(FieldID => {
+      const field = fields.find(f => f.FieldID === FieldID);
       if (field) {
-        headers.push(field.description || fieldId);
+        headers.push(field.description || FieldID);
       }
     });
     
@@ -200,8 +211,8 @@ const BatchFormPrefill = () => {
         if (exportConfig.includeUrl) {
           row.push(link.url);
         }
-        exportConfig.additionalFields.forEach(fieldId => {
-          row.push(link.fields[fieldId] || '');
+        exportConfig.additionalFields.forEach(FieldID => {
+          row.push(link.fields[FieldID] || '');
         });
         return row;
       })
@@ -223,7 +234,7 @@ const BatchFormPrefill = () => {
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100 p-6">
       <Card className="w-full max-w-4xl mx-auto shadow-lg">
         <CardHeader className="flex flex-row items-center justify-between bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-t-lg">
-          <CardTitle className="text-2xl">Form Prefill Generator</CardTitle>
+          <CardTitle className="text-2xl">FormSG Prefill Batch Generator</CardTitle>
           <Button 
             variant="ghost" 
             size="icon" 
@@ -248,10 +259,10 @@ const BatchFormPrefill = () => {
           )}
 
           <div className="space-y-2">
-            <Label className="text-lg font-medium text-gray-700">Form URL</Label>
+            <Label className="text-lg font-medium text-gray-700">Batch URL Generator and Exporter</Label>
             <Input
               className="border-2 focus:ring-2 focus:ring-blue-500"
-              placeholder="https://form.gov.sg/123abc... (24-digit hexadecimal)"
+              placeholder="https://form.gov.sg/67488b8b1210a416d2d7cb5b [24-digit hexadecimal]"
               value={formUrl}
               onChange={(e) => setFormUrl(e.target.value)}
             />
@@ -273,7 +284,7 @@ const BatchFormPrefill = () => {
                   <Alert className="bg-blue-50 border-blue-200">
                     <Info className="h-4 w-4 text-blue-500" />
                     <AlertDescription className="text-blue-700">
-                      Upload a CSV file with columns: FieldId (24-digit hex), values, description (optional)
+                      Upload a CSV file with columns: FieldID (24-digit hex), values, description (optional)
                     </AlertDescription>
                   </Alert>
                   
@@ -349,8 +360,8 @@ const BatchFormPrefill = () => {
                       <SelectContent>
                         <SelectItem value="none">None</SelectItem>
                         {fields.map((field) => (
-                          <SelectItem key={field.FieldId} value={field.FieldId}>
-                            {field.description || field.FieldId}
+                          <SelectItem key={field.FieldID} value={field.FieldID}>
+                            {field.description || field.FieldID}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -374,21 +385,21 @@ const BatchFormPrefill = () => {
                   <div className="space-y-2">
                     <Label>Additional Fields to Export</Label>
                     {fields.map((field) => (
-                      <Label key={field.FieldId} className="flex items-center gap-2">
+                      <Label key={field.FieldID} className="flex items-center gap-2">
                         <input
                           type="checkbox"
-                          checked={exportConfig.additionalFields.includes(field.FieldId)}
+                          checked={exportConfig.additionalFields.includes(field.FieldID)}
                           onChange={(e) => {
                             const newFields = e.target.checked
-                              ? [...exportConfig.additionalFields, field.FieldId]
-                              : exportConfig.additionalFields.filter(id => id !== field.FieldId);
+                              ? [...exportConfig.additionalFields, field.FieldID]
+                              : exportConfig.additionalFields.filter(id => id !== field.FieldID);
                             setExportConfig(prev => ({
                               ...prev,
                               additionalFields: newFields
                             }));
                           }}
                         />
-                        {field.description || field.FieldId}
+                        {field.description || field.FieldID}
                       </Label>
                     ))}
                   </div>
@@ -410,8 +421,8 @@ const BatchFormPrefill = () => {
                   <div key={index} className="p-4 bg-gray-50 rounded-lg border">
                     <div className="flex justify-between items-start">
                       <div>
-                        <h4 className="font-medium text-gray-900">{field.description || field.FieldId}</h4>
-                        <p className="text-sm text-gray-500">Field ID: {field.FieldId}</p>
+                        <h4 className="font-medium text-gray-900">{field.description || field.FieldID}</h4>
+                        <p className="text-sm text-gray-500">Field ID: {field.FieldID}</p>
                       </div>
                       <div className="text-sm text-gray-500">
                         {field.values.length} values
@@ -456,15 +467,16 @@ const BatchFormPrefill = () => {
             <DialogTitle>How to Use</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 text-sm">
-            <p>1. Enter your Form.gov.sg form URL</p>
+            <p>1. Enter your FormSG base URL in the following format: https://form.gov.sg/[24-digit hexadecimal]</p>
             <p>2. Import a CSV file with the following columns:</p>
             <ul className="list-disc pl-6">
-              <li>FieldId: 24-digit hexadecimal from your form</li>
-              <li>values: Comma-separated list of values</li>
+              <li>FieldID: 24-digit hexadecimal from your short answer field</li>
+              <li>values: Comma-separated list of values (must have matching number of values across all fields)</li>
               <li>description: (Optional) Friendly name for the field</li>
             </ul>
-            <p>3. Click "Generate Links" to create prefilled form URLs</p>
-            <p>4. Export the generated links to CSV with custom options</p>
+            <p>3. Values in each row will be matched by position (e.g., first value matches with first value)</p>
+            <p>4. Click "Generate Links" to create prefilled form URLs with matched values</p>
+            <p>5. Export the generated links to CSV with custom options</p>
           </div>
         </DialogContent>
       </Dialog>
