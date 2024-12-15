@@ -1,15 +1,166 @@
 'use client'
 
 import React, { useState } from 'react';
+import Papa from 'papaparse';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
-import { Info, Upload, Download, FileSpreadsheet, HelpCircle, Loader2 } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from '@/components/ui/dialog';
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Info, Upload, Download, FileSpreadsheet, HelpCircle, Loader2, XCircle, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import Papa from 'papaparse';
+
+const InstructionalGuide = () => {
+  const [currentStep, setCurrentStep] = useState(0);
+
+  const steps = [
+    {
+      title: 'Locate FormSG Base URL and Field IDs of Short Answer Questions in FormSG',
+      description: 'Share your form to locate Base URL and click on a short answer field to find its unique 24-digit hexadecimal ID',
+      placeholder: (
+        <div className="space-y-4">
+        <div>
+          <img
+            src="/FormSG.png"
+            alt="Field ID Placeholder 1"
+            className="w-full h-48 object-cover bg-gray-100"
+          />
+          <p className="text-sm text-gray-600 mt-2">Step 1: Locate your FormSG Base URL</p>
+        </div>
+        <div>
+          <img
+            src="/FormSG2.png"
+            alt="Field ID Placeholder 2"
+            className="w-full h-48 object-cover bg-gray-100"
+          />
+          <p className="text-sm text-gray-600 mt-2">Step 2: Click on a short answer field, Enable PreFill to find its unique 24-digit hexadecimal ID</p>
+        </div>
+      </div>
+      )
+    },
+    {
+      title: 'Import CSV Template',
+      description: 'Create a CSV with columns: FieldID, values, description (optional)',
+      placeholder: (
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 250" className="w-full h-48 bg-gray-100">
+          <rect x="50" y="50" width="300" height="150" fill="#f0f0f0" stroke="#ccc" />
+          <text x="200" y="80" textAnchor="middle" fill="#666" fontSize="14">
+            CSV Structure
+          </text>
+          <text x="100" y="110" fill="#333" fontSize="12">FieldID</text>
+          <text x="200" y="110" fill="#333" fontSize="12">values</text>
+          <text x="300" y="110" fill="#333" fontSize="12">description</text>
+          
+          <text x="100" y="130" fill="#4a90e2" fontSize="12">67488bb37e8c</text>
+          <text x="200" y="130" fill="#4a90e2" fontSize="12">John,Jane,Alex</text>
+          <text x="300" y="130" fill="#4a90e2" fontSize="12">Names</text>
+        </svg>
+      )
+    },
+    {
+      title: 'Generate Prefilled Links',
+      description: 'Click "Generate Links" to create unique prefilled form URLs',
+      placeholder: (
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 250" className="w-full h-48 bg-gray-100">
+          <rect x="50" y="50" width="300" height="150" fill="#e6f3ff" rx="8" />
+          <text x="200" y="90" textAnchor="middle" fill="#333" fontSize="14">
+            Prefilled Form URLs
+          </text>
+          <text x="200" y="120" textAnchor="middle" fill="#4a90e2" fontSize="12" className="break-all">
+            https://form.gov.sg/67488b8b1210a416d2d7cb5b?67488bb37e8c=John
+          </text>
+          <text x="200" y="140" textAnchor="middle" fill="#4a90e2" fontSize="12" className="break-all">
+            https://form.gov.sg/67488b8b1210a416d2d7cb5b?67488bb37e8c=Jane
+          </text>
+        </svg>
+      )
+    },
+    {
+      title: 'Generate Prefilled Links',
+      description: 'Click "Generate Links" to create unique prefilled form URLs',
+      placeholder: (
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 250" className="w-full h-48 bg-gray-100">
+          <rect x="50" y="50" width="300" height="150" fill="#e6f3ff" rx="8" />
+          <text x="200" y="90" textAnchor="middle" fill="#333" fontSize="14">
+            Prefilled Form URLs
+          </text>
+          <text x="200" y="120" textAnchor="middle" fill="#4a90e2" fontSize="12" className="break-all">
+            https://form.gov.sg/67488b8b1210a416d2d7cb5b?67488bb37e8c=John
+          </text>
+          <text x="200" y="140" textAnchor="middle" fill="#4a90e2" fontSize="12" className="break-all">
+            https://form.gov.sg/67488b8b1210a416d2d7cb5b?67488bb37e8c=Jane
+          </text>
+        </svg>
+      )
+    },
+    {
+      title: 'Generate Prefilled Links',
+      description: 'Click "Generate Links" to create unique prefilled form URLs',
+      placeholder: (
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 250" className="w-full h-48 bg-gray-100">
+          <rect x="50" y="50" width="300" height="150" fill="#e6f3ff" rx="8" />
+          <text x="200" y="90" textAnchor="middle" fill="#333" fontSize="14">
+            Prefilled Form URLs
+          </text>
+          <text x="200" y="120" textAnchor="middle" fill="#4a90e2" fontSize="12" className="break-all">
+            https://form.gov.sg/67488b8b1210a416d2d7cb5b?67488bb37e8c=John
+          </text>
+          <text x="200" y="140" textAnchor="middle" fill="#4a90e2" fontSize="12" className="break-all">
+            https://form.gov.sg/67488b8b1210a416d2d7cb5b?67488bb37e8c=Jane
+          </text>
+        </svg>
+      )
+    }
+  ];
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <h3 className="text-lg font-semibold text-gray-800">
+          {steps[currentStep].title}
+        </h3>
+        <div className="flex items-center space-x-2">
+          <Button 
+            variant="outline" 
+            size="icon" 
+            onClick={() => setCurrentStep(Math.max(0, currentStep - 1))}
+            disabled={currentStep === 0}
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+          <Button 
+            variant="outline" 
+            size="icon" 
+            onClick={() => setCurrentStep(Math.min(steps.length - 1, currentStep + 1))}
+            disabled={currentStep === steps.length - 1}
+          >
+            <ChevronRight className="h-4 w-4" />
+          </Button>
+        </div>
+      </div>
+      
+      <p className="text-sm text-gray-600">
+        {steps[currentStep].description}
+      </p>
+      
+      {steps[currentStep].placeholder}
+      
+      <div className="flex justify-center space-x-2 mt-4">
+        {steps.map((_, index) => (
+          <button
+            key={index}
+            onClick={() => setCurrentStep(index)}
+            className={`h-2 w-2 rounded-full ${
+              currentStep === index ? 'bg-blue-600' : 'bg-gray-300'
+            }`}
+          />
+        ))}
+      </div>
+    </div>
+  );
+};
 
 const BatchFormPrefill = () => {
   const [formUrl, setFormUrl] = useState('');
@@ -462,26 +613,28 @@ const BatchFormPrefill = () => {
       </Card>
 
       <Dialog open={showHelpDialog} onOpenChange={setShowHelpDialog}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-2xl">
           <DialogHeader>
-            <DialogTitle>How to Use</DialogTitle>
+            <DialogTitle>
+              <div className="flex items-center justify-between">
+                Batch Prefill Guide
+              </div>
+            </DialogTitle>
+            <DialogDescription>
+              Step-by-step visual guide to generate prefilled FormSG URLs in bulk
+            </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 text-sm">
-            <p>1. Enter your FormSG base URL in the following format: https://form.gov.sg/[24-digit hexadecimal]</p>
-            <p>2. Import a CSV file with the following columns:</p>
-            <ul className="list-disc pl-6">
-              <li>FieldID: 24-digit hexadecimal from your short answer field</li>
-              <li>values: Comma-separated list of values (must have matching number of values across all fields)</li>
-              <li>description: (Optional) Friendly name for the field</li>
-            </ul>
-            <p>3. Values in each row will be matched by position (e.g., first value of row 1 matches with first value of row 2)</p>
-            <p>4. Click "Generate Links" to create prefilled form URLs with matched values</p>
-            <p>5. Export the generated links to CSV with custom options</p>
-          </div>
+          
+          <InstructionalGuide />
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowHelpDialog(false)}>
+              Close
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
   );
 };
-
 export default BatchFormPrefill;
