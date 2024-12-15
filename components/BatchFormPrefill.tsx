@@ -474,7 +474,7 @@ const BatchFormPrefill = () => {
               <li>values: Comma-separated list of values (must have matching number of values across all fields)</li>
               <li>description: (Optional) Friendly name for the field</li>
             </ul>
-            <p>3. Values in each row will be matched by position (e.g., first value matches with first value)</p>
+            <p>3. Values in each row will be matched by position (e.g., first value of row 1 matches with first value of row 2)</p>
             <p>4. Click "Generate Links" to create prefilled form URLs with matched values</p>
             <p>5. Export the generated links to CSV with custom options</p>
           </div>
