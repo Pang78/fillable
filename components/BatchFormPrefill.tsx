@@ -53,7 +53,7 @@ const InstructionalGuide = () => {
               alt="Field ID Placeholder 3"
               className="w-full h-full object-cover bg-gray-100 rounded"
             />
-            <p className="text-sm text-gray-600 mt-2 font-bold">Step 3: Download and Prepare your CSV according to the image. Please ensure that you select the correct delimiter according to the delimiter used in your "value" field  </p>
+            <p className="text-sm text-gray-600 mt-2 font-bold">Step 3: Download and Prepare your CSV according to the image. Please ensure that you select the correct delimiter according to the delimiter used in your "values" field  </p>
           </div>
           <div>
             <img
