@@ -27,7 +27,7 @@ const InstructionalGuide = () => {
             alt="Field ID Placeholder 1"
             className="w-full h-48 object-cover bg-gray-100 rounded"
           />
-          <p className="text-sm text-gray-600 mt-2">Step 1: Locate your FormSG Base URL and populate under Batch URL Generator & Exporter. The URL should look like: https://form.gov.sg/[24-digit hexadecimal code]
+          <p className="text-sm text-gray-600 mt-2 font-bold">Step 1: Locate your FormSG Base URL and populate under Batch URL Generator & Exporter. The URL should look like: https://form.gov.sg/[24-digit hexadecimal code]
           </p>
         </div>
         <div>
@@ -36,7 +36,7 @@ const InstructionalGuide = () => {
             alt="Field ID Placeholder 2"
             className="w-full h-48 object-cover bg-gray-100 rounded"
           />
-          <p className="text-sm text-gray-600 mt-2">Step 2: Click on a short answer field, Enable PreFill to find its unique 24-digit hexadecimal ID</p>
+          <p className="text-sm text-gray-600 mt-2 font-bold">Step 2: Click on a short answer field, Enable PreFill to find its unique 24-digit hexadecimal ID</p>
         </div>
       </div>
       )
@@ -53,111 +53,58 @@ const InstructionalGuide = () => {
               alt="Field ID Placeholder 3"
               className="w-full h-full object-cover bg-gray-100 rounded"
             />
-            <p className="text-sm text-gray-600 mt-2">Step 3: Download and Prepare your CSV according to the image. Please ensure that you select the correct delimiter according to the delimiter used in your "value" field  </p>
+            <p className="text-sm text-gray-600 mt-2 font-bold">Step 3: Download and Prepare your CSV according to the image. Please ensure that you select the correct delimiter according to the delimiter used in your "value" field  </p>
           </div>
           <div>
             <img
               src="/FormSG4.png"
               alt="Field ID Placeholder 4"
-              className="w-full h-48 object-cover bg-gray-100 rounded"
+              className="w-full h-full object-cover bg-gray-100 rounded"
             />
-            <p className="text-sm text-gray-600 mt-2">Step 4: Click "Import CSV" button, and Choose your prepared CSV file
-              Optionally, adjust the delimiter if needed (default is comma)
-              The app will validate and process your CSV according to the longest list
-              When uploading your CSV, fields or rows can now have different numbers of values. 
-              Single values automatically apply to all entries, and shorter lists repeat their last value.</p>
-          </div>
-          <div>
-            <img
-              src="/FormSG5.png"
-              alt="Field ID Placeholder 5"
-              className="w-full h-48 object-cover bg-gray-100 rounded"
-            />
-            <p className="text-sm text-gray-600 mt-2">Step 5: After verifying your imported fields, click on the "Generate Links" Button</p>
-          </div>
-          <div>
-            <img
-              src="/FormSG4.png"
-              alt="Field ID Placeholder 4"
-              className="w-full h-48 object-cover bg-gray-100 rounded"
-            />
-            <p className="text-sm text-gray-600 mt-2">Step 4: Another optional image</p>
+            <p className="text-sm text-gray-600 mt-2 font-bold">
+            Step 4: Click "Import CSV" and select your prepared file. Adjust the delimiter if necessary (default: comma).  
+            The app validates and processes your CSV based on the longest list. Fields or rows can vary in length—single values apply to all entries, and shorter lists repeat their last value.
+            </p>
           </div>
         </div>
       )
     },
-
-    {
-      title: 'Import CSV Template',
-      description: 'Create a CSV with columns: FieldID, values, description (optional)',
-      placeholder: (
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 250" className="w-full h-48 bg-gray-100">
-          <rect x="50" y="50" width="300" height="150" fill="#f0f0f0" stroke="#ccc" />
-          <text x="200" y="80" textAnchor="middle" fill="#666" fontSize="14">
-            CSV Structure
-          </text>
-          <text x="100" y="110" fill="#333" fontSize="12">FieldID</text>
-          <text x="200" y="110" fill="#333" fontSize="12">values</text>
-          <text x="300" y="110" fill="#333" fontSize="12">description</text>
-          
-          <text x="100" y="130" fill="#4a90e2" fontSize="12">67488bb37e8c</text>
-          <text x="200" y="130" fill="#4a90e2" fontSize="12">John,Jane,Alex</text>
-          <text x="300" y="130" fill="#4a90e2" fontSize="12">Names</text>
-        </svg>
-      )
-    },
     {
       title: 'Generate Prefilled Links',
       description: 'Click "Generate Links" to create unique prefilled form URLs',
       placeholder: (
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 250" className="w-full h-48 bg-gray-100">
-          <rect x="50" y="50" width="300" height="150" fill="#e6f3ff" rx="8" />
-          <text x="200" y="90" textAnchor="middle" fill="#333" fontSize="14">
-            Prefilled Form URLs
-          </text>
-          <text x="200" y="120" textAnchor="middle" fill="#4a90e2" fontSize="12" className="break-all">
-            https://form.gov.sg/67488b8b1210a416d2d7cb5b?67488bb37e8c=John
-          </text>
-          <text x="200" y="140" textAnchor="middle" fill="#4a90e2" fontSize="12" className="break-all">
-            https://form.gov.sg/67488b8b1210a416d2d7cb5b?67488bb37e8c=Jane
-          </text>
-        </svg>
+        <div>
+            <img
+              src="/FormSG5.png"
+              alt="Field ID Placeholder 5"
+              className="w-full h-full object-cover bg-gray-100 rounded"
+            />
+            <p className="text-sm text-gray-600 mt-2 font-bold">Step 5: After verifying your imported fields, click on the "Generate Links" Button</p>
+        </div>
       )
     },
     {
-      title: 'Generate Prefilled Links',
-      description: 'Click "Generate Links" to create unique prefilled form URLs',
+      title: 'Export Options',
+      description: 'Click "Export Options" to download',
       placeholder: (
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 250" className="w-full h-48 bg-gray-100">
-          <rect x="50" y="50" width="300" height="150" fill="#e6f3ff" rx="8" />
-          <text x="200" y="90" textAnchor="middle" fill="#333" fontSize="14">
-            Prefilled Form URLs
-          </text>
-          <text x="200" y="120" textAnchor="middle" fill="#4a90e2" fontSize="12" className="break-all">
-            https://form.gov.sg/67488b8b1210a416d2d7cb5b?67488bb37e8c=John
-          </text>
-          <text x="200" y="140" textAnchor="middle" fill="#4a90e2" fontSize="12" className="break-all">
-            https://form.gov.sg/67488b8b1210a416d2d7cb5b?67488bb37e8c=Jane
-          </text>
-        </svg>
-      )
-    },
-    {
-      title: 'Generate Prefilled Links',
-      description: 'Click "Generate Links" to create unique prefilled form URLs',
-      placeholder: (
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 250" className="w-full h-48 bg-gray-100">
-          <rect x="50" y="50" width="300" height="150" fill="#e6f3ff" rx="8" />
-          <text x="200" y="90" textAnchor="middle" fill="#333" fontSize="14">
-            Prefilled Form URLs
-          </text>
-          <text x="200" y="120" textAnchor="middle" fill="#4a90e2" fontSize="12" className="break-all">
-            https://form.gov.sg/67488b8b1210a416d2d7cb5b?67488bb37e8c=John
-          </text>
-          <text x="200" y="140" textAnchor="middle" fill="#4a90e2" fontSize="12" className="break-all">
-            https://form.gov.sg/67488b8b1210a416d2d7cb5b?67488bb37e8c=Jane
-          </text>
-        </svg>
+      <div className="space-y-4 max-h-[400px] overflow-y-auto p-4 bg-gray-50 rounded-lg">
+        <div>
+            <img
+              src="/FormSG6.png"
+              alt="Field ID Placeholder 6"
+              className="w-full h-full object-cover bg-gray-100 rounded"
+            />
+            <p className="text-sm text-gray-600 mt-2 font-bold">Step 6: Click on the "Export Options" Button</p>
+        </div>
+        <div>
+            <img
+              src="/FormSG7.png"
+              alt="Field ID Placeholder 7"
+              className="w-full h-full object-cover bg-gray-100 rounded"
+            />
+            <p className="text-sm text-gray-600 mt-2 font-bold">Step 7: Click on the "Export Csv" Button to export csv with primary fields (Default:None) and Additional Fields (Description(Optional) of Fields)</p>
+        </div>
+      </div>
       )
     }
   ];
