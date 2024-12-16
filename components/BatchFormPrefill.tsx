@@ -20,12 +20,12 @@ const InstructionalGuide = () => {
       title: 'Locate FormSG Base URL and Field IDs of Short Answer Questions in FormSG',
       description: 'Share your form to locate Base URL and click on a short answer field to find its unique 24-digit hexadecimal ID',
       placeholder: (
-        <div className="space-y-4">
+        <div className="space-y-4 max-h-[400px] overflow-y-auto p-4 bg-gray-50 rounded-lg">
         <div>
           <img
             src="/FormSG.png"
             alt="Field ID Placeholder 1"
-            className="w-full h-48 object-cover bg-gray-100"
+            className="w-full h-48 object-cover bg-gray-100 rounded"
           />
           <p className="text-sm text-gray-600 mt-2">Step 1: Locate your FormSG Base URL</p>
         </div>
@@ -33,7 +33,7 @@ const InstructionalGuide = () => {
           <img
             src="/FormSG2.png"
             alt="Field ID Placeholder 2"
-            className="w-full h-48 object-cover bg-gray-100"
+            className="w-full h-48 object-cover bg-gray-100 rounded"
           />
           <p className="text-sm text-gray-600 mt-2">Step 2: Click on a short answer field, Enable PreFill to find its unique 24-digit hexadecimal ID</p>
         </div>
