@@ -84,8 +84,8 @@ const InstructionalGuide = () => {
       )
     },
     {
-      title: 'Export Options',
-      description: 'Click "Export Options" to download',
+      title: 'Exporting finalized prefill links',
+      description: 'Click "Export Options and Export csv" to download the csv',
       placeholder: (
       <div className="space-y-4 max-h-[400px] overflow-y-auto p-4 bg-gray-50 rounded-lg">
         <div>
