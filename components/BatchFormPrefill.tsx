@@ -243,7 +243,7 @@ const BatchFormPrefill = () => {
   const handleFileUpload = (event) => {
     const file = event.target.files?.[0];
     if (!file) return;
-
+    
     setError('');
     setIsProcessing(true);
     
@@ -260,7 +260,17 @@ const BatchFormPrefill = () => {
               description: row.description || row.FieldID
             }));
           
-          setFields(parsedFields);
+          // Determine the number of rows based on fields with multiple values
+          const numRows = Math.max(...parsedFields.filter(field => field.values.length > 1).map(field => field.values.length));
+          
+          // Normalize fields: if a field has only one value, repeat it to match numRows
+          const normalizedFields = parsedFields.map(field => ({
+            ...field,
+            values: field.values.length === 1 ? Array(numRows).fill(field.values[0]) : field.values,
+            isSingleValue: field.values.length === 1
+          }));
+          
+          setFields(normalizedFields);
           showSuccess('CSV imported successfully!');
         } catch (error) {
           setError(error.message);
@@ -277,9 +287,9 @@ const BatchFormPrefill = () => {
         setIsProcessing(false);
       }
     });
-  };
-
-  const generateLinks = () => {
+   };
+    
+   const generateLinks = () => {
     setIsProcessing(true);
     setError('');
     
@@ -288,7 +298,7 @@ const BatchFormPrefill = () => {
       validateFormUrl(formUrl);
       if (fields.length === 0) throw new Error('No fields imported');
       
-      // Get the number of entries (should be the same for all fields after validation)
+      // Get the number of entries (should be the same for all multi-value fields after normalization)
       const numEntries = fields[0].values.length;
       
       // Generate matched combinations
@@ -297,7 +307,8 @@ const BatchFormPrefill = () => {
         const combination = fields.map(field => ({
           id: field.FieldID,
           value: field.values[i],
-          description: field.description
+          description: field.description,
+          isSingleValue: field.isSingleValue
         }));
         
         const queryParams = combination
@@ -306,10 +317,11 @@ const BatchFormPrefill = () => {
           
         links.push({
           url: `${formUrl}?${queryParams}`,
-          fields: combination.reduce((acc, { id, value, description }) => ({
+          fields: combination.reduce((acc, { id, value, description, isSingleValue }) => ({
             ...acc,
             [id]: value,
-            [`${id}_description`]: description
+            [`${id}_description`]: description,
+            [`${id}_isSingleValue`]: isSingleValue
           }), {})
         });
       }
@@ -322,7 +334,7 @@ const BatchFormPrefill = () => {
     } finally {
       setIsProcessing(false);
     }
-  };
+   };
   
   const generateCombinations = (fieldArrays) => {
     if (fieldArrays.length === 0) return [[]];
