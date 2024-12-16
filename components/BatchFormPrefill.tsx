@@ -17,7 +17,7 @@ const InstructionalGuide = () => {
 
   const steps = [
     {
-      title: 'Locate FormSG Base URL and Field IDs of Short Answer Questions in FormSG',
+      title: 'FormSG Base URL and Field IDs',
       description: 'Share your form to locate Base URL and click on a short answer field to find its unique 24-digit hexadecimal ID',
       placeholder: (
         <div className="space-y-4 max-h-[400px] overflow-y-auto p-4 bg-gray-50 rounded-lg">
@@ -27,7 +27,8 @@ const InstructionalGuide = () => {
             alt="Field ID Placeholder 1"
             className="w-full h-48 object-cover bg-gray-100 rounded"
           />
-          <p className="text-sm text-gray-600 mt-2">Step 1: Locate your FormSG Base URL</p>
+          <p className="text-sm text-gray-600 mt-2">Step 1: Locate your FormSG Base URL and populate under Batch URL Generator & Exporter. The URL should look like: https://form.gov.sg/[24-digit hexadecimal code]
+          </p>
         </div>
         <div>
           <img
@@ -40,6 +41,52 @@ const InstructionalGuide = () => {
       </div>
       )
     },
+
+    {
+      title: 'Import CSV Template',
+      description: 'Download and Populate a CSV with columns: FieldID, values [In a list format separated by a delimiter e.g Apple,Banana,Cherry. In this case "," is the delimiter], description (optional)',
+      placeholder: (
+        <div className="space-y-4 max-h-[400px] overflow-y-auto p-4 bg-gray-50 rounded-lg">
+          <div>
+            <img
+              src="/FormSG3.png"
+              alt="Field ID Placeholder 3"
+              className="w-full h-full object-cover bg-gray-100 rounded"
+            />
+            <p className="text-sm text-gray-600 mt-2">Step 3: Download and Prepare your CSV according to the image. Please ensure that you select the correct delimiter according to the delimiter used in your "value" field  </p>
+          </div>
+          <div>
+            <img
+              src="/FormSG4.png"
+              alt="Field ID Placeholder 4"
+              className="w-full h-48 object-cover bg-gray-100 rounded"
+            />
+            <p className="text-sm text-gray-600 mt-2">Step 4: Click "Import CSV" button, and Choose your prepared CSV file
+              Optionally, adjust the delimiter if needed (default is comma)
+              The app will validate and process your CSV according to the longest list
+              When uploading your CSV, fields or rows can now have different numbers of values. 
+              Single values automatically apply to all entries, and shorter lists repeat their last value.</p>
+          </div>
+          <div>
+            <img
+              src="/FormSG5.png"
+              alt="Field ID Placeholder 5"
+              className="w-full h-48 object-cover bg-gray-100 rounded"
+            />
+            <p className="text-sm text-gray-600 mt-2">Step 5: After verifying your imported fields, click on the "Generate Links" Button</p>
+          </div>
+          <div>
+            <img
+              src="/FormSG4.png"
+              alt="Field ID Placeholder 4"
+              className="w-full h-48 object-cover bg-gray-100 rounded"
+            />
+            <p className="text-sm text-gray-600 mt-2">Step 4: Another optional image</p>
+          </div>
+        </div>
+      )
+    },
+
     {
       title: 'Import CSV Template',
       description: 'Create a CSV with columns: FieldID, values, description (optional)',
@@ -230,14 +277,13 @@ const BatchFormPrefill = () => {
       }
     });
 
-    // Validate that all fields have the same number of values
-    const valuesCounts = data.map(row => 
-      (row.values || '').split(delimiter).map(v => v.trim()).filter(Boolean).length
-    );
-    
-    if (!valuesCounts.every(count => count === valuesCounts[0])) {
-      throw new Error('All fields must have the same number of values for matching mode');
-    }
+    // Validate that all fields have at least 1 value, takes the maximum
+    data.forEach((row, index) => {
+      const values = (row.values || '').split(delimiter).map(v => v.trim()).filter(Boolean);
+      if (values.length === 0) {
+        throw new Error(`Row ${index + 1} has no valid values`);
+      }
+    });
   };
 
   const handleFileUpload = (event) => {
@@ -252,6 +298,7 @@ const BatchFormPrefill = () => {
         try {
           validateCsvStructure(results.data);
           
+          // First pass: parse all fields and find the maximum number of values
           const parsedFields = results.data
             .filter(row => Object.values(row).some(val => val))
             .map(row => ({
@@ -260,15 +307,24 @@ const BatchFormPrefill = () => {
               description: row.description || row.FieldID
             }));
           
-          // Determine the number of rows based on fields with multiple values
-          const numRows = Math.max(...parsedFields.filter(field => field.values.length > 1).map(field => field.values.length));
+          // Find the maximum number of values across all fields
+          const maxValues = Math.max(...parsedFields.map(field => field.values.length));
           
-          // Normalize fields: if a field has only one value, repeat it to match numRows
-          const normalizedFields = parsedFields.map(field => ({
-            ...field,
-            values: field.values.length === 1 ? Array(numRows).fill(field.values[0]) : field.values,
-            isSingleValue: field.values.length === 1
-          }));
+          // Second pass: normalize all fields to match the maximum length
+          const normalizedFields = parsedFields.map(field => {
+            const values = field.values;
+            // If field has only one value, repeat it to match maxValues
+            // If field has multiple values but less than maxValues, repeat the last value
+            const normalizedValues = values.length === 1 
+              ? Array(maxValues).fill(values[0])
+              : [...values, ...Array(maxValues - values.length).fill(values[values.length - 1])];
+            
+            return {
+              ...field,
+              values: normalizedValues,
+              isSingleValue: values.length === 1
+            };
+          });
           
           setFields(normalizedFields);
           showSuccess('CSV imported successfully!');
@@ -287,8 +343,9 @@ const BatchFormPrefill = () => {
         setIsProcessing(false);
       }
     });
-   };
-    
+  };
+
+          
    const generateLinks = () => {
     setIsProcessing(true);
     setError('');
