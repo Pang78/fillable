@@ -39,5 +39,5 @@ Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/bui
 https://drive.google.com/drive/folders/1eszxDr57_2zPCClHK4v8rPxe6lsV2vvO?usp=share_link
 
 ## link to Sample FormSG for prefill use case
-Go.gov.sg/trainingdemo
+https://go.gov.sg/trainingdemo
 
