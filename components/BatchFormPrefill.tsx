@@ -21,27 +21,25 @@ const InstructionalGuide = () => {
       description: 'Share your form to locate Base URL and click on a short answer field to find its unique 24-digit hexadecimal ID',
       placeholder: (
         <div className="space-y-4 max-h-[400px] overflow-y-auto p-4 bg-gray-50 rounded-lg">
-        <div>
-          <img
-            src="/FormSG.png"
-            alt="Field ID Placeholder 1"
-            className="w-full h-48 object-cover bg-gray-100 rounded"
-          />
-          <p className="text-sm text-gray-600 mt-2 font-bold">Step 1: Locate your FormSG Base URL and populate under Batch URL Generator & Exporter. The URL should look like: https://form.gov.sg/[24-digit hexadecimal code]
-          </p>
+          <div>
+            <img
+              src="/FormSG.png"
+              alt="Field ID Placeholder 1"
+              className="w-full h-48 object-cover bg-gray-100 rounded"
+            />
+            <p className="text-sm text-gray-600 mt-2 font-bold">Step 1: Locate your FormSG Base URL and populate under Batch URL Generator & Exporter. The URL should look like: https://form.gov.sg/[24-digit hexadecimal code]</p>
+          </div>
+          <div>
+            <img
+              src="/FormSG2.png"
+              alt="Field ID Placeholder 2"
+              className="w-full h-48 object-cover bg-gray-100 rounded"
+            />
+            <p className="text-sm text-gray-600 mt-2 font-bold">Step 2: Click on a short answer field, Enable PreFill to find its unique 24-digit hexadecimal ID</p>
+          </div>
         </div>
-        <div>
-          <img
-            src="/FormSG2.png"
-            alt="Field ID Placeholder 2"
-            className="w-full h-48 object-cover bg-gray-100 rounded"
-          />
-          <p className="text-sm text-gray-600 mt-2 font-bold">Step 2: Click on a short answer field, Enable PreFill to find its unique 24-digit hexadecimal ID</p>
-        </div>
-      </div>
       )
     },
-
     {
       title: 'Import CSV Template',
       description: 'Download and Populate a CSV with columns: FieldID, values [In a list format separated by a delimiter e.g Apple,Banana,Cherry. In this case "," is the delimiter], description (optional)',
@@ -53,7 +51,7 @@ const InstructionalGuide = () => {
               alt="Field ID Placeholder 3"
               className="w-full h-full object-cover bg-gray-100 rounded"
             />
-            <p className="text-sm text-gray-600 mt-2 font-bold">Step 3: Download and Prepare your CSV according to the image. Please ensure that you select the correct delimiter according to the delimiter used in your "values" field  </p>
+            <p className="text-sm text-gray-600 mt-2 font-bold">Step 3: Download and Prepare your CSV according to the image. Please ensure that you select the correct delimiter according to the delimiter used in your "values" field.</p>
           </div>
           <div>
             <img
@@ -62,8 +60,8 @@ const InstructionalGuide = () => {
               className="w-full h-full object-cover bg-gray-100 rounded"
             />
             <p className="text-sm text-gray-600 mt-2 font-bold">
-            Step 4: Click "Import CSV" and select your prepared file. Adjust the delimiter if necessary (default: comma).  
-            The app validates and processes your CSV based on the longest list. Fields or rows can vary in length—single values apply to all entries, and shorter lists repeat their last value.
+              Step 4: Click "Import CSV" and select your prepared file. Adjust the delimiter if necessary (default: comma).  
+              The app validates and processes your CSV based on the longest list. Fields or rows can vary in length—single values apply to all entries, and shorter lists repeat their last value.
             </p>
           </div>
         </div>
@@ -74,12 +72,12 @@ const InstructionalGuide = () => {
       description: 'Click "Generate Links" to create unique prefilled form URLs',
       placeholder: (
         <div>
-            <img
-              src="/FormSG5.png"
-              alt="Field ID Placeholder 5"
-              className="w-full h-full object-cover bg-gray-100 rounded"
-            />
-            <p className="text-sm text-gray-600 mt-2 font-bold">Step 5: After verifying your imported fields, click on the "Generate Links" Button</p>
+          <img
+            src="/FormSG5.png"
+            alt="Field ID Placeholder 5"
+            className="w-full h-full object-cover bg-gray-100 rounded"
+          />
+          <p className="text-sm text-gray-600 mt-2 font-bold">Step 5: After verifying your imported fields, click on the "Generate Links" Button</p>
         </div>
       )
     },
@@ -87,24 +85,24 @@ const InstructionalGuide = () => {
       title: 'Exporting Prefilled Links',
       description: 'Click "Export Options and Export CSV" to download the csv',
       placeholder: (
-      <div className="space-y-4 max-h-[400px] overflow-y-auto p-4 bg-gray-50 rounded-lg">
-        <div>
+        <div className="space-y-4 max-h-[400px] overflow-y-auto p-4 bg-gray-50 rounded-lg">
+          <div>
             <img
               src="/FormSG6.png"
               alt="Field ID Placeholder 6"
               className="w-full h-full object-cover bg-gray-100 rounded"
             />
             <p className="text-sm text-gray-600 mt-2 font-bold">Step 6: Click on the "Export Options" Button</p>
-        </div>
-        <div>
+          </div>
+          <div>
             <img
               src="/FormSG7.png"
               alt="Field ID Placeholder 7"
               className="w-full h-full object-cover bg-gray-100 rounded"
             />
             <p className="text-sm text-gray-600 mt-2 font-bold">Step 7: Click on the "Export Csv" Button to export csv with primary fields (Default:None) and Additional Fields (Description(Optional) of Fields)</p>
+          </div>
         </div>
-      </div>
       )
     }
   ];
@@ -292,8 +290,7 @@ const BatchFormPrefill = () => {
     });
   };
 
-          
-   const generateLinks = () => {
+  const generateLinks = () => {
     setIsProcessing(true);
     setError('');
     
@@ -338,17 +335,6 @@ const BatchFormPrefill = () => {
     } finally {
       setIsProcessing(false);
     }
-   };
-  
-  const generateCombinations = (fieldArrays) => {
-    if (fieldArrays.length === 0) return [[]];
-    
-    const [first, ...rest] = fieldArrays;
-    const restCombinations = generateCombinations(rest);
-    
-    return first.reduce((acc, item) => {
-      return [...acc, ...restCombinations.map(combo => [item, ...combo])];
-    }, []);
   };
 
   const exportLinks = () => {
@@ -448,7 +434,7 @@ const BatchFormPrefill = () => {
                   <DialogTitle>Import CSV File</DialogTitle>
                 </DialogHeader>
                 <div className="space-y-4">
-                  <Alert className="bg-blue-50 border-blue-200">
+                <Alert className="bg-blue-50 border-blue-200">
                     <Info className="h-4 w-4 text-blue-500" />
                     <AlertDescription className="text-blue-700">
                       Upload a CSV file with columns: FieldID (24-digit hex), values, description (optional)
@@ -472,12 +458,19 @@ const BatchFormPrefill = () => {
 
                   <div className="space-y-2">
                     <Label>Values Delimiter</Label>
-                    <Input
-                      type="text"
-                      placeholder="Delimiter (default: ,)"
+                    <Select
                       value={delimiter}
-                      onChange={(e) => setDelimiter(e.target.value)}
-                    />
+                      onValueChange={(value) => setDelimiter(value)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select delimiter" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value=",">Comma ( , )</SelectItem>
+                        <SelectItem value=";">Semicolon ( ; )</SelectItem>
+                        <SelectItem value="|">Pipe ( | )</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
                 </div>
               </DialogContent>
@@ -653,4 +646,5 @@ const BatchFormPrefill = () => {
     </div>
   );
 };
+
 export default BatchFormPrefill;
