@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import Papa from 'papaparse';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -11,7 +11,9 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Info, Upload, Download, FileSpreadsheet, HelpCircle, Loader2, XCircle, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Label } from '@/components/ui/label';
+import { Checkbox } from '@/components/ui/checkbox';
 
+// Separated InstructionalGuide component for better organization
 const InstructionalGuide = () => {
   const [currentStep, setCurrentStep] = useState(0);
 
@@ -24,7 +26,7 @@ const InstructionalGuide = () => {
           <div>
             <img
               src="/FormSG.png"
-              alt="Field ID Placeholder 1"
+              alt="Locating Base URL"
               className="w-full h-48 object-cover bg-gray-100 rounded"
             />
             <p className="text-sm text-gray-600 mt-2 font-bold">Step 1: Locate your FormSG Base URL and populate under Batch URL Generator & Exporter. The URL should look like: https://form.gov.sg/[24-digit hexadecimal code]</p>
@@ -32,7 +34,7 @@ const InstructionalGuide = () => {
           <div>
             <img
               src="/FormSG2.png"
-              alt="Field ID Placeholder 2"
+              alt="Finding Field ID"
               className="w-full h-48 object-cover bg-gray-100 rounded"
             />
             <p className="text-sm text-gray-600 mt-2 font-bold">Step 2: Click on a short answer field, Enable PreFill to find its unique 24-digit hexadecimal ID</p>
@@ -48,7 +50,7 @@ const InstructionalGuide = () => {
           <div>
             <img
               src="/FormSG3.png"
-              alt="Field ID Placeholder 3"
+              alt="CSV Template Format"
               className="w-full h-full object-cover bg-gray-100 rounded"
             />
             <p className="text-sm text-gray-600 mt-2 font-bold">Step 3: Download and Prepare your CSV according to the image. Please ensure that you select the correct delimiter according to the delimiter used in your "values" field.</p>
@@ -56,7 +58,7 @@ const InstructionalGuide = () => {
           <div>
             <img
               src="/FormSG4.png"
-              alt="Field ID Placeholder 4"
+              alt="Importing CSV"
               className="w-full h-full object-cover bg-gray-100 rounded"
             />
             <p className="text-sm text-gray-600 mt-2 font-bold">
@@ -74,7 +76,7 @@ const InstructionalGuide = () => {
         <div>
           <img
             src="/FormSG5.png"
-            alt="Field ID Placeholder 5"
+            alt="Generate Links"
             className="w-full h-full object-cover bg-gray-100 rounded"
           />
           <p className="text-sm text-gray-600 mt-2 font-bold">Step 5: After verifying your imported fields, click on the "Generate Links" Button</p>
@@ -89,7 +91,7 @@ const InstructionalGuide = () => {
           <div>
             <img
               src="/FormSG6.png"
-              alt="Field ID Placeholder 6"
+              alt="Export Options"
               className="w-full h-full object-cover bg-gray-100 rounded"
             />
             <p className="text-sm text-gray-600 mt-2 font-bold">Step 6: Click on the "Export Options" Button</p>
@@ -97,7 +99,7 @@ const InstructionalGuide = () => {
           <div>
             <img
               src="/FormSG7.png"
-              alt="Field ID Placeholder 7"
+              alt="Export CSV"
               className="w-full h-full object-cover bg-gray-100 rounded"
             />
             <p className="text-sm text-gray-600 mt-2 font-bold">Step 7: Click on the "Export Csv" Button to export csv with primary fields (Default:None) and Additional Fields (Description(Optional) of Fields)</p>
@@ -119,6 +121,7 @@ const InstructionalGuide = () => {
             size="icon" 
             onClick={() => setCurrentStep(Math.max(0, currentStep - 1))}
             disabled={currentStep === 0}
+            aria-label="Previous step"
           >
             <ChevronLeft className="h-4 w-4" />
           </Button>
@@ -127,6 +130,7 @@ const InstructionalGuide = () => {
             size="icon" 
             onClick={() => setCurrentStep(Math.min(steps.length - 1, currentStep + 1))}
             disabled={currentStep === steps.length - 1}
+            aria-label="Next step"
           >
             <ChevronRight className="h-4 w-4" />
           </Button>
@@ -147,6 +151,7 @@ const InstructionalGuide = () => {
             className={`h-2 w-2 rounded-full ${
               currentStep === index ? 'bg-blue-600' : 'bg-gray-300'
             }`}
+            aria-label={`Go to step ${index + 1}`}
           />
         ))}
       </div>
@@ -154,41 +159,50 @@ const InstructionalGuide = () => {
   );
 };
 
+// Constants to improve maintainability
+const FORM_URL_REGEX = /^https:\/\/form\.gov\.sg\/[a-f0-9]{24}$/i;
+const FIELD_ID_REGEX = /^[a-f0-9]{24}$/i;
+const DEFAULT_DELIMITER = ',';
+const TEMPLATE_STRUCTURE = [
+  { FieldID: '67488bb37e8c75e33b9f9191', values: 'John,Jane,Alex', description: 'Names' },
+  { FieldID: '67488f8e088e833537af24aa', values: 'john@agency.gov.sg,jane@agency.gov.sg,alex@agency.gov.sg', description: 'Email' }
+];
+
 const BatchFormPrefill = () => {
+  // State management
   const [formUrl, setFormUrl] = useState('');
   const [fields, setFields] = useState([]);
-  const [delimiter, setDelimiter] = useState(',');
+  const [delimiter, setDelimiter] = useState(DEFAULT_DELIMITER);
   const [generatedLinks, setGeneratedLinks] = useState([]);
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState('');
   const [showHelpDialog, setShowHelpDialog] = useState(false);
+  const [successMessage, setSuccessMessage] = useState('');
   const [exportConfig, setExportConfig] = useState({
     includeUrl: true,
-    labelField: 'none', // Field to use for labeling/identification
-    additionalFields: [] // Additional fields to include in export
+    labelField: 'none',
+    additionalFields: []
   });
-  const [successMessage, setSuccessMessage] = useState('');
 
-  // Template structure for CSV
-  const templateStructure = [
-    { FieldID: '67488bb37e8c75e33b9f9191', values: 'John,Jane,Alex', description: 'Names' },
-    { FieldID: '67488f8e088e833537af24aa', values: 'john@agency.gov.sg,jane@agency.gov.sg,alex@agency.gov.sg', description: 'Email' }
-  ];
-
-  const validateFormUrl = (url) => {
-    const formUrlRegex = /^https:\/\/form\.gov\.sg\/[a-f0-9]{24}$/i;
-    if (!formUrlRegex.test(url)) {
+  // Validation function for form URL
+  const validateFormUrl = useCallback((url) => {
+    if (!url) throw new Error('Form URL is required');
+    if (!FORM_URL_REGEX.test(url)) {
       throw new Error('Invalid form URL. Must be in format: https://form.gov.sg/[24-digit hexadecimal]');
     }
-  };
+    return true;
+  }, []);
 
-  const showSuccess = (message) => {
+  // Function to display success messages with auto-dismiss
+  const showSuccess = useCallback((message) => {
     setSuccessMessage(message);
-    setTimeout(() => setSuccessMessage(''), 3000);
-  };
+    const timer = setTimeout(() => setSuccessMessage(''), 3000);
+    return () => clearTimeout(timer);
+  }, []);
 
-  const downloadTemplate = () => {
-    const csv = Papa.unparse(templateStructure);
+  // CSV template download handler
+  const downloadTemplate = useCallback(() => {
+    const csv = Papa.unparse(TEMPLATE_STRUCTURE);
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
@@ -199,9 +213,10 @@ const BatchFormPrefill = () => {
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
     showSuccess('Template downloaded successfully!');
-  };
+  }, [showSuccess]);
 
-  const validateCsvStructure = (data) => {
+  // CSV structure validation
+  const validateCsvStructure = useCallback((data, delimiter) => {
     if (!Array.isArray(data) || data.length === 0) {
       throw new Error('CSV file is empty or invalid');
     }
@@ -215,23 +230,25 @@ const BatchFormPrefill = () => {
       }
     }
 
-    // Validate FieldID format
+    // Validate each row
     data.forEach((row, index) => {
-      if (!/^[a-f0-9]{24}$/i.test(row.FieldID)) {
+      // Validate FieldID format
+      if (!FIELD_ID_REGEX.test(row.FieldID)) {
         throw new Error(`Invalid FieldID format in row ${index + 1}. Must be a 24-digit hexadecimal.`);
       }
-    });
-
-    // Validate that all fields have at least 1 value, takes the maximum
-    data.forEach((row, index) => {
+      
+      // Validate values
       const values = (row.values || '').split(delimiter).map(v => v.trim()).filter(Boolean);
       if (values.length === 0) {
         throw new Error(`Row ${index + 1} has no valid values`);
       }
     });
-  };
+    
+    return true;
+  }, []);
 
-  const handleFileUpload = (event) => {
+  // File upload handler with improved error handling
+  const handleFileUpload = useCallback((event) => {
     const file = event.target.files?.[0];
     if (!file) return;
     
@@ -241,9 +258,9 @@ const BatchFormPrefill = () => {
     Papa.parse(file, {
       complete: (results) => {
         try {
-          validateCsvStructure(results.data);
+          validateCsvStructure(results.data, delimiter);
           
-          // First pass: parse all fields and find the maximum number of values
+          // Parse and normalize field values
           const parsedFields = results.data
             .filter(row => Object.values(row).some(val => val))
             .map(row => ({
@@ -255,7 +272,7 @@ const BatchFormPrefill = () => {
           // Find the maximum number of values across all fields
           const maxValues = Math.max(...parsedFields.map(field => field.values.length));
           
-          // Second pass: normalize all fields to match the maximum length
+          // Normalize all fields to match the maximum length
           const normalizedFields = parsedFields.map(field => {
             const values = field.values;
             // If field has only one value, repeat it to match maxValues
@@ -288,14 +305,14 @@ const BatchFormPrefill = () => {
         setIsProcessing(false);
       }
     });
-  };
+  }, [delimiter, validateCsvStructure, showSuccess]);
 
-  const generateLinks = () => {
+  // Generate links with improved error handling
+  const generateLinks = useCallback(() => {
     setIsProcessing(true);
     setError('');
     
     try {
-      if (!formUrl) throw new Error('Form URL is required');
       validateFormUrl(formUrl);
       if (fields.length === 0) throw new Error('No fields imported');
       
@@ -323,7 +340,8 @@ const BatchFormPrefill = () => {
             [id]: value,
             [`${id}_description`]: description,
             [`${id}_isSingleValue`]: isSingleValue
-          }), {})
+          }), {}),
+          label: i + 1 // Adding a default label for each link
         });
       }
       
@@ -335,13 +353,14 @@ const BatchFormPrefill = () => {
     } finally {
       setIsProcessing(false);
     }
-  };
+  }, [formUrl, fields, validateFormUrl, showSuccess]);
 
-  const exportLinks = () => {
+  // Export links to CSV
+  const exportLinks = useCallback(() => {
     if (generatedLinks.length === 0) return;
     
     const headers = [];
-    if (exportConfig.labelField) {
+    if (exportConfig.labelField !== 'none') {
       headers.push('Label'); // Friendly label from selected field
     }
     if (exportConfig.includeUrl) {
@@ -356,10 +375,12 @@ const BatchFormPrefill = () => {
     
     const csv = Papa.unparse({
       fields: headers,
-      data: generatedLinks.map(link => {
+      data: generatedLinks.map((link, index) => {
         const row = [];
-        if (exportConfig.labelField) {
-          row.push(link.fields[exportConfig.labelField] || '');
+        if (exportConfig.labelField !== 'none') {
+          row.push(exportConfig.labelField === 'index' 
+            ? `Entry ${index + 1}` 
+            : (link.fields[exportConfig.labelField] || ''));
         }
         if (exportConfig.includeUrl) {
           row.push(link.url);
@@ -381,21 +402,41 @@ const BatchFormPrefill = () => {
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
     showSuccess('Links exported successfully!');
-  };
+  }, [generatedLinks, exportConfig, fields, showSuccess]);
+
+  // Toggle a field in additional fields
+  const toggleAdditionalField = useCallback((fieldId, checked) => {
+    setExportConfig(prev => ({
+      ...prev,
+      additionalFields: checked
+        ? [...prev.additionalFields, fieldId]
+        : prev.additionalFields.filter(id => id !== fieldId)
+    }));
+  }, []);
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100 p-6">
       <Card className="w-full max-w-4xl mx-auto shadow-lg">
         <CardHeader className="flex flex-row items-center justify-between bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-t-lg">
           <CardTitle className="text-2xl">FormSG Prefill Batch Generator</CardTitle>
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            onClick={() => setShowHelpDialog(true)}
-            className="hover:bg-blue-500 text-white"
-          >
-            <HelpCircle className="h-5 w-5" />
-          </Button>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  onClick={() => setShowHelpDialog(true)}
+                  className="hover:bg-blue-500 text-white"
+                  aria-label="Help"
+                >
+                  <HelpCircle className="h-5 w-5" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>View step-by-step guide</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
         </CardHeader>
         
         <CardContent className="space-y-6 p-6">
@@ -407,18 +448,22 @@ const BatchFormPrefill = () => {
 
           {error && (
             <Alert variant="destructive" className="bg-red-50 border-red-200">
+              <XCircle className="h-4 w-4 text-red-500 mr-2" />
               <AlertDescription className="text-red-700">{error}</AlertDescription>
             </Alert>
           )}
 
           <div className="space-y-2">
-            <Label className="text-lg font-medium text-gray-700">Batch URL Generator and Exporter</Label>
+            <Label htmlFor="form-url" className="text-lg font-medium text-gray-700">Batch URL Generator and Exporter</Label>
             <Input
+              id="form-url"
               className="border-2 focus:ring-2 focus:ring-blue-500"
               placeholder="https://form.gov.sg/67488b8b1210a416d2d7cb5b [24-digit hexadecimal]"
               value={formUrl}
               onChange={(e) => setFormUrl(e.target.value)}
+              aria-describedby="form-url-format"
             />
+            <p id="form-url-format" className="text-xs text-gray-500">Format: https://form.gov.sg/[24-digit hexadecimal]</p>
           </div>
 
           <div className="grid gap-4 md:grid-cols-3">
@@ -434,7 +479,7 @@ const BatchFormPrefill = () => {
                   <DialogTitle>Import CSV File</DialogTitle>
                 </DialogHeader>
                 <div className="space-y-4">
-                <Alert className="bg-blue-50 border-blue-200">
+                  <Alert className="bg-blue-50 border-blue-200">
                     <Info className="h-4 w-4 text-blue-500" />
                     <AlertDescription className="text-blue-700">
                       Upload a CSV file with columns: FieldID (24-digit hex), values, description (optional)
@@ -447,8 +492,9 @@ const BatchFormPrefill = () => {
                   </Button>
 
                   <div className="space-y-2">
-                    <Label>CSV File</Label>
+                    <Label htmlFor="csv-file">CSV File</Label>
                     <Input
+                      id="csv-file"
                       type="file"
                       accept=".csv"
                       onChange={handleFileUpload}
@@ -457,12 +503,12 @@ const BatchFormPrefill = () => {
                   </div>
 
                   <div className="space-y-2">
-                    <Label>Values Delimiter</Label>
+                    <Label htmlFor="delimiter-select">Values Delimiter</Label>
                     <Select
                       value={delimiter}
-                      onValueChange={(value) => setDelimiter(value)}
+                      onValueChange={setDelimiter}
                     >
-                      <SelectTrigger>
+                      <SelectTrigger id="delimiter-select">
                         <SelectValue placeholder="Select delimiter" />
                       </SelectTrigger>
                       <SelectContent>
@@ -506,8 +552,9 @@ const BatchFormPrefill = () => {
                 </DialogHeader>
                 <div className="space-y-4">
                   <div className="space-y-2">
-                    <Label>Primary Label Field (Optional)</Label>
+                    <Label htmlFor="label-field">Primary Label Field (Optional)</Label>
                     <Select 
+                      id="label-field"
                       value={exportConfig.labelField}
                       onValueChange={(value) => setExportConfig(prev => ({
                         ...prev,
@@ -519,6 +566,7 @@ const BatchFormPrefill = () => {
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="none">None</SelectItem>
+                        <SelectItem value="index">Entry Number</SelectItem>
                         {fields.map((field) => (
                           <SelectItem key={field.FieldID} value={field.FieldID}>
                             {field.description || field.FieldID}
@@ -528,40 +576,36 @@ const BatchFormPrefill = () => {
                     </Select>
                   </div>
 
-                  <div className="space-y-2">
-                    <Label className="flex items-center gap-2">
-                      <input
-                        type="checkbox"
-                        checked={exportConfig.includeUrl}
-                        onChange={(e) => setExportConfig(prev => ({
-                          ...prev,
-                          includeUrl: e.target.checked
-                        }))}
-                      />
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id="include-url"
+                      checked={exportConfig.includeUrl}
+                      onCheckedChange={(checked) => setExportConfig(prev => ({
+                        ...prev,
+                        includeUrl: Boolean(checked)
+                      }))}
+                    />
+                    <Label htmlFor="include-url" className="cursor-pointer">
                       Include Form URL
                     </Label>
                   </div>
 
                   <div className="space-y-2">
-                    <Label>Additional Fields to Export</Label>
-                    {fields.map((field) => (
-                      <Label key={field.FieldID} className="flex items-center gap-2">
-                        <input
-                          type="checkbox"
-                          checked={exportConfig.additionalFields.includes(field.FieldID)}
-                          onChange={(e) => {
-                            const newFields = e.target.checked
-                              ? [...exportConfig.additionalFields, field.FieldID]
-                              : exportConfig.additionalFields.filter(id => id !== field.FieldID);
-                            setExportConfig(prev => ({
-                              ...prev,
-                              additionalFields: newFields
-                            }));
-                          }}
-                        />
-                        {field.description || field.FieldID}
-                      </Label>
-                    ))}
+                    <Label className="block mb-2">Additional Fields to Export</Label>
+                    <div className="space-y-2 max-h-48 overflow-y-auto border rounded-md p-2">
+                      {fields.map((field) => (
+                        <div key={field.FieldID} className="flex items-center space-x-2">
+                          <Checkbox
+                            id={`field-${field.FieldID}`}
+                            checked={exportConfig.additionalFields.includes(field.FieldID)}
+                            onCheckedChange={(checked) => toggleAdditionalField(field.FieldID, Boolean(checked))}
+                          />
+                          <Label htmlFor={`field-${field.FieldID}`} className="cursor-pointer">
+                            {field.description || field.FieldID}
+                          </Label>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 </div>
                 <DialogFooter>
@@ -575,22 +619,23 @@ const BatchFormPrefill = () => {
 
           {fields.length > 0 && (
             <div className="space-y-4">
-              <h3 className="text-lg font-medium text-gray-700">Imported Fields</h3>
-              <div className="grid gap-4">
+              <h3 className="text-lg font-medium text-gray-700">Imported Fields ({fields.length})</h3>
+              <div className="grid gap-4 max-h-80 overflow-y-auto pr-2">
                 {fields.map((field, index) => (
-                  <div key={index} className="p-4 bg-gray-50 rounded-lg border">
+                  <div key={index} className="p-4 bg-gray-50 rounded-lg border hover:border-blue-300 transition-colors">
                     <div className="flex justify-between items-start">
                       <div>
                         <h4 className="font-medium text-gray-900">{field.description || field.FieldID}</h4>
                         <p className="text-sm text-gray-500">Field ID: {field.FieldID}</p>
                       </div>
-                      <div className="text-sm text-gray-500">
+                      <div className="text-sm font-medium bg-blue-100 text-blue-800 px-2 py-1 rounded">
                         {field.values.length} values
                       </div>
                     </div>
                     <div className="mt-2">
-                      <p className="text-sm text-gray-600">
-                        Values: {field.values.join(', ')}
+                      <p className="text-sm text-gray-600 max-h-16 overflow-y-auto">
+                        <span className="font-medium">Values:</span> {field.values.slice(0, 10).join(', ')}
+                        {field.values.length > 10 && '...'}
                       </p>
                     </div>
                   </div>
@@ -601,11 +646,27 @@ const BatchFormPrefill = () => {
 
           {generatedLinks.length > 0 && (
             <div className="space-y-4">
-              <h3 className="text-lg font-medium text-gray-700">Generated Links ({generatedLinks.length})</h3>
-              <div className="max-h-60 overflow-y-auto space-y-2">
+              <div className="flex justify-between items-center">
+                <h3 className="text-lg font-medium text-gray-700">Generated Links</h3>
+                <span className="text-sm font-medium bg-blue-100 text-blue-800 px-2 py-1 rounded">
+                  Total: {generatedLinks.length}
+                </span>
+              </div>
+              <div className="max-h-60 overflow-y-auto space-y-2 pr-2">
                 {generatedLinks.slice(0, 5).map((link, index) => (
-                  <div key={index} className="p-3 bg-gray-50 rounded border text-sm">
-                    <a href={link.url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-800 break-all">
+                  <div key={index} className="p-3 bg-gray-50 rounded border hover:border-blue-300 transition-colors group">
+                    <div className="flex justify-between items-center mb-1">
+                      <span className="text-xs text-gray-500">Link {index + 1}</span>
+                      <a 
+                        href={link.url} 
+                        target="_blank" 
+                        rel="noopener noreferrer" 
+                        className="text-xs text-blue-600 opacity-0 group-hover:opacity-100 transition-opacity"
+                      >
+                        Open in new tab
+                      </a>
+                    </div>
+                    <a href={link.url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-800 break-all text-sm">
                       {link.url}
                     </a>
                   </div>
@@ -625,7 +686,8 @@ const BatchFormPrefill = () => {
         <DialogContent className="sm:max-w-2xl">
           <DialogHeader>
             <DialogTitle>
-              <div className="flex items-center justify-between">
+              <div className="flex items-center">
+                <FileSpreadsheet className="mr-2 h-5 w-5 text-blue-600" />
                 Batch Prefill Guide
               </div>
             </DialogTitle>
