@@ -74,22 +74,57 @@ const UsageGuide = () => (
 
         <div>
           <h3 className="text-lg font-semibold mb-2">Additional Features</h3>
-          <ul className="list-disc pl-6 space-y-2">
+          <ul className="list-disc pl-6 space-y-2 mb-4">
             <li>
-              <span className="font-medium">Dark/Light Mode:</span> Toggle between themes using the sun/moon icon
+              <span className="font-medium">Dark/Light Mode:</span> Toggle between themes 
+              using the sun/moon icon in the top right corner
             </li>
             <li>
-              <span className="font-medium">Undo:</span> Reverse your last action with the undo button
+              <span className="font-medium">Undo:</span> Reverse your last action with 
+              the undo button (arrow counter-clockwise icon)
             </li>
           </ul>
+
+          <Alert className="mt-4">
+            <Info className="h-4 w-4" />
+            <AlertDescription>
+              Your configurations and saved URLs are automatically saved in your browser's 
+              local storage. Data persists even after closing the browser.
+            </AlertDescription>
+          </Alert>
         </div>
 
-        <Alert>
-          <Info className="h-4 w-4" />
-          <AlertDescription>
-            Your configurations and saved URLs are automatically saved in your browser. They will persist even if you close and reopen the page.
-          </AlertDescription>
-        </Alert>
+        <div>
+          <h3 className="text-lg font-semibold mb-2">Training Resources</h3>
+          <Alert>
+            <Info className="h-4 w-4" />
+            <AlertDescription className="space-y-2">
+              <div>
+                Practice with our{' '}
+                <a
+                  href="https://go.gov.sg/trainingdemo"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="underline font-medium"
+                >
+                  Training Form Demo
+                </a>
+              </div>
+              <div>
+                Review the{' '}
+                <a
+                  href="https://docs.google.com/presentation/d/1joqLd1tOnlPFGHWLDL_IX5kI83xMkiTB/edit?usp=sharing&ouid=118116223862036334164&rtpof=true&sd=true"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="underline font-medium"
+                >
+                  Training Slides
+                </a>{' '}
+                for detailed instructions
+              </div>
+            </AlertDescription>
+          </Alert>
+        </div>
       </div>
     </DialogContent>
   </Dialog>
