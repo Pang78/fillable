@@ -30,6 +30,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from '@/components/ui/use-toast';
 import BatchFormPrefill from '@/components/BatchFormPrefill';
+import LetterMode from '@/components/LetterMode';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -595,6 +596,21 @@ const FormPrefillGuide = () => {
                   Batch Mode
                 </TabsTrigger>
 
+                <TabsTrigger 
+                  value="letterMode"
+                  className="
+                    data-[state=active]:bg-primary 
+                    data-[state=active]:text-primary-foreground 
+                    data-[state=active]:shadow-sm
+                    rounded-full
+                    px-4
+                    transition-all
+                    duration-300
+                  "
+                >
+                  Letter Generator
+                </TabsTrigger>
+
               </TabsList>
 
               <TabsContent value="construct" className="space-y-4">
@@ -671,6 +687,9 @@ const FormPrefillGuide = () => {
               </TabsContent>
               <TabsContent value="batch" className="space-y-4">
               <BatchFormPrefill />
+              </TabsContent>
+              <TabsContent value="letterMode" className="space-y-4">
+              <LetterMode />
               </TabsContent> 
             </Tabs>
 
