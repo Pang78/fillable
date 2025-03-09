@@ -619,6 +619,7 @@ const LetterMode: React.FC = () => {
 
       if (!response.ok) {
         const errorData = await response.json();
+        console.log("API error details:", errorData);
         
         // Handle specific error messages from the API
         if (errorData.errors && Array.isArray(errorData.errors)) {
