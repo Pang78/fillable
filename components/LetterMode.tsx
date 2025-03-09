@@ -99,14 +99,14 @@ const CSVImportDialog: React.FC<{
 
   const processImport = () => {
     // Check if all required fields are mapped
-    const missingRequiredMappings = templateFields
-      .filter(field => field.required)
-      .some(field => !fieldMapping[field.name]);
-    
-    if (missingRequiredMappings) {
+    const unmappedFields = templateFields
+      .filter(f => f.required && !fieldMapping[f.name])
+      .map(f => f.name);
+  
+    if (unmappedFields.length > 0) {
       toast({
         title: 'Missing Required Mappings',
-        description: 'Please map all required template fields before importing.',
+        description: `The following required fields are not mapped: ${unmappedFields.join(', ')}`,
         variant: 'destructive',
       });
       return;
@@ -351,6 +351,20 @@ const LetterMode: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
 
+  // Add debounced template loading
+  const debouncedFetchTemplate = useRef(
+    debounce((templateId: number) => {
+      fetchTemplateDetails(templateId);
+    }, 500)
+  ).current;
+
+  // Add useEffect for debounced template loading
+  useEffect(() => {
+    if (letterDetails.templateId && letterDetails.templateId > 0) {
+      debouncedFetchTemplate(letterDetails.templateId);
+    }
+  }, [letterDetails.templateId, debouncedFetchTemplate]);
+
   useEffect(() => {
     const savedApiKey = localStorage.getItem('lettersGovSgApiKey');
     if (savedApiKey) {
@@ -395,8 +409,7 @@ const LetterMode: React.FC = () => {
         description: `Template ${templateId} loaded successfully`,
       });
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      setApiError(errorMessage);
+      setTemplateFields([]); // Clear existing template fields on error
       
       toast({
         title: 'Error Fetching Template',
@@ -577,20 +590,6 @@ const LetterMode: React.FC = () => {
     console.log("Template fields required:", templateFields);
     console.log("Letter params being sent:", letterDetails.lettersParams);
     
-    // Check specifically for recipient_name
-    const missingRecipientName = letterDetails.lettersParams.some(
-      params => !params.recipient_name
-    );
-    
-    if (missingRecipientName) {
-      toast({
-        title: 'Missing Recipient Name',
-        description: 'The recipient_name field is required for all letters',
-        variant: 'destructive',
-      });
-      return;
-    }
-    
     setIsLoading(true);
     setApiError(null);
 
@@ -691,11 +690,18 @@ const LetterMode: React.FC = () => {
           <div className="flex gap-2">
             <Input
               type="number"
+              min="1"
               placeholder="Enter Template ID"
               value={letterDetails.templateId || ''}
               onChange={(e) => {
                 const value = e.target.value;
-                updateLetterDetail('templateId', value ? parseInt(value) : null);
+                // Prevent negative numbers and non-numeric input
+                const numValue = parseInt(value);
+                if (!isNaN(numValue) && numValue > 0) {
+                  updateLetterDetail('templateId', numValue);
+                } else if (value === '') {
+                  updateLetterDetail('templateId', null);
+                }
               }}
             />
             <Button 
