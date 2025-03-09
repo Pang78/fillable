@@ -342,7 +342,7 @@ const LetterMode: React.FC = () => {
   const [letterDetails, setLetterDetails] = useState<BulkLetterDetails>({
     apiKey: '',
     templateId: null,
-    lettersParams: [{}],
+    lettersParams: [],
     notificationMethod: undefined,
     recipients: [],
   });
@@ -387,7 +387,7 @@ const LetterMode: React.FC = () => {
     
     setIsLoading(true);
     setApiError(null);
-
+  
     try {
       // Using proxy endpoint to avoid exposing API key in frontend
       const response = await fetch(`${API_PROXY_URL}/templates/${templateId}`, {
@@ -397,26 +397,66 @@ const LetterMode: React.FC = () => {
           'X-API-Key': letterDetails.apiKey,
         },
       });
-
+  
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.message || `Failed to fetch template: ${response.status}`);
       }
-
+  
       const templateData = await response.json();
       const requiredFields = templateData.fields.map((field: any) => ({
         name: field.name,
         required: field.required,
       }));
-
+  
       setTemplateFields(requiredFields);
-
+  
+      // Add this section to initialize letter params with required fields
+      const hasRecipientName = requiredFields.some(field => field.name === 'recipient_name');
+      
+      // If recipient_name isn't in the template fields but is required by the API, add it
+      if (!hasRecipientName) {
+        requiredFields.push({ name: 'recipient_name', required: true });
+      }
+      
+      // Create default letter params with all required fields
+      const defaultParams = {};
+      requiredFields.forEach(field => {
+        if (field.required) {
+          defaultParams[field.name] = '';
+        }
+      });
+      
+      // Initialize letter params with the default params if the array is empty
+      if (letterDetails.lettersParams.length === 0) {
+        setLetterDetails(prev => ({
+          ...prev,
+          lettersParams: [defaultParams]
+        }));
+      } else {
+        // Update existing letter params to include any missing required fields
+        setLetterDetails(prev => ({
+          ...prev,
+          lettersParams: prev.lettersParams.map(params => {
+            const updatedParams = {...params};
+            requiredFields.forEach(field => {
+              if (field.required && updatedParams[field.name] === undefined) {
+                updatedParams[field.name] = '';
+              }
+            });
+            return updatedParams;
+          })
+        }));
+      }
+  
       toast({
         title: 'Template Loaded',
         description: `Template ${templateId} loaded successfully`,
       });
     } catch (error) {
       setTemplateFields([]); // Clear existing template fields on error
+      
+      const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
       
       toast({
         title: 'Error Fetching Template',
@@ -452,9 +492,19 @@ const LetterMode: React.FC = () => {
   };
 
   const addLetterParams = () => {
+    // Create new params object with default value for recipient_name
+    const newParams = { recipient_name: '' };
+    
+    // Add any other required fields from templateFields
+    templateFields.forEach(field => {
+      if (field.required && !newParams[field.name]) {
+        newParams[field.name] = '';
+      }
+    });
+    
     setLetterDetails((prev) => ({
       ...prev,
-      lettersParams: [...prev.lettersParams, {}],
+      lettersParams: [...prev.lettersParams, newParams],
     }));
   };
 
@@ -468,9 +518,28 @@ const LetterMode: React.FC = () => {
   };
 
   const handleCSVImport = (importedParams: LetterParams[]) => {
+    // Ensure each imported params has all required fields, especially recipient_name
+    const updatedParams = importedParams.map(params => {
+      const updatedParam = {...params};
+      
+      // Add recipient_name if missing
+      if (updatedParam.recipient_name === undefined) {
+        updatedParam.recipient_name = '';
+      }
+      
+      // Add any other required fields
+      templateFields.forEach(field => {
+        if (field.required && updatedParam[field.name] === undefined) {
+          updatedParam[field.name] = '';
+        }
+      });
+      
+      return updatedParam;
+    });
+    
     setLetterDetails((prev) => ({
       ...prev,
-      lettersParams: importedParams,
+      lettersParams: updatedParams,
     }));
   };
 
