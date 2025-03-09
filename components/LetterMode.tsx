@@ -573,6 +573,24 @@ const LetterMode: React.FC = () => {
   const generateBulkLetters = async () => {
     if (!validatePayload()) return;
     
+    // Debug log to check parameters
+    console.log("Template fields required:", templateFields);
+    console.log("Letter params being sent:", letterDetails.lettersParams);
+    
+    // Check specifically for recipient_name
+    const missingRecipientName = letterDetails.lettersParams.some(
+      params => !params.recipient_name
+    );
+    
+    if (missingRecipientName) {
+      toast({
+        title: 'Missing Recipient Name',
+        description: 'The recipient_name field is required for all letters',
+        variant: 'destructive',
+      });
+      return;
+    }
+    
     setIsLoading(true);
     setApiError(null);
 
