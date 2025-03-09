@@ -25,6 +25,7 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@/components/ui/table';
+import debounce from 'lodash.debounce';
 
 interface LetterParams {
   [key: string]: string;
@@ -364,6 +365,12 @@ const LetterMode: React.FC = () => {
       debouncedFetchTemplate(letterDetails.templateId);
     }
   }, [letterDetails.templateId, debouncedFetchTemplate]);
+
+  useEffect(() => {
+    return () => {
+      debouncedFetchTemplate.cancel();
+    };
+  }, [debouncedFetchTemplate]);
 
   useEffect(() => {
     const savedApiKey = localStorage.getItem('lettersGovSgApiKey');
