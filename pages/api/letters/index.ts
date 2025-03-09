@@ -1,3 +1,5 @@
+
+// File: /pages/api/letters/index.ts
 import type { NextApiRequest, NextApiResponse } from 'next';
 
 type ErrorResponse = {
@@ -9,7 +11,6 @@ export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse<any | ErrorResponse>
 ) {
-  // Only allow POST requests for bulk letter generation
   if (req.method !== 'POST') {
     return res.status(405).json({ message: 'Method not allowed' });
   }
@@ -22,12 +23,13 @@ export default async function handler(
       return res.status(400).json({ message: 'API key is required' });
     }
 
-    // Forward the request to the Letters.gov.sg API
-    const response = await fetch('https://api.letters.gov.sg/v1/letters/bulks', {
+    // Forward the request to the LetterSG API with correct URL
+    // This handles single letter creation
+    const response = await fetch('https://letters.gov.sg/api/v1/letters', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`
+        'Authorization': `Bearer ${apiKey}` // Correct authorization header format
       },
       body: JSON.stringify(req.body),
     });

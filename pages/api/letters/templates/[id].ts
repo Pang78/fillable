@@ -1,3 +1,4 @@
+// File: /pages/api/templates/[id].ts
 import type { NextApiRequest, NextApiResponse } from 'next';
 
 type ErrorResponse = {
@@ -26,12 +27,12 @@ export default async function handler(
       return res.status(400).json({ message: 'Valid template ID is required' });
     }
 
-    // Forward the request to the Letters.gov.sg API
-    const response = await fetch(`https://api.letters.gov.sg/v1/templates/${id}`, {
+    // Forward the request to the LetterSG API with correct URL
+    const response = await fetch(`https://letters.gov.sg/api/v1/templates/${id}`, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`
+        'Authorization': `Bearer ${apiKey}` // Correct authorization header format
       }
     });
 
