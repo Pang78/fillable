@@ -6,12 +6,99 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription, DialogClose } from '@/components/ui/dialog';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Info, Upload, Download, FileSpreadsheet, HelpCircle, Loader2, XCircle, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
+
+// Add Toast component for notifications
+interface ToastProps {
+  message: string;
+  type: 'success' | 'error' | 'info';
+  onClose: () => void;
+}
+
+const Toast: React.FC<ToastProps> = ({ message, type, onClose }) => {
+  React.useEffect(() => {
+    const timer = setTimeout(() => {
+      onClose();
+    }, 3000);
+    
+    return () => clearTimeout(timer);
+  }, [onClose]);
+  
+  const bgColor = {
+    success: 'bg-green-50 border-green-200 text-green-700',
+    error: 'bg-red-50 border-red-200 text-red-700',
+    info: 'bg-blue-50 border-blue-200 text-blue-700'
+  };
+  
+  const iconColor = {
+    success: 'text-green-500',
+    error: 'text-red-500',
+    info: 'text-blue-500'
+  };
+  
+  return (
+    <div className={`fixed bottom-4 right-4 z-50 p-4 rounded-md shadow-md border ${bgColor[type]} max-w-md animate-in slide-in-from-right-5`}>
+      <div className="flex items-center">
+        {type === 'success' && (
+          <svg className={`h-5 w-5 mr-2 ${iconColor[type]}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+          </svg>
+        )}
+        {type === 'error' && (
+          <XCircle className={`h-5 w-5 mr-2 ${iconColor[type]}`} />
+        )}
+        {type === 'info' && (
+          <Info className={`h-5 w-5 mr-2 ${iconColor[type]}`} />
+        )}
+        <p className="flex-1">{message}</p>
+        <button onClick={onClose} className="ml-4 text-gray-500 hover:text-gray-700">
+          <XCircle className="h-4 w-4" />
+        </button>
+      </div>
+    </div>
+  );
+};
+
+// Add interfaces at the top of the file
+interface Field {
+  FieldID: string;
+  values: string[];
+  description: string;
+  isSingleValue: boolean;
+}
+
+interface GeneratedLink {
+  url: string;
+  fields: Record<string, string | boolean>;
+  label: number;
+}
+
+interface ExportConfig {
+  includeUrl: boolean;
+  labelField: string;
+  additionalFields: string[];
+}
+
+// Add a new interface for CSV upload state
+interface CsvUploadState {
+  status: 'idle' | 'uploading' | 'processing' | 'success' | 'error';
+  fileName: string;
+  fileSize: string;
+  rowCount: number;
+  preview: Array<Record<string, string>>;
+}
+
+// Add a new interface for toast notifications
+interface ToastNotification {
+  id: string;
+  message: string;
+  type: 'success' | 'error' | 'info';
+}
 
 // Separated InstructionalGuide component for better organization
 const InstructionalGuide = () => {
@@ -162,112 +249,194 @@ const InstructionalGuide = () => {
 // Constants to improve maintainability
 const FORM_URL_REGEX = /^https:\/\/form\.gov\.sg\/[a-f0-9]{24}$/i;
 const FIELD_ID_REGEX = /^[a-f0-9]{24}$/i;
-const DEFAULT_DELIMITER = ',';
+const DEFAULT_CSV_DELIMITER = ',';  // Default delimiter for CSV columns
+const DEFAULT_VALUES_DELIMITER = ';';  // Default delimiter for values within the "values" column
 const TEMPLATE_STRUCTURE = [
-  { FieldID: '67488bb37e8c75e33b9f9191', values: 'John,Jane,Alex', description: 'Names' },
-  { FieldID: '67488f8e088e833537af24aa', values: 'john@agency.gov.sg,jane@agency.gov.sg,alex@agency.gov.sg', description: 'Email' }
+  { FieldID: '67488bb37e8c75e33b9f9191', values: 'John;Jane;Alex', description: 'Names' },
+  { FieldID: '67488f8e088e833537af24aa', values: 'john@agency.gov.sg;jane@agency.gov.sg;alex@agency.gov.sg', description: 'Email' }
 ];
+
+// Add supported delimiters with their display names
+const SUPPORTED_VALUES_DELIMITERS = [
+  { value: ';', label: 'Semicolon ( ; )' },
+  { value: ',', label: 'Comma ( , )' },
+  { value: '|', label: 'Pipe ( | )' }
+];
+
+// Function to detect delimiter from CSV content
+const detectDelimiter = (csvContent: string): string => {
+  // Count occurrences of each delimiter in the first few lines
+  const firstFewLines = csvContent.split('\n').slice(0, 5).join('\n');
+  
+  const counts = SUPPORTED_VALUES_DELIMITERS.map(d => ({
+    delimiter: d.value,
+    count: (firstFewLines.match(new RegExp(d.value === '\t' ? '\t' : `[${d.value}]`, 'g')) || []).length
+  }));
+  
+  // Find the delimiter with the highest count
+  const mostFrequent = counts.reduce((prev, current) => 
+    (current.count > prev.count) ? current : prev, 
+    { delimiter: DEFAULT_VALUES_DELIMITER, count: 0 }
+  );
+  
+  // If no delimiter is found with significant frequency, default to comma
+  return mostFrequent.count > 5 ? mostFrequent.delimiter : DEFAULT_VALUES_DELIMITER;
+};
+
+// Update the ImprovedDialogContent component to center dialogs by default
+const ImprovedDialogContent = React.forwardRef<
+  React.ElementRef<typeof DialogContent>,
+  React.ComponentPropsWithoutRef<typeof DialogContent> & {
+    size?: 'sm' | 'md' | 'lg' | 'xl' | '2xl' | 'full';
+    position?: 'center' | 'top';
+  }
+>(({ className, children, size = 'md', position = 'center', ...props }, ref) => {
+  const sizeClasses = {
+    sm: 'sm:max-w-sm',
+    md: 'sm:max-w-md',
+    lg: 'sm:max-w-lg',
+    xl: 'sm:max-w-xl',
+    '2xl': 'sm:max-w-2xl',
+    'full': 'sm:max-w-[90vw] md:max-w-[80vw] lg:max-w-[70vw]'
+  };
+  
+  const positionClasses = {
+    center: 'top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2',
+    top: 'top-[10%] left-1/2 -translate-x-1/2'
+  };
+  
+  return (
+    <DialogContent
+      ref={ref}
+      className={`fixed ${positionClasses[position]} ${sizeClasses[size]} max-h-[85vh] overflow-y-auto w-[95vw] rounded-lg bg-white shadow-lg focus:outline-none ${className}`}
+      {...props}
+    >
+      {children}
+    </DialogContent>
+  );
+});
+
+ImprovedDialogContent.displayName = 'ImprovedDialogContent';
 
 const BatchFormPrefill = () => {
   // State management
   const [formUrl, setFormUrl] = useState('');
-  const [fields, setFields] = useState([]);
-  const [delimiter, setDelimiter] = useState(DEFAULT_DELIMITER);
-  const [generatedLinks, setGeneratedLinks] = useState([]);
+  const [fields, setFields] = useState<Field[]>([]);
+  const [valuesDelimiter, setValuesDelimiter] = useState(DEFAULT_VALUES_DELIMITER);  // Delimiter for values within a column
+  const [generatedLinks, setGeneratedLinks] = useState<GeneratedLink[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState('');
   const [showHelpDialog, setShowHelpDialog] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
-  const [exportConfig, setExportConfig] = useState({
+  const [toasts, setToasts] = useState<ToastNotification[]>([]);
+  const [exportConfig, setExportConfig] = useState<ExportConfig>({
     includeUrl: true,
     labelField: 'none',
     additionalFields: []
   });
+  const [currentStep, setCurrentStep] = useState<'upload' | 'generate' | 'export'>('upload');
+  const [showCsvPreview, setShowCsvPreview] = useState(false);
+  const [csvUploadState, setCsvUploadState] = useState<CsvUploadState>({
+    status: 'idle',
+    fileName: '',
+    fileSize: '',
+    rowCount: 0,
+    preview: []
+  });
 
-  // Validation function for form URL
-  const validateFormUrl = useCallback((url) => {
-    if (!url) throw new Error('Form URL is required');
-    if (!FORM_URL_REGEX.test(url)) {
-      throw new Error('Invalid form URL. Must be in format: https://form.gov.sg/[24-digit hexadecimal]');
-    }
-    return true;
+  // Add a function to add toast notifications
+  const addToast = useCallback((message: string, type: 'success' | 'error' | 'info' = 'info') => {
+    const id = Date.now().toString();
+    setToasts(prev => [...prev, { id, message, type }]);
+    
+    // Auto-remove after 3 seconds
+    setTimeout(() => {
+      setToasts(prev => prev.filter(toast => toast.id !== id));
+    }, 3000);
   }, []);
 
   // Function to display success messages with auto-dismiss
-  const showSuccess = useCallback((message) => {
+  const showSuccess = useCallback((message: string) => {
     setSuccessMessage(message);
+    addToast(message, 'success');
     const timer = setTimeout(() => setSuccessMessage(''), 3000);
     return () => clearTimeout(timer);
-  }, []);
+  }, [addToast]);
 
-  // CSV template download handler
-  const downloadTemplate = useCallback(() => {
-    const csv = Papa.unparse(TEMPLATE_STRUCTURE);
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.setAttribute('download', 'form-prefill-template.csv');
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-    showSuccess('Template downloaded successfully!');
-  }, [showSuccess]);
-
-  // CSV structure validation
-  const validateCsvStructure = useCallback((data, delimiter) => {
-    if (!Array.isArray(data) || data.length === 0) {
-      throw new Error('CSV file is empty or invalid');
-    }
-
-    const requiredColumns = ['FieldID', 'values'];
-    const headers = Object.keys(data[0]);
-    
-    for (const column of requiredColumns) {
-      if (!headers.includes(column)) {
-        throw new Error(`Missing required column: ${column}`);
-      }
-    }
-
-    // Validate each row
-    data.forEach((row, index) => {
-      // Validate FieldID format
-      if (!FIELD_ID_REGEX.test(row.FieldID)) {
-        throw new Error(`Invalid FieldID format in row ${index + 1}. Must be a 24-digit hexadecimal.`);
-      }
-      
-      // Validate values
-      const values = (row.values || '').split(delimiter).map(v => v.trim()).filter(Boolean);
-      if (values.length === 0) {
-        throw new Error(`Row ${index + 1} has no valid values`);
-      }
-    });
-    
-    return true;
-  }, []);
+  interface CsvRow {
+    [key: string]: string;
+  }
 
   // File upload handler with improved error handling
-  const handleFileUpload = useCallback((event) => {
+  const handleFileUpload = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
     
     setError('');
     setIsProcessing(true);
+    setFields([]);
+    setCsvUploadState({
+      status: 'uploading',
+      fileName: file.name,
+      fileSize: formatFileSize(file.size),
+      rowCount: 0,
+      preview: []
+    });
     
-    Papa.parse(file, {
+    // Helper function to format file size
+    function formatFileSize(bytes: number): string {
+      if (bytes < 1024) return bytes + ' bytes';
+      else if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
+      else return (bytes / 1048576).toFixed(1) + ' MB';
+    }
+    
+    Papa.parse<CsvRow>(file, {
+      delimiter: DEFAULT_CSV_DELIMITER,  // Use comma to separate columns in the CSV file
+      header: true,
+      skipEmptyLines: true,
       complete: (results) => {
         try {
-          validateCsvStructure(results.data, delimiter);
+          if (!Array.isArray(results.data) || results.data.length === 0) {
+            throw new Error('CSV file is empty or invalid');
+          }
+
+          // Get the headers and validate required columns case-insensitively
+          const firstRow = results.data[0] || {};
+          const headers = Object.keys(firstRow);
+          const fieldIdColumn = headers.find(h => h.toLowerCase() === 'fieldid');
+          const valuesColumn = headers.find(h => h.toLowerCase() === 'values');
+          const descriptionColumn = headers.find(h => h.toLowerCase() === 'description');
+
+          if (!fieldIdColumn || !valuesColumn) {
+            throw new Error('Missing required columns: FieldID and values');
+          }
+          
+          // Create a preview of the first 5 rows
+          const preview = results.data.slice(0, 5) as Array<Record<string, string>>;
           
           // Parse and normalize field values
           const parsedFields = results.data
             .filter(row => Object.values(row).some(val => val))
-            .map(row => ({
-              FieldID: row.FieldID || '',
-              values: (row.values || '').split(delimiter).map(v => v.trim()).filter(Boolean),
-              description: row.description || row.FieldID
-            }));
+            .map(row => {
+              const fieldId = row[fieldIdColumn];
+              const values = row[valuesColumn];
+              const description = descriptionColumn ? row[descriptionColumn] : undefined;
+
+              if (!fieldId || !FIELD_ID_REGEX.test(fieldId)) {
+                throw new Error(`Invalid FieldID format: ${fieldId}. Must be a 24-digit hexadecimal.`);
+              }
+
+              if (!values) {
+                throw new Error(`Missing values for FieldID: ${fieldId}`);
+              }
+
+              // Split the values using the selected values delimiter
+              return {
+                FieldID: fieldId,
+                values: values.split(valuesDelimiter).map(v => v.trim()).filter(Boolean),
+                description: description || fieldId
+              };
+            });
           
           // Find the maximum number of values across all fields
           const maxValues = Math.max(...parsedFields.map(field => field.values.length));
@@ -288,24 +457,71 @@ const BatchFormPrefill = () => {
             };
           });
           
+          setCsvUploadState(prev => ({
+            ...prev,
+            status: 'success',
+            rowCount: normalizedFields.length,
+            preview
+          }));
+          
           setFields(normalizedFields);
-          showSuccess('CSV imported successfully!');
+          showSuccess(`CSV imported successfully! Found ${normalizedFields.length} fields with ${maxValues} values each.`);
+          setShowCsvPreview(true);
+          setCurrentStep('generate');
         } catch (error) {
-          setError(error.message);
+          setCsvUploadState(prev => ({
+            ...prev,
+            status: 'error'
+          }));
+          setError(error instanceof Error ? error.message : 'An unknown error occurred');
           setFields([]);
         } finally {
           setIsProcessing(false);
         }
       },
-      header: true,
-      skipEmptyLines: true,
       error: (error) => {
+        setCsvUploadState({
+          status: 'error',
+          fileName: file.name,
+          fileSize: formatFileSize(file.size),
+          rowCount: 0,
+          preview: []
+        });
         setError('Failed to parse CSV file: ' + error.message);
         setFields([]);
         setIsProcessing(false);
       }
     });
-  }, [delimiter, validateCsvStructure, showSuccess]);
+  }, [valuesDelimiter, showSuccess]);
+
+  // CSV template download handler
+  const downloadTemplate = useCallback(() => {
+    const csv = Papa.unparse(TEMPLATE_STRUCTURE);
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', 'form-prefill-template.csv');
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    showSuccess('Template downloaded successfully!');
+  }, [showSuccess]);
+
+  // Function to remove a toast notification
+  const removeToast = useCallback((id: string) => {
+    setToasts(prev => prev.filter(toast => toast.id !== id));
+  }, []);
+
+  // Update validation function with proper types
+  const validateFormUrl = useCallback((url: string): boolean => {
+    if (!url) throw new Error('Form URL is required');
+    if (!FORM_URL_REGEX.test(url)) {
+      throw new Error('Invalid form URL. Must be in format: https://form.gov.sg/[24-digit hexadecimal]');
+    }
+    return true;
+  }, []);
 
   // Generate links with improved error handling
   const generateLinks = useCallback(() => {
@@ -320,7 +536,7 @@ const BatchFormPrefill = () => {
       const numEntries = fields[0].values.length;
       
       // Generate matched combinations
-      const links = [];
+      const links: GeneratedLink[] = [];
       for (let i = 0; i < numEntries; i++) {
         const combination = fields.map(field => ({
           id: field.FieldID,
@@ -340,28 +556,40 @@ const BatchFormPrefill = () => {
             [id]: value,
             [`${id}_description`]: description,
             [`${id}_isSingleValue`]: isSingleValue
-          }), {}),
-          label: i + 1 // Adding a default label for each link
+          }), {} as Record<string, string | boolean>),
+          label: i + 1
         });
       }
       
       setGeneratedLinks(links);
       showSuccess(`Generated ${links.length} matched links successfully!`);
-    } catch (error) {
+      setCurrentStep('export');
+    } catch (error: any) {
       setError(error.message);
+      addToast(error.message, 'error');
       setGeneratedLinks([]);
     } finally {
       setIsProcessing(false);
     }
-  }, [formUrl, fields, validateFormUrl, showSuccess]);
+  }, [formUrl, fields, validateFormUrl, showSuccess, addToast]);
 
-  // Export links to CSV
+  // Update toggle additional field function with proper types
+  const toggleAdditionalField = useCallback((fieldId: string, checked: boolean) => {
+    setExportConfig(prev => ({
+      ...prev,
+      additionalFields: checked
+        ? [...prev.additionalFields, fieldId]
+        : prev.additionalFields.filter(id => id !== fieldId)
+    }));
+  }, []);
+
+  // Add back the exportLinks function with proper types
   const exportLinks = useCallback(() => {
     if (generatedLinks.length === 0) return;
     
-    const headers = [];
+    const headers: string[] = [];
     if (exportConfig.labelField !== 'none') {
-      headers.push('Label'); // Friendly label from selected field
+      headers.push('Label');
     }
     if (exportConfig.includeUrl) {
       headers.push('Form URL');
@@ -376,17 +604,17 @@ const BatchFormPrefill = () => {
     const csv = Papa.unparse({
       fields: headers,
       data: generatedLinks.map((link, index) => {
-        const row = [];
+        const row: string[] = [];
         if (exportConfig.labelField !== 'none') {
           row.push(exportConfig.labelField === 'index' 
             ? `Entry ${index + 1}` 
-            : (link.fields[exportConfig.labelField] || ''));
+            : (link.fields[exportConfig.labelField] as string || ''));
         }
         if (exportConfig.includeUrl) {
           row.push(link.url);
         }
         exportConfig.additionalFields.forEach(FieldID => {
-          row.push(link.fields[FieldID] || '');
+          row.push(link.fields[FieldID] as string || '');
         });
         return row;
       })
@@ -404,18 +632,122 @@ const BatchFormPrefill = () => {
     showSuccess('Links exported successfully!');
   }, [generatedLinks, exportConfig, fields, showSuccess]);
 
-  // Toggle a field in additional fields
-  const toggleAdditionalField = useCallback((fieldId, checked) => {
-    setExportConfig(prev => ({
-      ...prev,
-      additionalFields: checked
-        ? [...prev.additionalFields, fieldId]
-        : prev.additionalFields.filter(id => id !== fieldId)
-    }));
-  }, []);
+  // Update the renderCsvPreview function to have a better layout
+  const renderCsvPreview = () => {
+    if (csvUploadState.status !== 'success' || csvUploadState.preview.length === 0) {
+      return null;
+    }
+    
+    const headers = Object.keys(csvUploadState.preview[0]);
+    
+    return (
+      <div className="mt-6 border rounded-md overflow-hidden shadow-sm">
+        <div className="bg-gray-50 p-3 border-b flex justify-between items-center">
+          <h4 className="font-medium text-gray-700">CSV Preview</h4>
+          <div className="text-xs text-gray-500 flex items-center">
+            <span className="mr-1">Detected delimiter:</span>
+            <span className="font-mono bg-gray-200 px-1.5 py-0.5 rounded text-gray-700">
+              {valuesDelimiter === '\t' ? '\\t (Tab)' : 
+               valuesDelimiter === ' ' ? '␣ (Space)' : 
+               valuesDelimiter}
+            </span>
+          </div>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                {headers.map((header, index) => (
+                  <th 
+                    key={index}
+                    className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                  >
+                    {header}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {csvUploadState.preview.map((row, rowIndex) => (
+                <tr key={rowIndex} className={rowIndex % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                  {headers.map((header, cellIndex) => (
+                    <td 
+                      key={cellIndex}
+                      className="px-3 py-2 whitespace-nowrap text-sm text-gray-500"
+                    >
+                      {row[header]}
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        {csvUploadState.rowCount > 5 && (
+          <div className="bg-gray-50 p-2 text-center text-sm text-gray-500 border-t">
+            Showing 5 of {csvUploadState.rowCount} rows
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  // Add a function to render step indicator
+  const renderStepIndicator = () => {
+    const steps = [
+      { key: 'upload', label: 'Upload CSV' },
+      { key: 'generate', label: 'Generate Links' },
+      { key: 'export', label: 'Export Results' }
+    ];
+    
+    return (
+      <div className="flex items-center justify-center mb-6">
+        {steps.map((step, index) => (
+          <React.Fragment key={step.key}>
+            <div className={`flex flex-col items-center ${currentStep === step.key ? 'text-blue-600' : 'text-gray-400'}`}>
+              <div className={`w-8 h-8 rounded-full flex items-center justify-center border-2 ${
+                currentStep === step.key 
+                  ? 'border-blue-600 bg-blue-50' 
+                  : currentStep === steps[index + 1]?.key || currentStep === steps[index + 2]?.key 
+                    ? 'border-green-500 bg-green-50 text-green-500' 
+                    : 'border-gray-300'
+              }`}>
+                {currentStep === steps[index + 1]?.key || currentStep === steps[index + 2]?.key ? (
+                  <svg className="w-4 h-4 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                ) : (
+                  index + 1
+                )}
+              </div>
+              <span className="text-xs mt-1 font-medium">{step.label}</span>
+            </div>
+            
+            {index < steps.length - 1 && (
+              <div className={`w-12 h-0.5 mx-1 ${
+                currentStep === steps[index + 1]?.key || currentStep === steps[index + 2]?.key 
+                  ? 'bg-green-500' 
+                  : 'bg-gray-300'
+              }`} />
+            )}
+          </React.Fragment>
+        ))}
+      </div>
+    );
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100 p-6">
+      {/* Render toast notifications */}
+      {toasts.map(toast => (
+        <Toast
+          key={toast.id}
+          message={toast.message}
+          type={toast.type}
+          onClose={() => removeToast(toast.id)}
+        />
+      ))}
+      
       <Card className="w-full max-w-4xl mx-auto shadow-lg">
         <CardHeader className="flex flex-row items-center justify-between bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-t-lg">
           <CardTitle className="text-2xl">FormSG Prefill Batch Generator</CardTitle>
@@ -440,6 +772,9 @@ const BatchFormPrefill = () => {
         </CardHeader>
         
         <CardContent className="space-y-6 p-6">
+          {/* Add step indicator */}
+          {renderStepIndicator()}
+          
           {successMessage && (
             <Alert className="bg-green-50 border-green-200">
               <AlertDescription className="text-green-700">{successMessage}</AlertDescription>
@@ -469,7 +804,10 @@ const BatchFormPrefill = () => {
           <div className="grid gap-4 md:grid-cols-3">
             <Dialog>
               <DialogTrigger asChild>
-                <Button variant="outline" className="w-full hover:bg-blue-50">
+                <Button 
+                  variant={currentStep === 'upload' ? 'default' : 'outline'} 
+                  className={`w-full ${currentStep === 'upload' ? 'bg-blue-600 hover:bg-blue-700' : 'hover:bg-blue-50'}`}
+                >
                   <Upload className="mr-2 h-4 w-4" />
                   Import CSV
                 </Button>
@@ -477,12 +815,20 @@ const BatchFormPrefill = () => {
               <DialogContent className="sm:max-w-md">
                 <DialogHeader>
                   <DialogTitle>Import CSV File</DialogTitle>
+                  <DialogDescription>
+                    Upload a CSV file with your form fields and values
+                  </DialogDescription>
                 </DialogHeader>
                 <div className="space-y-4">
                   <Alert className="bg-blue-50 border-blue-200">
                     <Info className="h-4 w-4 text-blue-500" />
                     <AlertDescription className="text-blue-700">
-                      Upload a CSV file with columns: FieldID (24-digit hex), values, description (optional)
+                      <p className="font-medium">Your CSV must include these columns:</p>
+                      <ul className="list-disc list-inside mt-1 text-sm">
+                        <li><span className="font-bold">FieldID</span> - 24-digit hexadecimal ID</li>
+                        <li><span className="font-bold">values</span> - List of values separated by {valuesDelimiter}</li>
+                        <li><span className="font-bold">description</span> (optional) - Field name</li>
+                      </ul>
                     </AlertDescription>
                   </Alert>
                   
@@ -490,6 +836,31 @@ const BatchFormPrefill = () => {
                     <Download className="mr-2 h-4 w-4" />
                     Download Template
                   </Button>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="values-delimiter-select">Values Delimiter</Label>
+                    <Select
+                      value={valuesDelimiter}
+                      onValueChange={setValuesDelimiter}
+                    >
+                      <SelectTrigger id="values-delimiter-select">
+                        <SelectValue placeholder="Select delimiter" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {SUPPORTED_VALUES_DELIMITERS.map((d) => (
+                          <SelectItem key={d.value} value={d.value}>
+                            {d.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-gray-500">
+                      <span className="font-bold">Important:</span> This is the delimiter that separates values within the "values" column of your CSV.
+                    </p>
+                    <p className="text-xs text-gray-500">
+                      Example: For values like "Apple;Banana;Cherry", use semicolon (;)
+                    </p>
+                  </div>
 
                   <div className="space-y-2">
                     <Label htmlFor="csv-file">CSV File</Label>
@@ -500,32 +871,79 @@ const BatchFormPrefill = () => {
                       onChange={handleFileUpload}
                       className="cursor-pointer"
                     />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="delimiter-select">Values Delimiter</Label>
-                    <Select
-                      value={delimiter}
-                      onValueChange={setDelimiter}
-                    >
-                      <SelectTrigger id="delimiter-select">
-                        <SelectValue placeholder="Select delimiter" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value=",">Comma ( , )</SelectItem>
-                        <SelectItem value=";">Semicolon ( ; )</SelectItem>
-                        <SelectItem value="|">Pipe ( | )</SelectItem>
-                      </SelectContent>
-                    </Select>
+                    
+                    {/* CSV Upload Status */}
+                    {csvUploadState.status !== 'idle' && (
+                      <div className="mt-2 text-sm">
+                        <div className="flex items-center justify-between">
+                          <span className="font-medium">
+                            {csvUploadState.fileName}
+                          </span>
+                          <span className="text-gray-500">
+                            {csvUploadState.fileSize}
+                          </span>
+                        </div>
+                        
+                        {csvUploadState.status === 'uploading' && (
+                          <div className="flex items-center mt-2 text-blue-600">
+                            <Loader2 className="animate-spin h-4 w-4 mr-2" />
+                            <span>Uploading file...</span>
+                          </div>
+                        )}
+                        
+                        {csvUploadState.status === 'processing' && (
+                          <div className="flex items-center mt-2 text-blue-600">
+                            <Loader2 className="animate-spin h-4 w-4 mr-2" />
+                            <span>Processing CSV data...</span>
+                          </div>
+                        )}
+                        
+                        {csvUploadState.status === 'success' && (
+                          <div className="mt-2 text-green-600">
+                            <div className="flex items-center">
+                              <svg className="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                              </svg>
+                              <span>Successfully processed {csvUploadState.rowCount} fields</span>
+                            </div>
+                          </div>
+                        )}
+                        
+                        {csvUploadState.status === 'error' && (
+                          <div className="flex items-center mt-2 text-red-600">
+                            <XCircle className="h-4 w-4 mr-2" />
+                            <span>Error processing file</span>
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
                 </div>
+                
+                {showCsvPreview && renderCsvPreview()}
+                
+                <DialogFooter>
+                  <DialogClose asChild>
+                    <Button 
+                      onClick={() => {
+                        if (csvUploadState.status === 'success') {
+                          setCurrentStep('generate');
+                        }
+                      }}
+                      disabled={csvUploadState.status !== 'success'}
+                      className="bg-blue-600 hover:bg-blue-700"
+                    >
+                      Continue to Generate Links
+                    </Button>
+                  </DialogClose>
+                </DialogFooter>
               </DialogContent>
             </Dialog>
 
             <Button
               onClick={generateLinks}
               disabled={isProcessing || fields.length === 0}
-              className="w-full bg-blue-600 hover:bg-blue-700"
+              className={`w-full ${currentStep === 'generate' ? 'bg-blue-600 hover:bg-blue-700' : 'bg-gray-400 hover:bg-gray-500'}`}
             >
               {isProcessing ? (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -538,23 +956,25 @@ const BatchFormPrefill = () => {
             <Dialog>
               <DialogTrigger asChild>
                 <Button
-                  variant="outline"
+                  variant={currentStep === 'export' ? 'default' : 'outline'}
                   disabled={generatedLinks.length === 0}
-                  className="w-full"
+                  className={`w-full ${currentStep === 'export' ? 'bg-blue-600 hover:bg-blue-700' : ''}`}
                 >
                   <Download className="mr-2 h-4 w-4" />
                   Export Options
                 </Button>
               </DialogTrigger>
-              <DialogContent>
+              <ImprovedDialogContent size="md" position="center">
                 <DialogHeader>
                   <DialogTitle>Configure Export</DialogTitle>
+                  <DialogDescription>
+                    Customize which fields to include in your exported CSV file
+                  </DialogDescription>
                 </DialogHeader>
                 <div className="space-y-4">
                   <div className="space-y-2">
                     <Label htmlFor="label-field">Primary Label Field (Optional)</Label>
                     <Select 
-                      id="label-field"
                       value={exportConfig.labelField}
                       onValueChange={(value) => setExportConfig(prev => ({
                         ...prev,
@@ -574,6 +994,9 @@ const BatchFormPrefill = () => {
                         ))}
                       </SelectContent>
                     </Select>
+                    <p className="text-xs text-gray-500">
+                      This field will be used as the primary identifier for each row in the exported CSV
+                    </p>
                   </div>
 
                   <div className="flex items-center space-x-2">
@@ -606,14 +1029,17 @@ const BatchFormPrefill = () => {
                         </div>
                       ))}
                     </div>
+                    <p className="text-xs text-gray-500">
+                      Select which field values to include as columns in your exported CSV
+                    </p>
                   </div>
                 </div>
                 <DialogFooter>
-                  <Button onClick={exportLinks}>
+                  <Button onClick={exportLinks} className="bg-blue-600 hover:bg-blue-700">
                     Export CSV
                   </Button>
                 </DialogFooter>
-              </DialogContent>
+              </ImprovedDialogContent>
             </Dialog>
           </div>
 
@@ -683,7 +1109,7 @@ const BatchFormPrefill = () => {
       </Card>
 
       <Dialog open={showHelpDialog} onOpenChange={setShowHelpDialog}>
-        <DialogContent className="sm:max-w-2xl">
+        <ImprovedDialogContent size="xl" position="center">
           <DialogHeader>
             <DialogTitle>
               <div className="flex items-center">
@@ -703,7 +1129,7 @@ const BatchFormPrefill = () => {
               Close
             </Button>
           </DialogFooter>
-        </DialogContent>
+        </ImprovedDialogContent>
       </Dialog>
     </div>
   );
