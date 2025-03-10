@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import Papa from 'papaparse';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -44,6 +44,27 @@ interface TemplateField {
   required: boolean;
 }
 
+// Add type definitions for Papa.parse results
+interface PapaParseResult {
+  data: any[];
+  errors: any[];
+  meta: {
+    delimiter: string;
+    linebreak: string;
+    aborted: boolean;
+    truncated: boolean;
+    cursor: number;
+    fields: string[];
+  };
+}
+
+interface PapaParseError {
+  type: string;
+  code: string;
+  message: string;
+  row?: number;
+}
+
 const CSVImportDialog: React.FC<{
   templateFields: TemplateField[];
   onImport: (params: LetterParams[]) => void;
@@ -52,16 +73,56 @@ const CSVImportDialog: React.FC<{
   const [csvHeaders, setCsvHeaders] = useState<string[]>([]);
   const [fieldMapping, setFieldMapping] = useState<{ [templateField: string]: string }>({});
   const [previewData, setPreviewData] = useState<any[]>([]);
+  const [mappedPreview, setMappedPreview] = useState<LetterParams[]>([]);
+  const [showMappedPreview, setShowMappedPreview] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  // Initialize field mapping with intelligent guesses
+  useEffect(() => {
+    if (templateFields.length > 0 && csvHeaders.length > 0) {
+      const initialMapping: { [key: string]: string } = {};
+      
+      // Try to match template fields with CSV headers
+      templateFields.forEach(field => {
+        if (!field.name) return;
+        
+        // Look for exact matches first
+        const exactMatch = csvHeaders.find(header => 
+          header.toLowerCase() === field.name.toLowerCase()
+        );
+        
+        if (exactMatch) {
+          initialMapping[field.name] = exactMatch;
+        } else {
+          // Look for partial matches
+          const partialMatch = csvHeaders.find(header => 
+            header.toLowerCase().includes(field.name.toLowerCase()) || 
+            field.name.toLowerCase().includes(header.toLowerCase())
+          );
+          
+          if (partialMatch) {
+            initialMapping[field.name] = partialMatch;
+          }
+        }
+      });
+      
+      setFieldMapping(initialMapping);
+    }
+  }, [templateFields, csvHeaders]);
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
+    // Reset states when a new file is uploaded
+    setShowMappedPreview(false);
+    setMappedPreview([]);
+
     // Read the entire file first to get headers and data
-    Papa.parse(file, {
+    Papa.parse<any>(file, {
       header: true,
-      complete: (results) => {
+      complete: (results: PapaParseResult) => {
         if (results.data.length === 0 || !results.meta.fields || results.meta.fields.length === 0) {
           toast({
             title: 'Invalid CSV',
@@ -74,97 +135,105 @@ const CSVImportDialog: React.FC<{
         const headers = results.meta.fields;
         setCsvHeaders(headers);
         setPreviewData(results.data.slice(0, 5)); // Store first 5 rows for preview
-
-        // Try to automatically map fields based on name similarity
-        const initialMapping: { [templateField: string]: string } = {};
-        templateFields.forEach((templateField) => {
-          const matchingHeader = headers.find(
-            (header) => header.toLowerCase() === templateField.name.toLowerCase()
-          );
-          if (matchingHeader) {
-            initialMapping[templateField.name] = matchingHeader;
-          }
-        });
-
-        setFieldMapping(initialMapping);
       },
-      error: (error) => {
-        toast({
-          title: 'CSV Parse Error',
-          description: error.message,
-          variant: 'destructive',
-        });
+      error: (error: Error) => {
+        console.error('Error parsing CSV:', error);
+        setError('Failed to parse CSV file. Please check the file format.');
       }
     });
   };
 
-  const processImport = () => {
-    // Check if all required fields are mapped
-    const unmappedFields = templateFields
-      .filter(f => f.required && !fieldMapping[f.name])
-      .map(f => f.name);
-  
-    if (unmappedFields.length > 0) {
+  const previewMappedData = () => {
+    // Get all template fields that have a mapping
+    const mappedFields = templateFields
+      .filter(field => field.name && fieldMapping[field.name])
+      .map(field => field.name);
+    
+    if (mappedFields.length === 0) {
       toast({
-        title: 'Missing Required Mappings',
-        description: `The following required fields are not mapped: ${unmappedFields.join(', ')}`,
+        title: 'No Fields Mapped',
+        description: 'Please map at least one template field to a CSV header.',
         variant: 'destructive',
       });
       return;
     }
 
-    // Process the file again with the established mapping
-    if (fileInputRef.current?.files?.[0]) {
-      Papa.parse(fileInputRef.current.files[0], {
-        header: true,
-        complete: (results) => {
-          // Transform the data using the field mapping
-          const transformedData = results.data
-            .filter((row: any) => {
-              // Filter out rows that don't have all required fields
-              return !templateFields
-                .filter(field => field.required)
-                .some(field => {
-                  const csvHeader = fieldMapping[field.name];
-                  return !csvHeader || !row[csvHeader];
-                });
-            })
-            .map((row: any) => {
-              const transformedRow: LetterParams = {};
-              templateFields.forEach((field) => {
-                const csvHeader = fieldMapping[field.name];
-                if (csvHeader) {
-                  transformedRow[field.name] = row[csvHeader];
-                }
-              });
-              return transformedRow;
-            });
+    // Create a preview of the mapped data (first 5 rows)
+    const previewRows = previewData.map((row: any) => {
+      const mappedRow: LetterParams = {};
+      
+      // For each template field that has a mapping
+      mappedFields.forEach(fieldName => {
+        if (!fieldName) return;
+        const csvHeader = fieldMapping[fieldName];
+        mappedRow[fieldName] = row[csvHeader] || '';
+      });
+      
+      return mappedRow;
+    });
 
-          if (transformedData.length === 0) {
-            toast({
-              title: 'No Valid Data',
-              description: 'No rows with all required fields were found in the CSV.',
-              variant: 'destructive',
-            });
-            return;
-          }
+    setMappedPreview(previewRows);
+    setShowMappedPreview(true);
+  };
 
-          setImportedData(transformedData);
-          onImport(transformedData);
+  const processImport = () => {
+    // Get all template fields that have a mapping
+    const mappedFields = templateFields
+      .filter(field => field.name && fieldMapping[field.name])
+      .map(field => field.name);
+    
+    if (mappedFields.length === 0) {
+      toast({
+        title: 'No Fields Mapped',
+        description: 'Please map at least one template field to a CSV header.',
+        variant: 'destructive',
+      });
+      return;
+    }
 
-          toast({
-            description: `Imported ${transformedData.length} letter parameters successfully`,
+    // Process all rows in the CSV
+    Papa.parse<any>(fileInputRef.current?.files?.[0] as File, {
+      header: true,
+      complete: (results: PapaParseResult) => {
+        // Map each row to the template fields
+        const mappedData = results.data.map((row: any) => {
+          const mappedRow: LetterParams = {};
+          
+          // For each template field that has a mapping
+          mappedFields.forEach(fieldName => {
+            if (!fieldName) return;
+            const csvHeader = fieldMapping[fieldName];
+            mappedRow[fieldName] = row[csvHeader] || '';
           });
-        },
-        error: (error) => {
+          
+          return mappedRow;
+        });
+
+        // Filter out empty rows (all values are empty)
+        const nonEmptyRows = mappedData.filter(row => 
+          Object.values(row).some(value => value.trim() !== '')
+        );
+
+        if (nonEmptyRows.length === 0) {
           toast({
-            title: 'CSV Import Error',
-            description: error.message,
+            title: 'No Valid Data',
+            description: 'No valid data found after mapping. Please check your CSV file.',
             variant: 'destructive',
           });
+          return;
         }
-      });
-    }
+
+        setImportedData(nonEmptyRows);
+        onImport(nonEmptyRows);
+        toast({
+          description: `Successfully imported ${nonEmptyRows.length} records`,
+        });
+      },
+      error: (error: Error) => {
+        console.error('Error parsing CSV:', error);
+        setError('Failed to parse CSV file. Please check the file format.');
+      }
+    });
   };
 
   const updateFieldMapping = (templateField: string, csvHeader: string) => {
@@ -172,25 +241,43 @@ const CSVImportDialog: React.FC<{
       ...prev,
       [templateField]: csvHeader,
     }));
+    
+    // Reset the preview when mapping changes
+    setShowMappedPreview(false);
   };
 
   const generateExampleTemplate = () => {
-    const headers = templateFields.map((field) => field.name);
-    const exampleRow = templateFields.map((field) => {
-      if (field.name.toLowerCase().includes('name')) return 'John Doe';
-      if (field.name.toLowerCase().includes('email')) return 'john.doe@example.com';
-      if (field.name.toLowerCase().includes('phone')) return '91234567';
-      if (field.name.toLowerCase().includes('address')) return '123 Main St, Singapore';
-      return 'Example Value';
-    });
-
-    const csvContent = [headers.join(','), exampleRow.join(',')].join('\n');
+    // Create headers from template fields
+    const headers = templateFields
+      .filter(field => field.name) // Filter out fields without names
+      .map((field) => field.name);
+    
+    // Create an example row with placeholder values
+    const exampleRow = templateFields
+      .filter(field => field.name) // Filter out fields without names
+      .map((field) => {
+        const fieldName = field.name;
+        if (fieldName.includes('name')) return 'John Doe';
+        if (fieldName.includes('email')) return 'example@example.com';
+        if (fieldName.includes('phone')) return '+6591234567';
+        if (fieldName.includes('address')) return '123 Main St';
+        if (fieldName.includes('date')) return '2023-01-01';
+        if (fieldName.includes('id')) return '12345';
+        return 'Example Value';
+      });
+    
+    // Create CSV content
+    const csvContent = [
+      headers.join(','),
+      exampleRow.join(','),
+    ].join('\n');
+    
+    // Create and download the file
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
     const url = URL.createObjectURL(blob);
-    link.setAttribute('href', url);
-    link.setAttribute('download', 'letter_template.csv');
-    link.style.visibility = 'hidden';
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', 'template_example.csv');
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -204,7 +291,7 @@ const CSVImportDialog: React.FC<{
           Import CSV
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[800px]">
+      <DialogContent className="sm:max-w-[800px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Import Letter Parameters from CSV</DialogTitle>
           <DialogDescription>Map CSV headers to letter template fields</DialogDescription>
@@ -289,43 +376,41 @@ const CSVImportDialog: React.FC<{
                 </TableBody>
               </Table>
               
-              <div className="mt-4 flex justify-end">
+              <div className="mt-4 flex justify-end gap-2">
+                <Button variant="outline" onClick={previewMappedData}>Preview Mapping</Button>
                 <Button onClick={processImport}>Import Data</Button>
               </div>
             </div>
           )}
 
-          {importedData.length > 0 && (
-            <div className="border rounded-lg p-4">
-              <div className="flex justify-between items-center mb-2">
-                <h4 className="font-semibold">Imported Parameters ({importedData.length} records)</h4>
-              </div>
-              <div className="max-h-48 overflow-y-auto">
-                <Table>
+          {showMappedPreview && mappedPreview.length > 0 && (
+            <div className="border rounded p-4 bg-slate-50 mt-4">
+              <h4 className="font-semibold mb-2">Mapped Data Preview</h4>
+              <p className="text-sm text-slate-500 mb-2">
+                This is how your CSV data will be mapped to the template fields. Please verify before importing.
+              </p>
+              <div className="max-h-64 overflow-y-auto">
+                <Table className="text-xs">
                   <TableHeader>
                     <TableRow>
-                      {templateFields.map((field) => (
+                      {templateFields.map(field => (
                         <TableHead key={field.name}>{field.name}</TableHead>
                       ))}
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {importedData.slice(0, 10).map((item, index) => (
-                      <TableRow key={index}>
-                        {templateFields.map((field) => (
-                          <TableCell key={field.name}>{item[field.name] || '-'}</TableCell>
+                    {mappedPreview.map((row, idx) => (
+                      <TableRow key={idx}>
+                        {templateFields.map(field => (
+                          <TableCell key={`${idx}-${field.name}`}>{row[field.name] || '-'}</TableCell>
                         ))}
                       </TableRow>
                     ))}
-                    {importedData.length > 10 && (
-                      <TableRow>
-                        <TableCell colSpan={templateFields.length} className="text-center text-muted-foreground">
-                          + {importedData.length - 10} more records
-                        </TableCell>
-                      </TableRow>
-                    )}
                   </TableBody>
                 </Table>
+              </div>
+              <div className="mt-2 text-xs text-slate-500">
+                Showing preview of first {mappedPreview.length} rows. The actual import will process all rows.
               </div>
             </div>
           )}
@@ -350,7 +435,10 @@ const LetterMode: React.FC = () => {
   const [templateFields, setTemplateFields] = useState<TemplateField[]>([]);
   const [isNotificationEnabled, setIsNotificationEnabled] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [isTemplateLoading, setIsTemplateLoading] = useState(false);
+  const [isSending, setIsSending] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
+  const [templateCache, setTemplateCache] = useState<{[key: number]: TemplateField[]}>({});
 
   // Add debounced template loading
   const debouncedFetchTemplate = useRef(
@@ -362,9 +450,51 @@ const LetterMode: React.FC = () => {
   // Add useEffect for debounced template loading
   useEffect(() => {
     if (letterDetails.templateId && letterDetails.templateId > 0) {
-      debouncedFetchTemplate(letterDetails.templateId);
+      // Check if we already have this template in cache
+      if (templateCache[letterDetails.templateId]) {
+        setTemplateFields(templateCache[letterDetails.templateId]);
+      } else {
+        debouncedFetchTemplate(letterDetails.templateId);
+      }
     }
-  }, [letterDetails.templateId, debouncedFetchTemplate]);
+  }, [letterDetails.templateId, debouncedFetchTemplate, templateCache]);
+
+  // New useEffect to handle template field initialization
+  useEffect(() => {
+    if (templateFields.length > 0) {
+      // Add this section to initialize letter params with required fields
+      const hasRecipientName = templateFields.some((field: TemplateField) => 
+        field.name === 'recipient_name'
+      );
+      
+      const requiredFieldsCopy = [...templateFields];
+      
+      // If recipient_name isn't in the template fields but is required by the API, add it
+      if (!hasRecipientName) {
+        requiredFieldsCopy.push({ name: 'recipient_name', required: true });
+      }
+      
+      // Create default letter params with all required fields
+      const defaultParams: LetterParams = {};
+      requiredFieldsCopy.forEach((field: TemplateField) => {
+        // Ensure field.name exists before using it as a key
+        if (field.name && field.required) {
+          defaultParams[field.name] = '';
+        }
+      });
+      
+      // Initialize with one empty set of parameters
+      setLetterDetails(prev => ({
+        ...prev,
+        lettersParams: prev.lettersParams.length ? prev.lettersParams : [defaultParams]
+      }));
+      
+      // Show toast notification when template is loaded
+      toast({
+        description: `Template loaded successfully with ${templateFields.length} fields`,
+      });
+    }
+  }, [templateFields]);
 
   useEffect(() => {
     return () => {
@@ -385,8 +515,9 @@ const LetterMode: React.FC = () => {
   const fetchTemplateDetails = async (templateId: number) => {
     if (!letterDetails.apiKey || !templateId) return;
     
-    setIsLoading(true);
+    setIsTemplateLoading(true);
     setApiError(null);
+    setIsLoading(true);
   
     try {
       // Using proxy endpoint to avoid exposing API key in frontend
@@ -404,146 +535,144 @@ const LetterMode: React.FC = () => {
       }
   
       const templateData = await response.json();
-      const requiredFields = templateData.fields.map((field: any) => ({
-        name: field.name,
-        required: field.required,
-      }));
+      
+      // Handle both array of strings and array of objects
+      const requiredFields: TemplateField[] = Array.isArray(templateData.fields) 
+        ? templateData.fields.map((field: any) => {
+            // If field is a string, convert to object
+            if (typeof field === 'string') {
+              return {
+                name: field,
+                required: true // Assume all fields are required by default
+              };
+            }
+            // If field is already an object with name and required properties
+            else if (field && typeof field === 'object' && 'name' in field) {
+              return {
+                name: field.name,
+                required: field.required !== false // Default to true if not specified
+              };
+            }
+            // Fallback for unexpected data
+            return null;
+          }).filter(Boolean) // Remove any null values
+        : [];
   
+      console.log('Processed template fields:', requiredFields);
+      
       setTemplateFields(requiredFields);
-  
-      // Add this section to initialize letter params with required fields
-      const hasRecipientName = requiredFields.some(field => field.name === 'recipient_name');
       
-      // If recipient_name isn't in the template fields but is required by the API, add it
-      if (!hasRecipientName) {
-        requiredFields.push({ name: 'recipient_name', required: true });
-      }
+      // Cache the template fields for future use
+      setTemplateCache(prev => ({
+        ...prev,
+        [templateId]: requiredFields
+      }));
       
-      // Create default letter params with all required fields
-      const defaultParams = {};
-      requiredFields.forEach(field => {
-        if (field.required) {
-          defaultParams[field.name] = '';
-        }
-      });
-      
-      // Initialize letter params with the default params if the array is empty
-      if (letterDetails.lettersParams.length === 0) {
-        setLetterDetails(prev => ({
-          ...prev,
-          lettersParams: [defaultParams]
-        }));
-      } else {
-        // Update existing letter params to include any missing required fields
-        setLetterDetails(prev => ({
-          ...prev,
-          lettersParams: prev.lettersParams.map(params => {
-            const updatedParams = {...params};
-            requiredFields.forEach(field => {
-              if (field.required && updatedParams[field.name] === undefined) {
-                updatedParams[field.name] = '';
-              }
-            });
-            return updatedParams;
-          })
-        }));
-      }
-  
-      toast({
-        title: 'Template Loaded',
-        description: `Template ${templateId} loaded successfully`,
-      });
+      // Remove the initialization logic from here since it's now in the useEffect
     } catch (error) {
-      setTemplateFields([]); // Clear existing template fields on error
+      console.error('Error fetching template:', error);
+      setApiError(error instanceof Error ? error.message : 'Failed to fetch template details');
       
-      const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
-      
+      // Show error toast
       toast({
-        title: 'Error Fetching Template',
-        description: errorMessage,
+        title: 'Error Loading Template',
+        description: error instanceof Error ? error.message : 'Failed to fetch template',
         variant: 'destructive',
       });
     } finally {
+      setIsTemplateLoading(false);
       setIsLoading(false);
     }
   };
 
-  const updateLetterDetail = (key: keyof BulkLetterDetails, value: any) => {
+  const updateLetterDetail = useCallback((key: keyof BulkLetterDetails, value: any) => {
     setLetterDetails((prev) => ({
       ...prev,
       [key]: value,
     }));
+  }, []);
 
-    if (key === 'apiKey') {
-      localStorage.setItem('lettersGovSgApiKey', value);
-    }
-  };
+  const updateLetterParams = useCallback((index: number, field: string, value: string) => {
+    setLetterDetails((prev) => {
+      const updatedParams = [...prev.lettersParams];
+      updatedParams[index] = {
+        ...updatedParams[index],
+        [field]: value,
+      };
+      return {
+        ...prev,
+        lettersParams: updatedParams,
+      };
+    });
+  }, []);
 
-  const updateLetterParams = (index: number, field: string, value: string) => {
-    const newLettersParams = [...letterDetails.lettersParams];
-    newLettersParams[index] = {
-      ...newLettersParams[index],
-      [field]: value,
-    };
-    setLetterDetails((prev) => ({
-      ...prev,
-      lettersParams: newLettersParams,
-    }));
-  };
-
-  const addLetterParams = () => {
+  const addLetterParams = useCallback(() => {
     // Create new params object with default value for recipient_name
-    const newParams = { recipient_name: '' };
+    const newParams: LetterParams = {};
     
     // Add any other required fields from templateFields
     templateFields.forEach(field => {
-      if (field.required && !newParams[field.name]) {
+      if (field.name && field.required) {
         newParams[field.name] = '';
       }
     });
+    
+    // Ensure recipient_name is included if it's required
+    if (!newParams.recipient_name && templateFields.some(field => field.name === 'recipient_name')) {
+      newParams.recipient_name = '';
+    }
     
     setLetterDetails((prev) => ({
       ...prev,
       lettersParams: [...prev.lettersParams, newParams],
     }));
-  };
+  }, [templateFields]);
 
-  const removeLetterParams = (index: number) => {
+  const removeLetterParams = useCallback((index: number) => {
     if (letterDetails.lettersParams.length <= 1) return;
     
     setLetterDetails((prev) => ({
       ...prev,
       lettersParams: prev.lettersParams.filter((_, i) => i !== index)
     }));
-  };
+  }, [letterDetails.lettersParams.length]);
 
-  const handleCSVImport = (importedParams: LetterParams[]) => {
+  const handleCSVImport = useCallback((importedParams: LetterParams[]) => {
     // Ensure each imported params has all required fields, especially recipient_name
     const updatedParams = importedParams.map(params => {
-      const updatedParam = {...params};
+      // Create a new object with only the fields that are in templateFields
+      const filteredParams: LetterParams = {};
       
-      // Add recipient_name if missing
-      if (updatedParam.recipient_name === undefined) {
-        updatedParam.recipient_name = '';
-      }
-      
-      // Add any other required fields
+      // Process each template field
       templateFields.forEach(field => {
-        if (field.required && updatedParam[field.name] === undefined) {
-          updatedParam[field.name] = '';
+        // Skip fields without a name
+        if (!field.name) return;
+        
+        // Add field if it's required or if it has a value in the imported data
+        if (field.required || params[field.name]) {
+          filteredParams[field.name] = params[field.name] || '';
         }
       });
       
-      return updatedParam;
+      // Ensure recipient_name is included if it's required
+      if (!filteredParams.recipient_name && templateFields.some(field => field.name === 'recipient_name')) {
+        filteredParams.recipient_name = '';
+      }
+      
+      return filteredParams;
     });
     
     setLetterDetails((prev) => ({
       ...prev,
       lettersParams: updatedParams,
     }));
-  };
+    
+    toast({
+      description: `Successfully imported ${updatedParams.length} records`,
+    });
+  }, [templateFields]);
 
-  const validatePayload = () => {
+  const validatePayload = useCallback(() => {
     const { apiKey, templateId, lettersParams } = letterDetails;
 
     if (!apiKey) {
@@ -657,16 +786,12 @@ const LetterMode: React.FC = () => {
     }
 
     return true;
-  };
+  }, [letterDetails, isNotificationEnabled, templateFields]);
 
   const generateBulkLetters = async () => {
     if (!validatePayload()) return;
     
-    // Debug log to check parameters
-    console.log("Template fields required:", templateFields);
-    console.log("Letter params being sent:", letterDetails.lettersParams);
-    
-    setIsLoading(true);
+    setIsSending(true);
     setApiError(null);
 
     const { apiKey, templateId, lettersParams } = letterDetails;
@@ -683,6 +808,9 @@ const LetterMode: React.FC = () => {
 
     try {
       // Using proxy endpoint to avoid exposing API key in frontend
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+      
       const response = await fetch(`${API_PROXY_URL}/bulks`, {
         method: 'POST',
         headers: {
@@ -690,7 +818,10 @@ const LetterMode: React.FC = () => {
           'X-API-Key': apiKey,
         },
         body: JSON.stringify(payload),
+        signal: controller.signal
       });
+      
+      clearTimeout(timeoutId);
 
       if (!response.ok) {
         const errorData = await response.json();
@@ -716,31 +847,106 @@ const LetterMode: React.FC = () => {
         variant: 'default',
       });
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
-      setApiError(errorMessage);
+      console.error('Error generating bulk letters:', error);
       
+      let errorMessage = 'Failed to generate letters';
+      if (error instanceof Error) {
+        errorMessage = error.message;
+        if (error.name === 'AbortError') {
+          errorMessage = 'Request timed out. Please try again.';
+        }
+      }
+      
+      setApiError(errorMessage);
       toast({
-        title: 'Error Generating Bulk Letters',
+        title: 'Error',
         description: errorMessage,
         variant: 'destructive',
       });
     } finally {
-      setIsLoading(false);
+      setIsSending(false);
     }
   };
 
+  // Memoize the letter params form to prevent unnecessary re-renders
+  const letterParamsForm = useMemo(() => (
+    <div className="space-y-4">
+      {letterDetails.lettersParams.map((params, index) => (
+        <Card key={`letter-params-${index}`}>
+          <CardHeader className="py-2 px-4 flex flex-row items-center justify-between space-y-0">
+            <CardTitle className="text-sm font-medium">
+              Letter {index + 1}
+            </CardTitle>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => removeLetterParams(index)}
+              disabled={letterDetails.lettersParams.length <= 1 || isLoading || isSending}
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="24"
+                height="24"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="h-4 w-4"
+              >
+                <path d="M18 6 6 18" />
+                <path d="m6 6 12 12" />
+              </svg>
+              <span className="sr-only">Remove</span>
+            </Button>
+          </CardHeader>
+          <CardContent className="p-4 pt-0">
+            <div className="grid gap-3">
+              {templateFields.map((field, fieldIndex) => {
+                // Ensure field.name exists and is a string
+                const fieldName = field?.name || '';
+                if (!fieldName) return null;
+                
+                return (
+                  <div key={`field-${index}-${fieldIndex}-${fieldName}`} className="space-y-1">
+                    <Label htmlFor={`${index}-${fieldName}`} className="flex items-center">
+                      <span className="font-medium">{fieldName}</span> 
+                      {field.required && <span className="text-red-500 ml-1">*</span>}
+                    </Label>
+                    <Textarea
+                      id={`${index}-${fieldName}`}
+                      value={params[fieldName] || ''}
+                      onChange={(e) => updateLetterParams(index, fieldName, e.target.value)}
+                      className="h-20 resize-none"
+                      placeholder={`Enter ${fieldName} value`}
+                      disabled={isLoading || isSending}
+                    />
+                  </div>
+                );
+              })}
+            </div>
+          </CardContent>
+        </Card>
+      ))}
+      <Button
+        variant="outline"
+        onClick={addLetterParams}
+        className="w-full"
+        disabled={isLoading || isSending}
+      >
+        <Plus className="mr-2 h-4 w-4" />
+        Add Another Letter
+      </Button>
+    </div>
+  ), [letterDetails.lettersParams, templateFields, isLoading, isSending, addLetterParams, removeLetterParams, updateLetterParams]);
+
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Bulk Letter Generation</CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <Alert>
-          <Info className="h-4 w-4" />
-          <AlertDescription>
-            Generate bulk letters using the Letters.gov.sg service. You can create up to 500 letters in a single batch.
-          </AlertDescription>
-        </Alert>
+    <div className="container mx-auto py-6 max-w-4xl">
+      <div className="space-y-6">
+        <div className="flex justify-between items-center">
+          <h1 className="text-2xl font-bold">Letter Mode</h1>
+        </div>
 
         {apiError && (
           <Alert variant="destructive">
@@ -748,45 +954,64 @@ const LetterMode: React.FC = () => {
           </Alert>
         )}
 
-        <div>
-          <Label>API Key</Label>
-          <Input
-            type="password"
-            placeholder="Enter your Letters.gov.sg API key"
-            value={letterDetails.apiKey}
-            onChange={(e) => updateLetterDetail('apiKey', e.target.value)}
-          />
-          <p className="text-xs text-muted-foreground mt-1">
-            Note: For security, consider setting up a backend proxy to avoid exposing your API key in frontend code.
-          </p>
-        </div>
+        <div className="grid gap-4 md:grid-cols-2">
+          <div>
+            <Label>API Key</Label>
+            <div className="flex gap-2">
+              <Input
+                type="password"
+                placeholder="Enter your Letters.gov.sg API Key"
+                value={letterDetails.apiKey}
+                onChange={(e) => {
+                  updateLetterDetail('apiKey', e.target.value);
+                  localStorage.setItem('lettersGovSgApiKey', e.target.value);
+                }}
+                disabled={isLoading || isSending}
+              />
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">
+              Your API key is stored locally in your browser and never sent to our servers.
+            </p>
+          </div>
 
-        <div>
-          <Label>Template ID</Label>
-          <div className="flex gap-2">
-            <Input
-              type="number"
-              min="1"
-              placeholder="Enter Template ID"
-              value={letterDetails.templateId || ''}
-              onChange={(e) => {
-                const value = e.target.value;
-                // Prevent negative numbers and non-numeric input
-                const numValue = parseInt(value);
-                if (!isNaN(numValue) && numValue > 0) {
-                  updateLetterDetail('templateId', numValue);
-                } else if (value === '') {
-                  updateLetterDetail('templateId', null);
-                }
-              }}
-            />
-            <Button 
-              variant="outline" 
-              onClick={() => letterDetails.templateId && fetchTemplateDetails(letterDetails.templateId)}
-              disabled={isLoading || !letterDetails.templateId}
-            >
-              Load Template
-            </Button>
+          <div>
+            <Label>Template ID</Label>
+            <div className="flex gap-2">
+              <Input
+                type="number"
+                min="1"
+                placeholder="Enter Template ID"
+                value={letterDetails.templateId || ''}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  // Prevent negative numbers and non-numeric input
+                  const numValue = parseInt(value);
+                  if (!isNaN(numValue) && numValue > 0) {
+                    updateLetterDetail('templateId', numValue);
+                  } else if (value === '') {
+                    updateLetterDetail('templateId', null);
+                  }
+                }}
+                disabled={isLoading || isSending || isTemplateLoading}
+              />
+              <Button 
+                variant="outline" 
+                onClick={() => letterDetails.templateId && fetchTemplateDetails(letterDetails.templateId)}
+                disabled={isLoading || isSending || isTemplateLoading || !letterDetails.templateId}
+              >
+                {isTemplateLoading ? (
+                  <>
+                    <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-current" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Loading...
+                  </>
+                ) : (
+                  'Load Template'
+                )}
+              </Button>
+            </div>
           </div>
         </div>
 
@@ -797,120 +1022,119 @@ const LetterMode: React.FC = () => {
         )}
 
         {templateFields.length > 0 && (
-          <div className="space-y-4">
-            <div className="flex justify-between items-center">
-              <Label>Letter Parameters ({letterDetails.lettersParams.length})</Label>
-              <Button onClick={addLetterParams} variant="outline" size="sm">
-                <Plus className="mr-2 h-4 w-4" /> Add Letter
-              </Button>
-            </div>
-            
-            <div className="max-h-80 overflow-y-auto">
-              {letterDetails.lettersParams.map((params, index) => (
-                <div key={index} className="border rounded-lg p-4 mb-4">
-                  <div className="flex justify-between mb-2">
-                    <h4 className="font-medium">Letter #{index + 1}</h4>
-                    {letterDetails.lettersParams.length > 1 && (
-                      <Button 
-                        variant="ghost" 
-                        size="sm" 
-                        onClick={() => removeLetterParams(index)}
-                        className="h-6 text-red-500 hover:text-red-700"
-                      >
-                        Remove
-                      </Button>
-                    )}
+          <>
+            {letterParamsForm}
+
+            <div className="space-y-4">
+              <div className="flex items-center space-x-2">
+                <Switch
+                  id="notification"
+                  checked={isNotificationEnabled}
+                  onCheckedChange={setIsNotificationEnabled}
+                  disabled={isLoading || isSending}
+                />
+                <Label htmlFor="notification">Enable Notification</Label>
+              </div>
+
+              {isNotificationEnabled && (
+                <div className="space-y-4 border rounded-lg p-4">
+                  <div>
+                    <Label>Notification Method</Label>
+                    <Select
+                      value={letterDetails.notificationMethod || ''}
+                      onValueChange={(value: 'SMS' | 'EMAIL') => updateLetterDetail('notificationMethod', value)}
+                      disabled={isLoading || isSending}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select notification method" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="SMS">SMS</SelectItem>
+                        <SelectItem value="EMAIL">Email</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    {templateFields.map((field) => (
-                      <div key={field.name}>
-                        <Label className="text-sm">
-                          {field.name} {field.required && <span className="text-red-500">*</span>}
-                        </Label>
-                        <Input
-                          placeholder={`Enter ${field.name}`}
-                          value={params[field.name] || ''}
-                          onChange={(e) => updateLetterParams(index, field.name, e.target.value)}
-                          className="mt-1"
-                        />
+
+                  <div>
+                    <Label>Recipients</Label>
+                    <Textarea
+                      placeholder={
+                        letterDetails.notificationMethod === 'SMS'
+                          ? 'Enter phone numbers (one per line)'
+                          : 'Enter email addresses (one per line)'
+                      }
+                      value={letterDetails.recipients?.join('\n') || ''}
+                      onChange={(e) => {
+                        const recipients = e.target.value.split('\n').filter(Boolean);
+                        updateLetterDetail('recipients', recipients);
+                      }}
+                      className="min-h-[100px]"
+                      disabled={isLoading || isSending}
+                    />
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {letterDetails.notificationMethod === 'SMS'
+                        ? 'Enter one phone number per line in international format (e.g., +6591234567)'
+                        : 'Enter one email address per line'}
+                    </p>
+                    {letterDetails.recipients?.map((recipient, index) => (
+                      <div key={`recipient-${index}`} className="hidden">
+                        {recipient}
                       </div>
                     ))}
                   </div>
                 </div>
-              ))}
+              )}
+
+              <Button 
+                onClick={generateBulkLetters} 
+                className="w-full" 
+                disabled={isLoading || isSending || letterDetails.lettersParams.length === 0}
+              >
+                {isSending ? (
+                  <>
+                    <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Generating Letters...
+                  </>
+                ) : (
+                  <>
+                    <Send className="mr-2 h-4 w-4" />
+                    Generate Letters
+                  </>
+                )}
+              </Button>
             </div>
+          </>
+        )}
+
+        {!templateFields.length && !isTemplateLoading && letterDetails.templateId && (
+          <div className="text-center p-8 border rounded-lg">
+            <Info className="h-12 w-12 mx-auto text-muted-foreground" />
+            <h3 className="mt-2 text-lg font-medium">No Template Loaded</h3>
+            <p className="text-sm text-muted-foreground mt-1">
+              Enter a valid template ID and click "Load Template" to get started.
+            </p>
           </div>
         )}
 
-        <div className="space-y-4">
-          <div className="flex items-center space-x-2">
-            <Switch
-              id="notification-enable"
-              checked={isNotificationEnabled}
-              onCheckedChange={setIsNotificationEnabled}
-            />
-            <Label htmlFor="notification-enable">Enable Batch Completion Notification</Label>
-          </div>
-
-          {isNotificationEnabled && (
-            <div className="space-y-4">
-              <div>
-                <Label>Notification Method</Label>
-                <Select
-                  value={letterDetails.notificationMethod}
-                  onValueChange={(value: 'SMS' | 'EMAIL') => updateLetterDetail('notificationMethod', value)}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select notification method" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="SMS">SMS</SelectItem>
-                    <SelectItem value="EMAIL">Email</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div>
-                <Label>Recipients {letterDetails.notificationMethod === 'SMS' ? '(Phone Numbers)' : '(Email Addresses)'}</Label>
-                <Textarea
-                  placeholder={`Enter ${letterDetails.notificationMethod === 'SMS' ? 'phone numbers' : 'email addresses'}, separated by commas`}
-                  value={letterDetails.recipients?.join(', ') || ''}
-                  onChange={(e) => {
-                    const recipients = e.target.value.split(',').map((s) => s.trim()).filter(Boolean);
-                    updateLetterDetail('recipients', recipients);
-                  }}
-                />
-                <p className="text-sm text-muted-foreground mt-1">
-                  {letterDetails.notificationMethod === 'SMS' 
-                    ? 'Enter Singapore phone numbers starting with 8 or 9, separated by commas' 
-                    : 'Enter email addresses separated by commas'}
-                </p>
-                {letterDetails.recipients && letterDetails.lettersParams.length !== letterDetails.recipients.length && (
-                  <p className="text-sm text-red-500 mt-1">
-                    Number of recipients ({letterDetails.recipients.length}) does not match number of letters ({letterDetails.lettersParams.length})
-                  </p>
-                )}
-              </div>
+        {isTemplateLoading && (
+          <div className="text-center p-8 border rounded-lg">
+            <div className="flex justify-center">
+              <svg className="animate-spin h-12 w-12 text-primary" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
             </div>
-          )}
-        </div>
-
-        <div className="mt-6">
-          <Button 
-            onClick={generateBulkLetters} 
-            className="w-full" 
-            disabled={isLoading}
-          >
-            {isLoading ? 'Processing...' : (
-              <>
-                <Send className="mr-2 h-4 w-4" />
-                Generate Bulk Letters
-              </>
-            )}
-          </Button>
-        </div>
-      </CardContent>
-    </Card>
+            <h3 className="mt-4 text-lg font-medium">Loading Template</h3>
+            <p className="text-sm text-muted-foreground mt-1">
+              Please wait while we fetch the template details...
+            </p>
+          </div>
+        )}
+      </div>
+    </div>
   );
 };
 
