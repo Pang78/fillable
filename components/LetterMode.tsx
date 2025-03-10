@@ -77,6 +77,42 @@ const CSVImportDialog: React.FC<{
   const [showMappedPreview, setShowMappedPreview] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [error, setError] = useState<string | null>(null);
+  const [open, setOpen] = useState(false);
+  const [isImporting, setIsImporting] = useState(false);
+
+  // Reset dialog state when it's closed
+  const resetDialogState = useCallback(() => {
+    setCsvHeaders([]);
+    setFieldMapping({});
+    setPreviewData([]);
+    setMappedPreview([]);
+    setShowMappedPreview(false);
+    setError(null);
+    setIsImporting(false);
+    
+    // Reset file input
+    if (fileInputRef.current) {
+      // Create a new file input to ensure it's completely reset
+      fileInputRef.current.value = '';
+      
+      // This triggers a reset in some browsers that don't properly clear the file input
+      try {
+        const form = fileInputRef.current.form;
+        if (form) form.reset();
+      } catch (e) {
+        console.error('Error resetting form:', e);
+      }
+    }
+  }, []);
+
+  // Handle dialog open state changes
+  const handleOpenChange = useCallback((newOpen: boolean) => {
+    setOpen(newOpen);
+    if (!newOpen) {
+      // Reset state when dialog is closed
+      resetDialogState();
+    }
+  }, [resetDialogState]);
 
   // Initialize field mapping with intelligent guesses
   useEffect(() => {
@@ -111,60 +147,127 @@ const CSVImportDialog: React.FC<{
     }
   }, [templateFields, csvHeaders]);
 
+  // Validate file before processing
+  const validateFile = (file: File): boolean => {
+    // Check file type
+    if (!file.name.endsWith('.csv')) {
+      toast({
+        title: 'Invalid File Type',
+        description: 'Please select a CSV file (.csv extension).',
+        variant: 'destructive',
+      });
+      return false;
+    }
+
+    // Check file size (max 5MB)
+    const maxSize = 5 * 1024 * 1024; // 5MB in bytes
+    if (file.size > maxSize) {
+      toast({
+        title: 'File Too Large',
+        description: 'The CSV file must be smaller than 5MB.',
+        variant: 'destructive',
+      });
+      return false;
+    }
+
+    return true;
+  };
+
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    // Reset error state
+    setError(null);
+    
+    // Get the file from the input
     const file = event.target.files?.[0];
-    if (!file) return;
+    if (!file) {
+      toast({
+        title: 'No File Selected',
+        description: 'Please select a CSV file to import.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    // Validate the file
+    if (!validateFile(file)) {
+      // Reset the file input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+      return;
+    }
 
     // Reset states when a new file is uploaded
     setShowMappedPreview(false);
     setMappedPreview([]);
+    setCsvHeaders([]);
+    setFieldMapping({});
 
-    // Read the entire file first to get headers and data
-    Papa.parse<any>(file, {
-      header: true,
-      complete: (results: PapaParseResult) => {
-        if (results.data.length === 0 || !results.meta.fields || results.meta.fields.length === 0) {
-          toast({
-            title: 'Invalid CSV',
-            description: 'The CSV file is empty or has no valid headers.',
-            variant: 'destructive',
-          });
-          return;
-        }
+    try {
+      // Create a copy of the file to avoid issues with the file object being accessed after it's been used
+      const fileBlob = new Blob([file], { type: file.type });
+      const fileCopy = new File([fileBlob], file.name, { type: file.type });
 
-        // Filter out empty or invalid headers
-        const headers = results.meta.fields
-          .filter(header => header && typeof header === 'string' && header.trim() !== '')
-          .map(header => header.trim());
-        
-        if (headers.length === 0) {
+      // Read the entire file first to get headers and data
+      Papa.parse<any>(fileCopy, {
+        header: true,
+        skipEmptyLines: true, // Skip empty lines to avoid parsing issues
+        complete: (results: PapaParseResult) => {
+          if (results.data.length === 0 || !results.meta.fields || results.meta.fields.length === 0) {
+            toast({
+              title: 'Invalid CSV',
+              description: 'The CSV file is empty or has no valid headers.',
+              variant: 'destructive',
+            });
+            return;
+          }
+
+          // Filter out empty or invalid headers
+          const headers = results.meta.fields
+            .filter(header => header && typeof header === 'string' && header.trim() !== '')
+            .map(header => header.trim());
+          
+          if (headers.length === 0) {
+            toast({
+              title: 'Invalid CSV Headers',
+              description: 'The CSV file contains only empty or invalid headers.',
+              variant: 'destructive',
+            });
+            return;
+          }
+          
+          // Check for duplicate headers after trimming
+          const uniqueHeaders = new Set(headers);
+          if (uniqueHeaders.size !== headers.length) {
+            toast({
+              title: 'Duplicate CSV Headers',
+              description: 'The CSV file contains duplicate headers after trimming whitespace.',
+              variant: 'destructive',
+            });
+            return;
+          }
+          
+          setCsvHeaders(headers);
+          setPreviewData(results.data.slice(0, 5)); // Store first 5 rows for preview
+        },
+        error: (error: Error) => {
+          console.error('Error parsing CSV:', error);
+          setError('Failed to parse CSV file. Please check the file format.');
           toast({
-            title: 'Invalid CSV Headers',
-            description: 'The CSV file contains only empty or invalid headers.',
+            title: 'CSV Parse Error',
+            description: error.message || 'Failed to parse CSV file. Please check the file format.',
             variant: 'destructive',
           });
-          return;
         }
-        
-        // Check for duplicate headers after trimming
-        const uniqueHeaders = new Set(headers);
-        if (uniqueHeaders.size !== headers.length) {
-          toast({
-            title: 'Duplicate CSV Headers',
-            description: 'The CSV file contains duplicate headers after trimming whitespace.',
-            variant: 'destructive',
-          });
-          return;
-        }
-        
-        setCsvHeaders(headers);
-        setPreviewData(results.data.slice(0, 5)); // Store first 5 rows for preview
-      },
-      error: (error: Error) => {
-        console.error('Error parsing CSV:', error);
-        setError('Failed to parse CSV file. Please check the file format.');
-      }
-    });
+      });
+    } catch (error) {
+      console.error('Error handling file:', error);
+      toast({
+        title: 'File Error',
+        description: 'There was an error processing the file. Please try again with a different file.',
+        variant: 'destructive',
+      });
+    }
   };
 
   const previewMappedData = () => {
@@ -217,51 +320,158 @@ const CSVImportDialog: React.FC<{
       return;
     }
 
-    // Process all rows in the CSV
-    Papa.parse<any>(fileInputRef.current?.files?.[0] as File, {
-      header: true,
-      complete: (results: PapaParseResult) => {
-        // Map each row to the template fields
-        const mappedData = results.data.map((row: any) => {
-          const mappedRow: LetterParams = {};
-          
-          // For each template field that has a mapping
-          mappedFields.forEach(fieldName => {
-            if (!fieldName) return;
-            const csvHeader = fieldMapping[fieldName];
-            if (csvHeader && csvHeader !== '__placeholder__') {
-              mappedRow[fieldName] = row[csvHeader] || '';
-            }
+    // Check if file is still available
+    const file = fileInputRef.current?.files?.[0];
+    if (!file) {
+      toast({
+        title: 'File Not Found',
+        description: 'The CSV file is no longer available. Please select the file again.',
+        variant: 'destructive',
+      });
+      setIsImporting(false);
+      return;
+    }
+
+    // Set loading state
+    setIsImporting(true);
+
+    try {
+      // Create a copy of the file to avoid issues with the file object being accessed after it's been used
+      const fileBlob = new Blob([file], { type: file.type });
+      const fileCopy = new File([fileBlob], file.name, { type: file.type });
+
+      // Fallback approach: If we already have the preview data and headers, use that instead of parsing the file again
+      if (previewData.length > 0 && csvHeaders.length > 0) {
+        try {
+          // Use the existing data from the first parse
+          const mappedData = previewData.map((row: any) => {
+            const mappedRow: LetterParams = {};
+            
+            // For each template field that has a mapping
+            mappedFields.forEach(fieldName => {
+              if (!fieldName) return;
+              const csvHeader = fieldMapping[fieldName];
+              if (csvHeader && csvHeader !== '__placeholder__') {
+                mappedRow[fieldName] = row[csvHeader] || '';
+              }
+            });
+            
+            return mappedRow;
           });
+
+          // Filter out empty rows (all values are empty)
+          const nonEmptyRows = mappedData.filter(row => 
+            Object.values(row).some(value => value.trim() !== '')
+          );
+
+          if (nonEmptyRows.length === 0) {
+            setIsImporting(false);
+            toast({
+              title: 'No Valid Data',
+              description: 'No valid data found after mapping. Please check your CSV file.',
+              variant: 'destructive',
+            });
+            return;
+          }
+
+          setImportedData(nonEmptyRows);
+          onImport(nonEmptyRows);
           
-          return mappedRow;
-        });
-
-        // Filter out empty rows (all values are empty)
-        const nonEmptyRows = mappedData.filter(row => 
-          Object.values(row).some(value => value.trim() !== '')
-        );
-
-        if (nonEmptyRows.length === 0) {
+          // Reset loading state
+          setIsImporting(false);
+          
+          // Close the dialog after successful import
+          setOpen(false);
+          
           toast({
-            title: 'No Valid Data',
-            description: 'No valid data found after mapping. Please check your CSV file.',
-            variant: 'destructive',
+            description: `Successfully imported ${nonEmptyRows.length} records`,
           });
           return;
+        } catch (error) {
+          console.error('Error using preview data:', error);
+          // Continue with the normal file parsing approach
         }
-
-        setImportedData(nonEmptyRows);
-        onImport(nonEmptyRows);
-        toast({
-          description: `Successfully imported ${nonEmptyRows.length} records`,
-        });
-      },
-      error: (error: Error) => {
-        console.error('Error parsing CSV:', error);
-        setError('Failed to parse CSV file. Please check the file format.');
       }
-    });
+
+      // Process all rows in the CSV
+      Papa.parse<any>(fileCopy, {
+        header: true,
+        skipEmptyLines: true, // Skip empty lines to avoid parsing issues
+        complete: (results: PapaParseResult) => {
+          try {
+            // Map each row to the template fields
+            const mappedData = results.data.map((row: any) => {
+              const mappedRow: LetterParams = {};
+              
+              // For each template field that has a mapping
+              mappedFields.forEach(fieldName => {
+                if (!fieldName) return;
+                const csvHeader = fieldMapping[fieldName];
+                if (csvHeader && csvHeader !== '__placeholder__') {
+                  mappedRow[fieldName] = row[csvHeader] || '';
+                }
+              });
+              
+              return mappedRow;
+            });
+
+            // Filter out empty rows (all values are empty)
+            const nonEmptyRows = mappedData.filter(row => 
+              Object.values(row).some(value => value.trim() !== '')
+            );
+
+            if (nonEmptyRows.length === 0) {
+              setIsImporting(false);
+              toast({
+                title: 'No Valid Data',
+                description: 'No valid data found after mapping. Please check your CSV file.',
+                variant: 'destructive',
+              });
+              return;
+            }
+
+            setImportedData(nonEmptyRows);
+            onImport(nonEmptyRows);
+            
+            // Reset loading state
+            setIsImporting(false);
+            
+            // Close the dialog after successful import
+            setOpen(false);
+            
+            toast({
+              description: `Successfully imported ${nonEmptyRows.length} records`,
+            });
+          } catch (error) {
+            console.error('Error processing mapped data:', error);
+            setIsImporting(false);
+            toast({
+              title: 'Processing Error',
+              description: 'An error occurred while processing the CSV data. Please try again.',
+              variant: 'destructive',
+            });
+          }
+        },
+        error: (error: Error) => {
+          console.error('Error parsing CSV:', error);
+          setError('Failed to parse CSV file. Please check the file format.');
+          setIsImporting(false);
+          toast({
+            title: 'CSV Parse Error',
+            description: error.message || 'Failed to parse CSV file. Please check the file format.',
+            variant: 'destructive',
+          });
+        }
+      });
+    } catch (error) {
+      console.error('Error handling file:', error);
+      setIsImporting(false);
+      toast({
+        title: 'File Error',
+        description: 'There was an error processing the file. Please try again with a different file.',
+        variant: 'destructive',
+      });
+    }
   };
 
   const updateFieldMapping = (templateField: string, csvHeader: string) => {
@@ -321,9 +531,9 @@ const CSVImportDialog: React.FC<{
   };
 
   return (
-    <Dialog>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
-        <Button variant="outline">
+        <Button variant="outline" onClick={() => setOpen(true)}>
           <FileSpreadsheet className="mr-2 h-4 w-4" />
           Import CSV
         </Button>
@@ -341,6 +551,10 @@ const CSVImportDialog: React.FC<{
               accept=".csv"
               ref={fileInputRef}
               onChange={handleFileUpload}
+              onClick={(e) => {
+                // Reset the file input value when clicked to ensure the onChange event fires even if the same file is selected again
+                (e.target as HTMLInputElement).value = '';
+              }}
               className="hidden"
             />
             <Button onClick={() => fileInputRef.current?.click()}>
@@ -417,8 +631,30 @@ const CSVImportDialog: React.FC<{
               </Table>
               
               <div className="mt-4 flex justify-end gap-2">
-                <Button variant="outline" onClick={previewMappedData}>Preview Mapping</Button>
-                <Button onClick={processImport}>Import Data</Button>
+                <Button 
+                  variant="outline" 
+                  onClick={previewMappedData}
+                  disabled={isImporting}
+                >
+                  Preview Mapping
+                </Button>
+                <Button 
+                  onClick={processImport}
+                  className="bg-green-600 hover:bg-green-700"
+                  disabled={isImporting}
+                >
+                  {isImporting ? (
+                    <>
+                      <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      Importing...
+                    </>
+                  ) : (
+                    'Import Data & Close'
+                  )}
+                </Button>
               </div>
             </div>
           )}
@@ -720,12 +956,13 @@ const LetterMode: React.FC = () => {
   }, [templateFields]);
 
   const validatePayload = useCallback(() => {
-    const { apiKey, templateId, lettersParams } = letterDetails;
-
+    const { apiKey, templateId, lettersParams, notificationMethod, recipients } = letterDetails;
+    
+    // Check for required fields
     if (!apiKey) {
       toast({
-        title: 'API Key Required',
-        description: 'Please enter your Letters.gov.sg API key',
+        title: 'Missing API Key',
+        description: 'Please enter your API key',
         variant: 'destructive',
       });
       return false;
@@ -733,8 +970,8 @@ const LetterMode: React.FC = () => {
 
     if (!templateId) {
       toast({
-        title: 'Template Required',
-        description: 'Please select a template',
+        title: 'Missing Template ID',
+        description: 'Please enter a template ID',
         variant: 'destructive',
       });
       return false;
@@ -743,58 +980,49 @@ const LetterMode: React.FC = () => {
     if (lettersParams.length === 0) {
       toast({
         title: 'No Letter Parameters',
-        description: 'Please add at least one letter parameter',
+        description: 'Please add at least one set of letter parameters',
         variant: 'destructive',
       });
       return false;
     }
-    
-    if (lettersParams.length > 500) {
+
+    // Check if notification is enabled but method is not selected
+    if (isNotificationEnabled && !notificationMethod) {
       toast({
-        title: 'Too Many Letters',
-        description: 'The API supports a maximum of 500 letters per batch',
+        title: 'Notification Method Required',
+        description: 'Please select a notification method (SMS or EMAIL)',
         variant: 'destructive',
       });
       return false;
     }
 
-    const missingFields = templateFields
-      .filter((field) => field.required)
-      .some((field) =>
-        lettersParams.some((params) => !params[field.name] || params[field.name].trim() === '')
-      );
-
-    if (missingFields) {
+    // Check if notification is enabled but recipients are missing
+    if (isNotificationEnabled && (!recipients || recipients.length === 0)) {
       toast({
-        title: 'Missing Required Fields',
-        description: 'Please fill in all required template fields',
+        title: 'Recipients Required',
+        description: `Please enter ${notificationMethod === 'SMS' ? 'phone numbers' : 'email addresses'} for notifications`,
         variant: 'destructive',
       });
       return false;
     }
 
-    if (isNotificationEnabled) {
-      const notificationMethod = letterDetails.notificationMethod;
-      const recipients = letterDetails.recipients;
-
-      if (!notificationMethod) {
-        toast({
-          title: 'Notification Method Required',
-          description: 'Please select a notification method (SMS or Email)',
-          variant: 'destructive',
-        });
-        return false;
+    // Validate required fields in letter parameters
+    for (const params of lettersParams) {
+      for (const field of templateFields) {
+        if (field.required && (!params[field.name] || params[field.name].trim() === '')) {
+          toast({
+            title: 'Missing Required Field',
+            description: `The field "${field.name}" is required but missing or empty in one or more letters`,
+            variant: 'destructive',
+          });
+          return false;
+        }
       }
+    }
 
-      if (!recipients || recipients.length === 0) {
-        toast({
-          title: 'Recipients Required',
-          description: 'Please add at least one recipient for notifications',
-          variant: 'destructive',
-        });
-        return false;
-      }
-
+    // Additional validation for notification settings
+    if (isNotificationEnabled && notificationMethod && recipients && recipients.length > 0) {
+      // Check if number of recipients matches number of letters
       if (recipients.length !== lettersParams.length) {
         toast({
           title: 'Recipient Count Mismatch',
@@ -806,11 +1034,16 @@ const LetterMode: React.FC = () => {
 
       // Validate phone numbers if using SMS
       if (notificationMethod === 'SMS') {
-        const invalidPhones = recipients.filter(phone => !phone.match(/^[89]\d{7}$/));
+        // Update phone validation to support international format
+        const invalidPhones = recipients.filter(phone => {
+          // Support both local SG format (8/9XXXXXXX) and international format (+XX...)
+          return !phone.match(/^[89]\d{7}$/) && !phone.match(/^\+\d{6,15}$/);
+        });
+        
         if (invalidPhones.length > 0) {
           toast({
             title: 'Invalid Phone Numbers',
-            description: 'Phone numbers should be local SG handphone numbers starting with 8 or 9',
+            description: 'Phone numbers should be in local SG format (8/9XXXXXXX) or international format (+XXXXXXXXX)',
             variant: 'destructive',
           });
           return false;
@@ -1314,13 +1547,16 @@ const LetterMode: React.FC = () => {
                   {isNotificationEnabled && (
                     <div className="space-y-4 border rounded-lg p-4">
                       <div>
-                        <Label>Notification Method</Label>
+                        <Label htmlFor="notification-method" className="flex items-center">
+                          <span className="font-medium">Notification Method</span>
+                          <span className="text-red-500 ml-1">*</span>
+                        </Label>
                         <Select
                           value={letterDetails.notificationMethod || ''}
                           onValueChange={(value: 'SMS' | 'EMAIL') => updateLetterDetail('notificationMethod', value)}
                           disabled={isLoading || isSending}
                         >
-                          <SelectTrigger>
+                          <SelectTrigger id="notification-method">
                             <SelectValue placeholder="Select notification method" />
                           </SelectTrigger>
                           <SelectContent>
@@ -1328,11 +1564,18 @@ const LetterMode: React.FC = () => {
                             <SelectItem value="EMAIL">Email</SelectItem>
                           </SelectContent>
                         </Select>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Required: Choose how recipients will be notified
+                        </p>
                       </div>
 
                       <div>
-                        <Label>Recipients</Label>
+                        <Label htmlFor="recipients" className="flex items-center">
+                          <span className="font-medium">Recipients</span>
+                          <span className="text-red-500 ml-1">*</span>
+                        </Label>
                         <Textarea
+                          id="recipients"
                           placeholder={
                             letterDetails.notificationMethod === 'SMS'
                               ? 'Enter phone numbers (one per line)'
@@ -1343,20 +1586,41 @@ const LetterMode: React.FC = () => {
                             const recipients = e.target.value.split('\n').filter(Boolean);
                             updateLetterDetail('recipients', recipients);
                           }}
-                          className="min-h-[100px]"
+                          className={`min-h-[100px] ${isNotificationEnabled && (!letterDetails.recipients || letterDetails.recipients.length === 0) ? 'border-red-500' : ''}`}
                           disabled={isLoading || isSending}
                         />
-                        <p className="text-xs text-muted-foreground mt-1">
-                          {letterDetails.notificationMethod === 'SMS'
-                            ? 'Enter one phone number per line in international format (e.g., +6591234567)'
-                            : 'Enter one email address per line'}
-                        </p>
-                        {letterDetails.recipients?.map((recipient, index) => (
-                          <div key={`recipient-${index}`} className="hidden">
-                            {recipient}
+                        <div className="flex justify-between items-start mt-1">
+                          <p className="text-xs text-muted-foreground">
+                            {letterDetails.notificationMethod === 'SMS'
+                              ? 'Enter one phone number per line in international format (e.g., +6591234567) or local format (e.g., 91234567)'
+                              : 'Enter one email address per line'}
+                          </p>
+                          <div className="text-xs text-muted-foreground">
+                            {letterDetails.recipients?.length || 0} recipient(s)
+                            {letterDetails.lettersParams.length > 0 && 
+                              ` / ${letterDetails.lettersParams.length} letter(s)`}
+                            {letterDetails.recipients && letterDetails.recipients.length > 0 && 
+                             letterDetails.lettersParams.length > 0 && 
+                             letterDetails.recipients.length !== letterDetails.lettersParams.length && 
+                             <span className="text-red-500 ml-1">
+                               (Mismatch! Must be equal)
+                             </span>
+                            }
                           </div>
-                        ))}
+                        </div>
+                        {isNotificationEnabled && (!letterDetails.recipients || letterDetails.recipients.length === 0) && (
+                          <p className="text-xs text-red-500 mt-1">
+                            Required: You must enter at least one recipient
+                          </p>
+                        )}
                       </div>
+                      
+                      <Alert className="bg-blue-50 text-blue-800 border-blue-200">
+                        <Info className="h-4 w-4" />
+                        <AlertDescription>
+                          <span className="font-medium">Important:</span> The number of recipients must match the number of letters. Each recipient will receive a notification for their corresponding letter.
+                        </AlertDescription>
+                      </Alert>
                     </div>
                   )}
 
@@ -1376,11 +1640,20 @@ const LetterMode: React.FC = () => {
                     ) : (
                       <>
                         <Send className="mr-2 h-4 w-4" />
-                        Generate Letters
+                        Generate {letterDetails.lettersParams.length} Letter{letterDetails.lettersParams.length !== 1 ? 's' : ''}
+                        {isNotificationEnabled && letterDetails.notificationMethod && 
+                          ` with ${letterDetails.notificationMethod === 'SMS' ? 'SMS' : 'Email'} Notifications`}
                       </>
                     )}
                   </Button>
                 </div>
+
+                <p className="text-xs text-center text-muted-foreground mt-2">
+                  {isNotificationEnabled 
+                    ? `This will generate ${letterDetails.lettersParams.length} letter(s) and send ${letterDetails.notificationMethod || 'notifications'} to recipients.`
+                    : `This will generate ${letterDetails.lettersParams.length} letter(s) without notifications.`
+                  }
+                </p>
               </>
             )}
 
