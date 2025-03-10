@@ -314,7 +314,7 @@ const FormPrefillGuide = () => {
     if (savedUrls.length === 0) {
       toast({
         description: "No URLs to export",
-        variant: "warning",
+        variant: "destructive",
       });
       return;
     }
@@ -376,7 +376,7 @@ const FormPrefillGuide = () => {
     } else {
       toast({
         description: "At least one field is required",
-        variant: "warning",
+        variant: "destructive",
       });
     }
   };
@@ -416,23 +416,31 @@ const FormPrefillGuide = () => {
       return;
     }
 
-    const finalUrl = constructUrl(formUrl, fields);
-    if (!finalUrl) {
+    try {
+      const finalUrl = constructUrl(formUrl, fields);
+      if (!finalUrl) {
+        toast({
+          title: "Error",
+          description: "Please add at least one field with ID and value",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      setGeneratedUrl(finalUrl);
+      navigator.clipboard.writeText(finalUrl);
+      toast({
+        description: "Link successfully generated",
+      });
+      addToHistory({ formUrl, fields });
+    } catch (error) {
+      console.error("URL generation error:", error);
       toast({
         title: "Error",
-        description: "Please add at least one field with ID and value",
+        description: "Failed to generate URL. Please check your inputs and try again.",
         variant: "destructive",
       });
-      return;
     }
-
-    setGeneratedUrl(finalUrl);
-    navigator.clipboard.writeText(finalUrl);
-    toast({
-      title: "Success",
-      description: "URL generated and copied to clipboard",
-    });
-    addToHistory({ formUrl, fields });
   };
 
   const deconstructUrl = (url: string) => {
@@ -672,6 +680,190 @@ const FormPrefillGuide = () => {
                     Clear All
                   </Button>
                 </div>
+
+                {generatedUrl && (
+                  <div className="mt-4 p-4 bg-muted rounded-lg">
+                    <div className="flex items-center justify-between">
+                      <span className="truncate">{generatedUrl}</span>
+                      <Button
+                        size="icon"
+                        variant="outline"
+                        onClick={() => {
+                          navigator.clipboard.writeText(generatedUrl);
+                          toast({
+                            description: "URL copied to clipboard",
+                          });
+                        }}
+                        aria-label="Copy generated URL"
+                      >
+                        <Copy className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                )}
+
+                {/* URL Exporter - Now only visible in Construct Mode */}
+                <div className="mt-8 space-y-4 pt-6 border-t">
+                  <div className="flex justify-between items-center">
+                    <h3 className="text-lg font-semibold">URL Exporter</h3>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="outline"
+                        onClick={() => exportUrls('csv')}
+                        disabled={savedUrls.length === 0}
+                        title="Export all saved URLs as a CSV file"
+                      >
+                        <Download className="h-4 w-4 mr-2" />
+                        Export CSV
+                      </Button>
+                      {savedUrls.length > 0 && (
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button 
+                              variant="outline" 
+                              size="sm"
+                              title="Clear all saved URLs"
+                            >
+                              <Trash2 className="h-4 w-4 mr-2" />
+                              Clear All
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Clear all saved URLs?</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                This action cannot be undone. All your saved URLs will be permanently deleted.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancel</AlertDialogCancel>
+                              <AlertDialogAction onClick={clearAllUrls}>
+                                Clear All
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      )}
+                    </div>
+                  </div>
+
+                  <Alert className="bg-muted/50">
+                    <Info className="h-4 w-4" />
+                    <AlertDescription>
+                      The URL Exporter allows you to save, manage, and export your generated prefill URLs. 
+                      Generate a URL above, then save it with a name for easy reference later.
+                    </AlertDescription>
+                  </Alert>
+
+                  {generatedUrl && (
+                    <div className="space-y-4">
+                      <div className="flex gap-2">
+                        <Input
+                          placeholder="Give this URL a name (optional)"
+                          value={urlName}
+                          onChange={(e) => setUrlName(e.target.value)}
+                          aria-label="URL name"
+                          title="Enter a descriptive name for this URL to easily identify it later"
+                        />
+                        <Button 
+                          onClick={() => {
+                            saveGeneratedUrl();
+                            toast({
+                              description: "Link successfully generated and saved",
+                            });
+                          }}
+                          title="Save this URL to your list"
+                        >
+                          Save URL
+                        </Button>
+                      </div>
+                      <div className="p-4 bg-primary/10 rounded-lg border border-primary/20">
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm font-medium text-primary">Preview:</span>
+                        </div>
+                        <div className="mt-2 truncate text-sm">{generatedUrl}</div>
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="space-y-4">
+                    <div className="flex justify-between items-center">
+                      <h3 className="text-lg font-semibold">Saved URLs</h3>
+                    </div>
+
+                    {savedUrls.length === 0 ? (
+                      <Alert>
+                        <Info className="h-4 w-4" />
+                        <AlertDescription>
+                          No URLs saved yet. Generate a URL above and click "Save URL" to add it to your collection.
+                        </AlertDescription>
+                      </Alert>
+                    ) : (
+                      <div className="space-y-2">
+                        {savedUrls.map((savedUrl, index) => (
+                          <div
+                            key={index}
+                            className="p-4 bg-muted rounded-lg flex justify-between items-center group"
+                          >
+                            <div className="space-y-1 flex-1 mr-4">
+                              <div className="font-medium">{savedUrl.name}</div>
+                              <div 
+                                className="text-sm text-muted-foreground truncate max-w-full"
+                                title={savedUrl.url}
+                              >
+                                {savedUrl.url.length > 50 
+                                  ? `${savedUrl.url.slice(0, 25)}...${savedUrl.url.slice(-25)}` 
+                                  : savedUrl.url}
+                              </div>
+                              <div className="text-xs text-muted-foreground">
+                                Created: {new Date(savedUrl.createdAt).toLocaleString()}
+                              </div>
+                            </div>
+                            <div className="flex gap-2">
+                              <Button
+                                size="icon"
+                                variant="outline"
+                                onClick={() => {
+                                  navigator.clipboard.writeText(savedUrl.url);
+                                  toast({
+                                    description: "URL copied to clipboard",
+                                  });
+                                }}
+                              >
+                                <Copy className="h-4 w-4" />
+                              </Button>
+                              <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                  <Button
+                                    size="icon"
+                                    variant="outline"
+                                    className="text-destructive hover:text-destructive"
+                                  >
+                                    <X className="h-4 w-4" />
+                                  </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                  <AlertDialogHeader>
+                                    <AlertDialogTitle>Delete this saved URL?</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                      This action cannot be undone. The URL will be permanently deleted.
+                                    </AlertDialogDescription>
+                                  </AlertDialogHeader>
+                                  <AlertDialogFooter>
+                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                    <AlertDialogAction onClick={() => deleteSavedUrl(index)}>
+                                      Delete
+                                    </AlertDialogAction>
+                                  </AlertDialogFooter>
+                                </AlertDialogContent>
+                              </AlertDialog>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
               </TabsContent>
 
               <TabsContent value="deconstruct" className="space-y-4">
@@ -692,179 +884,6 @@ const FormPrefillGuide = () => {
               <LetterMode />
               </TabsContent> 
             </Tabs>
-
-            {generatedUrl && (
-              <div className="mt-4 p-4 bg-muted rounded-lg">
-                <div className="flex items-center justify-between">
-                  <span className="truncate">{generatedUrl}</span>
-                  <Button
-                    size="icon"
-                    variant="outline"
-                    onClick={() => {
-                      navigator.clipboard.writeText(generatedUrl);
-                      toast({
-                        title: "Success",
-                        description: "URL copied to clipboard",
-                      });
-                    }}
-                    aria-label="Copy generated URL"
-                  >
-                    <Copy className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex justify-between items-center">
-              <span>URL Exporter</span>
-              {savedUrls.length > 0 && (
-                <AlertDialog>
-                  <AlertDialogTrigger asChild>
-                    <Button variant="outline" size="sm">
-                      <Trash2 className="h-4 w-4 mr-2" />
-                      Clear All
-                    </Button>
-                  </AlertDialogTrigger>
-                  <AlertDialogContent>
-                    <AlertDialogHeader>
-                      <AlertDialogTitle>Clear all saved URLs?</AlertDialogTitle>
-                      <AlertDialogDescription>
-                        This action cannot be undone. All your saved URLs will be permanently deleted.
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel>Cancel</AlertDialogCancel>
-                      <AlertDialogAction onClick={clearAllUrls}>
-                        Clear All
-                      </AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
-              )}
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {generatedUrl && (
-              <div className="space-y-4">
-                <div className="flex gap-2">
-                  <Input
-                    placeholder="Give this URL a name (optional)"
-                    value={urlName}
-                    onChange={(e) => setUrlName(e.target.value)}
-                  />
-                  <Button onClick={saveGeneratedUrl}>Save URL</Button>
-                </div>
-                <div className="p-4 bg-muted rounded-lg">
-                  <div className="flex items-center justify-between">
-                    <span className="truncate">{generatedUrl}</span>
-                    <Button
-                      size="icon"
-                      variant="outline"
-                      onClick={() => {
-                        navigator.clipboard.writeText(generatedUrl);
-                        toast({
-                          description: "URL copied to clipboard",
-                        });
-                      }}
-                    >
-                      <Copy className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            <div className="space-y-4">
-              <div className="flex justify-between items-center">
-                <h3 className="text-lg font-semibold">Saved URLs</h3>
-                <div className="flex gap-2">
-                  <Button
-                    variant="outline"
-                    onClick={() => exportUrls('csv')}
-                    disabled={savedUrls.length === 0}
-                  >
-                    <Download className="h-4 w-4 mr-2" />
-                    Export CSV
-                  </Button>
-                </div>
-              </div>
-
-              {savedUrls.length === 0 ? (
-                <Alert>
-                  <Info className="h-4 w-4" />
-                  <AlertDescription>
-                    No URLs saved yet. Generate and save a URL to see it here.
-                  </AlertDescription>
-                </Alert>
-              ) : (
-                <div className="space-y-2">
-                  {savedUrls.map((savedUrl, index) => (
-                    <div
-                    key={index}
-                    className="p-4 bg-muted rounded-lg flex justify-between items-center group"
-                  >
-                    <div className="space-y-1 flex-1 mr-4">
-                      <div className="font-medium">{savedUrl.name}</div>
-                      <div 
-                        className="text-sm text-muted-foreground truncate max-w-full"
-                        title={savedUrl.url}
-                      >
-                        {savedUrl.url.length > 50 
-                          ? `${savedUrl.url.slice(0, 25)}...${savedUrl.url.slice(-25)}` 
-                          : savedUrl.url}
-                      </div>
-                      <div className="text-xs text-muted-foreground">
-                        Created: {new Date(savedUrl.createdAt).toLocaleString()}
-                      </div>
-                    </div>
-                    <div className="flex gap-2">
-                      <Button
-                        size="icon"
-                        variant="outline"
-                        onClick={() => {
-                          navigator.clipboard.writeText(savedUrl.url);
-                          toast({
-                            description: "URL copied to clipboard",
-                          });
-                        }}
-                      >
-                        <Copy className="h-4 w-4" />
-                      </Button>
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <Button
-                            size="icon"
-                            variant="outline"
-                            className="text-destructive hover:text-destructive"
-                          >
-                            <X className="h-4 w-4" />
-                          </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>Delete this saved URL?</AlertDialogTitle>
-                            <AlertDialogDescription>
-                              This action cannot be undone. The URL will be permanently deleted.
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>Cancel</AlertDialogCancel>
-                            <AlertDialogAction onClick={() => deleteSavedUrl(index)}>
-                              Delete
-                            </AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
-                    </div>
-                  </div>
-                  ))}
-                </div>
-              )}
-            </div>
           </CardContent>
         </Card>
       </div>
