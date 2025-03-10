@@ -12,7 +12,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { toast } from '@/components/ui/use-toast';
-import { Info, Send, Plus, FileSpreadsheet, Upload, Download } from 'lucide-react';
+import { Info, Send, Plus, FileSpreadsheet, Upload, Download, XCircle, CheckCircle, AlertCircle, Loader2 } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
@@ -65,6 +65,53 @@ interface PapaParseError {
   row?: number;
 }
 
+// Add utility functions for robust file handling
+const createFileCopy = (file: File): File => {
+  try {
+    const fileBlob = new Blob([file], { type: file.type });
+    return new File([fileBlob], file.name, { type: file.type });
+  } catch (error) {
+    console.error('Error creating file copy:', error);
+    return file; // Return original file as fallback
+  }
+};
+
+const readFileAsText = (file: File): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    try {
+      const reader = new FileReader();
+      reader.onload = (e) => resolve(e.target?.result as string);
+      reader.onerror = (e) => reject(e);
+      reader.readAsText(file);
+    } catch (error) {
+      reject(error);
+    }
+  });
+};
+
+const parseCSVText = (csvText: string, options: any): Promise<PapaParseResult> => {
+  return new Promise((resolve, reject) => {
+    try {
+      Papa.parse(csvText, {
+        ...options,
+        complete: resolve,
+        error: reject,
+      });
+    } catch (error) {
+      reject(error);
+    }
+  });
+};
+
+// Add utility function to format file size
+const formatFileSize = (bytes: number): string => {
+  if (bytes === 0) return '0 Bytes';
+  const k = 1024;
+  const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+};
+
 const CSVImportDialog: React.FC<{
   templateFields: TemplateField[];
   onImport: (params: LetterParams[]) => void;
@@ -79,6 +126,10 @@ const CSVImportDialog: React.FC<{
   const [error, setError] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
+  const [importProgress, setImportProgress] = useState(0);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [csvText, setCsvText] = useState<string | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
 
   // Reset dialog state when it's closed
   const resetDialogState = useCallback(() => {
@@ -89,6 +140,9 @@ const CSVImportDialog: React.FC<{
     setShowMappedPreview(false);
     setError(null);
     setIsImporting(false);
+    setImportProgress(0);
+    setSelectedFile(null);
+    setCsvText(null);
     
     // Reset file input
     if (fileInputRef.current) {
@@ -149,8 +203,13 @@ const CSVImportDialog: React.FC<{
 
   // Validate file before processing
   const validateFile = (file: File): boolean => {
+    // Reset state
+    setError(null);
+    setSelectedFile(null);
+    setCsvText(null);
+    
     // Check file type
-    if (!file.name.endsWith('.csv')) {
+    if (!file.name.toLowerCase().endsWith('.csv')) {
       toast({
         title: 'Invalid File Type',
         description: 'Please select a CSV file (.csv extension).',
@@ -170,10 +229,13 @@ const CSVImportDialog: React.FC<{
       return false;
     }
 
+    // Store the selected file
+    setSelectedFile(file);
     return true;
   };
 
-  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+  // Handle file upload with improved error handling
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     // Reset error state
     setError(null);
     
@@ -202,71 +264,108 @@ const CSVImportDialog: React.FC<{
     setMappedPreview([]);
     setCsvHeaders([]);
     setFieldMapping({});
+    setImportProgress(0);
 
     try {
-      // Create a copy of the file to avoid issues with the file object being accessed after it's been used
-      const fileBlob = new Blob([file], { type: file.type });
-      const fileCopy = new File([fileBlob], file.name, { type: file.type });
+      // First try to read the file as text to avoid issues with the File API
+      setImportProgress(10);
+      const text = await readFileAsText(file);
+      setCsvText(text);
+      setImportProgress(30);
 
-      // Read the entire file first to get headers and data
-      Papa.parse<any>(fileCopy, {
+      // Parse the CSV text
+      const results = await parseCSVText(text, {
         header: true,
-        skipEmptyLines: true, // Skip empty lines to avoid parsing issues
-        complete: (results: PapaParseResult) => {
-          if (results.data.length === 0 || !results.meta.fields || results.meta.fields.length === 0) {
-            toast({
-              title: 'Invalid CSV',
-              description: 'The CSV file is empty or has no valid headers.',
-              variant: 'destructive',
-            });
-            return;
-          }
+        skipEmptyLines: true,
+      });
+      setImportProgress(60);
 
-          // Filter out empty or invalid headers
-          const headers = results.meta.fields
-            .filter(header => header && typeof header === 'string' && header.trim() !== '')
-            .map(header => header.trim());
+      if (results.data.length === 0 || !results.meta.fields || results.meta.fields.length === 0) {
+        toast({
+          title: 'Invalid CSV',
+          description: 'The CSV file is empty or has no valid headers.',
+          variant: 'destructive',
+        });
+        setImportProgress(0);
+        return;
+      }
+
+      // Filter out empty or invalid headers
+      const headers = results.meta.fields
+        .filter(header => header && typeof header === 'string' && header.trim() !== '')
+        .map(header => header.trim());
+      
+      if (headers.length === 0) {
+        toast({
+          title: 'Invalid CSV Headers',
+          description: 'The CSV file contains only empty or invalid headers.',
+          variant: 'destructive',
+        });
+        setImportProgress(0);
+        return;
+      }
+      
+      // Check for duplicate headers after trimming
+      const uniqueHeaders = new Set(headers);
+      if (uniqueHeaders.size !== headers.length) {
+        toast({
+          title: 'Duplicate CSV Headers',
+          description: 'The CSV file contains duplicate headers after trimming whitespace.',
+          variant: 'destructive',
+        });
+        setImportProgress(0);
+        return;
+      }
+      
+      setCsvHeaders(headers);
+      setPreviewData(results.data.slice(0, 5)); // Store first 5 rows for preview
+      
+      // Auto-map fields based on name similarity
+      const initialMapping: { [key: string]: string } = {};
+      templateFields.forEach(field => {
+        if (!field.name) return;
+        
+        // Look for exact matches first
+        const exactMatch = headers.find(header => 
+          header.toLowerCase() === field.name.toLowerCase()
+        );
+        
+        if (exactMatch) {
+          initialMapping[field.name] = exactMatch;
+        } else {
+          // Look for partial matches
+          const partialMatch = headers.find(header => 
+            header.toLowerCase().includes(field.name.toLowerCase()) || 
+            field.name.toLowerCase().includes(header.toLowerCase())
+          );
           
-          if (headers.length === 0) {
-            toast({
-              title: 'Invalid CSV Headers',
-              description: 'The CSV file contains only empty or invalid headers.',
-              variant: 'destructive',
-            });
-            return;
+          if (partialMatch) {
+            initialMapping[field.name] = partialMatch;
           }
-          
-          // Check for duplicate headers after trimming
-          const uniqueHeaders = new Set(headers);
-          if (uniqueHeaders.size !== headers.length) {
-            toast({
-              title: 'Duplicate CSV Headers',
-              description: 'The CSV file contains duplicate headers after trimming whitespace.',
-              variant: 'destructive',
-            });
-            return;
-          }
-          
-          setCsvHeaders(headers);
-          setPreviewData(results.data.slice(0, 5)); // Store first 5 rows for preview
-        },
-        error: (error: Error) => {
-          console.error('Error parsing CSV:', error);
-          setError('Failed to parse CSV file. Please check the file format.');
-          toast({
-            title: 'CSV Parse Error',
-            description: error.message || 'Failed to parse CSV file. Please check the file format.',
-            variant: 'destructive',
-          });
         }
       });
+      
+      setFieldMapping(initialMapping);
+      setImportProgress(100);
+      
+      // Reset progress after a delay
+      setTimeout(() => {
+        setImportProgress(0);
+      }, 1000);
+      
     } catch (error) {
       console.error('Error handling file:', error);
+      setImportProgress(0);
       toast({
         title: 'File Error',
         description: 'There was an error processing the file. Please try again with a different file.',
         variant: 'destructive',
       });
+      
+      // Reset the file input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
     }
   };
 
@@ -305,7 +404,8 @@ const CSVImportDialog: React.FC<{
     setShowMappedPreview(true);
   };
 
-  const processImport = () => {
+  // Process import with improved error handling
+  const processImport = async () => {
     // Get all template fields that have a mapping
     const mappedFields = templateFields
       .filter(field => field.name && fieldMapping[field.name] && fieldMapping[field.name] !== '__placeholder__')
@@ -320,155 +420,129 @@ const CSVImportDialog: React.FC<{
       return;
     }
 
-    // Check if file is still available
-    const file = fileInputRef.current?.files?.[0];
-    if (!file) {
-      toast({
-        title: 'File Not Found',
-        description: 'The CSV file is no longer available. Please select the file again.',
-        variant: 'destructive',
-      });
-      setIsImporting(false);
-      return;
-    }
-
     // Set loading state
     setIsImporting(true);
+    setImportProgress(10);
 
     try {
-      // Create a copy of the file to avoid issues with the file object being accessed after it's been used
-      const fileBlob = new Blob([file], { type: file.type });
-      const fileCopy = new File([fileBlob], file.name, { type: file.type });
-
-      // Fallback approach: If we already have the preview data and headers, use that instead of parsing the file again
-      if (previewData.length > 0 && csvHeaders.length > 0) {
-        try {
-          // Use the existing data from the first parse
-          const mappedData = previewData.map((row: any) => {
-            const mappedRow: LetterParams = {};
-            
-            // For each template field that has a mapping
-            mappedFields.forEach(fieldName => {
-              if (!fieldName) return;
-              const csvHeader = fieldMapping[fieldName];
-              if (csvHeader && csvHeader !== '__placeholder__') {
-                mappedRow[fieldName] = row[csvHeader] || '';
-              }
-            });
-            
-            return mappedRow;
+      let mappedData: LetterParams[] = [];
+      
+      // Try to use the stored CSV text first (most reliable approach)
+      if (csvText) {
+        const results = await parseCSVText(csvText, {
+          header: true,
+          skipEmptyLines: true,
+        });
+        setImportProgress(40);
+        
+        // Map each row to the template fields
+        mappedData = results.data.map((row: any) => {
+          const mappedRow: LetterParams = {};
+          
+          // For each template field that has a mapping
+          mappedFields.forEach(fieldName => {
+            if (!fieldName) return;
+            const csvHeader = fieldMapping[fieldName];
+            if (csvHeader && csvHeader !== '__placeholder__') {
+              mappedRow[fieldName] = row[csvHeader] || '';
+            }
           });
-
-          // Filter out empty rows (all values are empty)
-          const nonEmptyRows = mappedData.filter(row => 
-            Object.values(row).some(value => value.trim() !== '')
-          );
-
-          if (nonEmptyRows.length === 0) {
-            setIsImporting(false);
-            toast({
-              title: 'No Valid Data',
-              description: 'No valid data found after mapping. Please check your CSV file.',
-              variant: 'destructive',
-            });
-            return;
-          }
-
-          setImportedData(nonEmptyRows);
-          onImport(nonEmptyRows);
           
-          // Reset loading state
-          setIsImporting(false);
+          return mappedRow;
+        });
+        
+        setImportProgress(70);
+      } 
+      // Fallback to using the preview data if available
+      else if (previewData.length > 0 && csvHeaders.length > 0) {
+        // Use the existing data from the first parse
+        mappedData = previewData.map((row: any) => {
+          const mappedRow: LetterParams = {};
           
-          // Close the dialog after successful import
-          setOpen(false);
-          
-          toast({
-            description: `Successfully imported ${nonEmptyRows.length} records`,
+          // For each template field that has a mapping
+          mappedFields.forEach(fieldName => {
+            if (!fieldName) return;
+            const csvHeader = fieldMapping[fieldName];
+            if (csvHeader && csvHeader !== '__placeholder__') {
+              mappedRow[fieldName] = row[csvHeader] || '';
+            }
           });
-          return;
-        } catch (error) {
-          console.error('Error using preview data:', error);
-          // Continue with the normal file parsing approach
-        }
+          
+          return mappedRow;
+        });
+        
+        setImportProgress(70);
+      }
+      // Last resort: try to parse the file again
+      else if (selectedFile) {
+        const text = await readFileAsText(selectedFile);
+        const results = await parseCSVText(text, {
+          header: true,
+          skipEmptyLines: true,
+        });
+        setImportProgress(40);
+        
+        // Map each row to the template fields
+        mappedData = results.data.map((row: any) => {
+          const mappedRow: LetterParams = {};
+          
+          // For each template field that has a mapping
+          mappedFields.forEach(fieldName => {
+            if (!fieldName) return;
+            const csvHeader = fieldMapping[fieldName];
+            if (csvHeader && csvHeader !== '__placeholder__') {
+              mappedRow[fieldName] = row[csvHeader] || '';
+            }
+          });
+          
+          return mappedRow;
+        });
+        
+        setImportProgress(70);
+      } else {
+        throw new Error('No data available for import');
       }
 
-      // Process all rows in the CSV
-      Papa.parse<any>(fileCopy, {
-        header: true,
-        skipEmptyLines: true, // Skip empty lines to avoid parsing issues
-        complete: (results: PapaParseResult) => {
-          try {
-            // Map each row to the template fields
-            const mappedData = results.data.map((row: any) => {
-              const mappedRow: LetterParams = {};
-              
-              // For each template field that has a mapping
-              mappedFields.forEach(fieldName => {
-                if (!fieldName) return;
-                const csvHeader = fieldMapping[fieldName];
-                if (csvHeader && csvHeader !== '__placeholder__') {
-                  mappedRow[fieldName] = row[csvHeader] || '';
-                }
-              });
-              
-              return mappedRow;
-            });
+      // Filter out empty rows (all values are empty)
+      const nonEmptyRows = mappedData.filter(row => 
+        Object.values(row).some(value => value.trim() !== '')
+      );
 
-            // Filter out empty rows (all values are empty)
-            const nonEmptyRows = mappedData.filter(row => 
-              Object.values(row).some(value => value.trim() !== '')
-            );
+      if (nonEmptyRows.length === 0) {
+        setIsImporting(false);
+        setImportProgress(0);
+        toast({
+          title: 'No Valid Data',
+          description: 'No valid data found after mapping. Please check your CSV file.',
+          variant: 'destructive',
+        });
+        return;
+      }
 
-            if (nonEmptyRows.length === 0) {
-              setIsImporting(false);
-              toast({
-                title: 'No Valid Data',
-                description: 'No valid data found after mapping. Please check your CSV file.',
-                variant: 'destructive',
-              });
-              return;
-            }
-
-            setImportedData(nonEmptyRows);
-            onImport(nonEmptyRows);
-            
-            // Reset loading state
-            setIsImporting(false);
-            
-            // Close the dialog after successful import
-            setOpen(false);
-            
-            toast({
-              description: `Successfully imported ${nonEmptyRows.length} records`,
-            });
-          } catch (error) {
-            console.error('Error processing mapped data:', error);
-            setIsImporting(false);
-            toast({
-              title: 'Processing Error',
-              description: 'An error occurred while processing the CSV data. Please try again.',
-              variant: 'destructive',
-            });
-          }
-        },
-        error: (error: Error) => {
-          console.error('Error parsing CSV:', error);
-          setError('Failed to parse CSV file. Please check the file format.');
-          setIsImporting(false);
-          toast({
-            title: 'CSV Parse Error',
-            description: error.message || 'Failed to parse CSV file. Please check the file format.',
-            variant: 'destructive',
-          });
-        }
+      setImportedData(nonEmptyRows);
+      onImport(nonEmptyRows);
+      
+      setImportProgress(100);
+      
+      // Reset loading state
+      setTimeout(() => {
+        setIsImporting(false);
+        setImportProgress(0);
+        
+        // Close the dialog after successful import
+        setOpen(false);
+      }, 500);
+      
+      toast({
+        description: `Successfully imported ${nonEmptyRows.length} records`,
       });
     } catch (error) {
-      console.error('Error handling file:', error);
+      console.error('Error processing import:', error);
       setIsImporting(false);
+      setImportProgress(0);
       toast({
-        title: 'File Error',
-        description: 'There was an error processing the file. Please try again with a different file.',
+        title: 'Import Error',
+        description: error instanceof Error ? error.message : 'An error occurred during import. Please try again.',
         variant: 'destructive',
       });
     }
@@ -499,24 +573,65 @@ const CSVImportDialog: React.FC<{
       .filter(field => field.name) // Filter out fields without names
       .map((field) => field.name);
     
-    // Create an example row with placeholder values
-    const exampleRow = templateFields
-      .filter(field => field.name) // Filter out fields without names
-      .map((field) => {
-        const fieldName = field.name;
-        if (fieldName.includes('name')) return 'John Doe';
-        if (fieldName.includes('email')) return 'example@example.com';
-        if (fieldName.includes('phone')) return '+6591234567';
-        if (fieldName.includes('address')) return '123 Main St';
-        if (fieldName.includes('date')) return '2023-01-01';
-        if (fieldName.includes('id')) return '12345';
-        return 'Example Value';
+    if (headers.length === 0) {
+      toast({
+        title: 'No Template Fields',
+        description: 'There are no template fields available to create an example template.',
+        variant: 'destructive',
       });
+      return;
+    }
     
-    // Create CSV content
+    // Create example rows with placeholder values
+    const exampleRows = [];
+    
+    // Add 3 example rows
+    for (let i = 0; i < 3; i++) {
+      const exampleRow = templateFields
+        .filter(field => field.name) // Filter out fields without names
+        .map((field) => {
+          const fieldName = field.name.toLowerCase();
+          
+          // Generate appropriate example values based on field name
+          if (fieldName.includes('name')) {
+            const names = ['John Doe', 'Jane Smith', 'Alex Johnson'];
+            return names[i % names.length];
+          }
+          if (fieldName.includes('email')) {
+            const emails = ['john.doe@example.com', 'jane.smith@example.com', 'alex.johnson@example.com'];
+            return emails[i % emails.length];
+          }
+          if (fieldName.includes('phone')) {
+            const phones = ['+6591234567', '+6598765432', '+6590123456'];
+            return phones[i % phones.length];
+          }
+          if (fieldName.includes('address')) {
+            const addresses = ['123 Main St, Singapore 123456', '456 Orchard Rd, Singapore 654321', '789 Marina Bay, Singapore 987654'];
+            return addresses[i % addresses.length];
+          }
+          if (fieldName.includes('date')) {
+            const dates = ['2023-01-01', '2023-02-15', '2023-03-30'];
+            return dates[i % dates.length];
+          }
+          if (fieldName.includes('id')) {
+            return `ID${10001 + i}`;
+          }
+          if (fieldName.includes('cost') || fieldName.includes('price') || fieldName.includes('amount')) {
+            const amounts = ['1000.00', '2500.50', '750.25'];
+            return amounts[i % amounts.length];
+          }
+          
+          // Default example value
+          return `Example ${i+1}`;
+        });
+      
+      exampleRows.push(exampleRow);
+    }
+    
+    // Create CSV content with headers and example rows
     const csvContent = [
       headers.join(','),
-      exampleRow.join(','),
+      ...exampleRows.map(row => row.join(','))
     ].join('\n');
     
     // Create and download the file
@@ -528,6 +643,41 @@ const CSVImportDialog: React.FC<{
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+    
+    toast({
+      description: 'Example template downloaded successfully.',
+    });
+  };
+
+  // Handle drag events
+  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+  };
+
+  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+    
+    const files = e.dataTransfer.files;
+    if (files.length > 0) {
+      // Create a synthetic event to reuse the existing file upload handler
+      const syntheticEvent = {
+        target: {
+          files: files
+        }
+      } as unknown as React.ChangeEvent<HTMLInputElement>;
+      
+      handleFileUpload(syntheticEvent);
+    }
   };
 
   return (
@@ -544,38 +694,91 @@ const CSVImportDialog: React.FC<{
           <DialogDescription>Map CSV headers to letter template fields</DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4">
-          <div className="flex items-center gap-2">
-            <input
-              type="file"
-              accept=".csv"
-              ref={fileInputRef}
-              onChange={handleFileUpload}
-              onClick={(e) => {
-                // Reset the file input value when clicked to ensure the onChange event fires even if the same file is selected again
-                (e.target as HTMLInputElement).value = '';
-              }}
-              className="hidden"
-            />
-            <Button onClick={() => fileInputRef.current?.click()}>
-              <Upload className="mr-2 h-4 w-4" />
-              Select CSV File
-            </Button>
-            <Button variant="outline" onClick={generateExampleTemplate}>
-              <Download className="mr-2 h-4 w-4" />
-              Download Template
-            </Button>
+        {/* Progress indicator */}
+        {importProgress > 0 && (
+          <div className="w-full bg-gray-200 rounded-full h-1.5 mb-4">
+            <div 
+              className="bg-primary h-1.5 rounded-full transition-all duration-300" 
+              style={{ width: `${importProgress}%` }}
+            ></div>
           </div>
+        )}
 
+        <div className="space-y-4">
+          {/* File upload section */}
+          {!csvHeaders.length && (
+            <div 
+              className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
+                isDragging ? 'border-primary bg-primary/10' : 'border-gray-300'
+              }`}
+              onDragOver={handleDragOver}
+              onDragLeave={handleDragLeave}
+              onDrop={handleDrop}
+              onClick={() => fileInputRef.current?.click()}
+            >
+              <input
+                type="file"
+                accept=".csv"
+                ref={fileInputRef}
+                onChange={handleFileUpload}
+                onClick={(e) => {
+                  // Reset the file input value when clicked to ensure the onChange event fires even if the same file is selected again
+                  (e.target as HTMLInputElement).value = '';
+                }}
+                className="hidden"
+              />
+              <Upload className="mx-auto h-12 w-12 text-gray-400" />
+              <p className="mt-2 text-sm font-medium">
+                Drag and drop your CSV file here, or click to browse
+              </p>
+              <p className="mt-1 text-xs text-gray-500">
+                CSV files only, max 5MB
+              </p>
+            </div>
+          )}
+
+          {/* Selected file info */}
+          {selectedFile && !csvHeaders.length && (
+            <div className="mt-4 p-3 bg-gray-50 rounded-lg flex items-center justify-between">
+              <div className="flex items-center">
+                <FileSpreadsheet className="h-5 w-5 mr-2 text-green-500" />
+                <div>
+                  <p className="text-sm font-medium">{selectedFile.name}</p>
+                  <p className="text-xs text-gray-500">{formatFileSize(selectedFile.size)}</p>
+                </div>
+              </div>
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="text-gray-500 hover:text-red-500"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setSelectedFile(null);
+                  if (fileInputRef.current) {
+                    fileInputRef.current.value = '';
+                  }
+                  setCsvHeaders([]);
+                  setPreviewData([]);
+                }}
+              >
+                <XCircle className="h-4 w-4" />
+              </Button>
+            </div>
+          )}
+
+          {/* CSV Preview */}
           {previewData.length > 0 && (
-            <div className="border rounded p-2 bg-slate-50">
-              <h4 className="text-sm font-semibold mb-1">CSV Preview (First 5 rows)</h4>
-              <div className="max-h-24 overflow-y-auto">
+            <div className="border rounded-lg p-4 bg-slate-50">
+              <div className="flex items-center justify-between mb-2">
+                <h4 className="text-sm font-semibold">CSV Preview</h4>
+                <p className="text-xs text-gray-500">Showing first 5 rows</p>
+              </div>
+              <div className="max-h-32 overflow-y-auto">
                 <Table className="text-xs">
                   <TableHeader>
                     <TableRow>
                       {csvHeaders.map(header => (
-                        <TableHead key={header}>{header}</TableHead>
+                        <TableHead key={header} className="px-2 py-1">{header}</TableHead>
                       ))}
                     </TableRow>
                   </TableHeader>
@@ -583,7 +786,9 @@ const CSVImportDialog: React.FC<{
                     {previewData.map((row, idx) => (
                       <TableRow key={idx}>
                         {csvHeaders.map(header => (
-                          <TableCell key={`${idx}-${header}`}>{row[header]}</TableCell>
+                          <TableCell key={`${idx}-${header}`} className="px-2 py-1 truncate max-w-[150px]">
+                            {row[header]}
+                          </TableCell>
                         ))}
                       </TableRow>
                     ))}
@@ -593,42 +798,67 @@ const CSVImportDialog: React.FC<{
             </div>
           )}
 
+          {/* Field Mapping Section */}
           {csvHeaders.length > 0 && (
-            <div>
-              <h4 className="font-semibold mb-2">Map CSV Headers to Template Fields</h4>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Template Field</TableHead>
-                    <TableHead>Mapped CSV Header</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {templateFields.map((field) => (
-                    <TableRow key={field.name}>
-                      <TableCell>
-                        {field.name} {field.required && <span className="text-red-500 ml-1">*</span>}
-                      </TableCell>
-                      <TableCell>
-                        <Select 
-                          value={fieldMapping[field.name] || '__placeholder__'} 
-                          onValueChange={(value) => updateFieldMapping(field.name, value)}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select CSV Header" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="__placeholder__">-- Select Header --</SelectItem>
-                            {csvHeaders.map((header) => (
-                              <SelectItem key={header} value={header}>{header}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h4 className="font-semibold">Map CSV Headers to Template Fields</h4>
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  onClick={() => {
+                    // Reset to file selection
+                    setCsvHeaders([]);
+                    setPreviewData([]);
+                    setFieldMapping({});
+                    setShowMappedPreview(false);
+                    setMappedPreview([]);
+                  }}
+                >
+                  <XCircle className="h-4 w-4 mr-1" />
+                  Change File
+                </Button>
+              </div>
+              
+              <div className="grid gap-4 md:grid-cols-2">
+                {templateFields.map((field) => (
+                  <div 
+                    key={field.name}
+                    className={`p-3 border rounded-lg ${
+                      field.required ? 'border-red-200 bg-red-50' : 'border-gray-200'
+                    }`}
+                  >
+                    <div className="flex items-center mb-2">
+                      <span className="font-medium">{field.name}</span>
+                      {field.required && <span className="ml-1 text-red-500">*</span>}
+                    </div>
+                    
+                    <Select
+                      value={fieldMapping[field.name] || '__placeholder__'}
+                      onValueChange={(value) => updateFieldMapping(field.name, value)}
+                    >
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Map to CSV column" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="__placeholder__">-- Select CSV Column --</SelectItem>
+                        {csvHeaders.map((header) => (
+                          <SelectItem key={header} value={header}>
+                            <div className="flex items-center">
+                              <span>{header}</span>
+                              {previewData[0] && (
+                                <span className="ml-2 text-xs text-gray-500 truncate max-w-[150px]">
+                                  (e.g., {previewData[0][header]})
+                                </span>
+                              )}
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                ))}
+              </div>
               
               <div className="mt-4 flex justify-end gap-2">
                 <Button 
@@ -645,24 +875,30 @@ const CSVImportDialog: React.FC<{
                 >
                   {isImporting ? (
                     <>
-                      <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                      </svg>
+                      <Loader2 className="animate-spin -ml-1 mr-2 h-4 w-4" />
                       Importing...
                     </>
                   ) : (
-                    'Import Data & Close'
+                    <>
+                      <CheckCircle className="mr-2 h-4 w-4" />
+                      Import Data & Close
+                    </>
                   )}
                 </Button>
               </div>
             </div>
           )}
 
+          {/* Mapped Data Preview */}
           {showMappedPreview && mappedPreview.length > 0 && (
-            <div className="border rounded p-4 bg-slate-50 mt-4">
-              <h4 className="font-semibold mb-2">Mapped Data Preview</h4>
-              <p className="text-sm text-slate-500 mb-2">
+            <div className="border rounded-lg p-4 bg-slate-50 mt-4">
+              <div className="flex items-center justify-between mb-2">
+                <h4 className="font-semibold">Mapped Data Preview</h4>
+                <p className="text-xs text-gray-500">
+                  Showing {mappedPreview.length} of {previewData.length} rows
+                </p>
+              </div>
+              <p className="text-sm text-slate-600 mb-2">
                 This is how your CSV data will be mapped to the template fields. Please verify before importing.
               </p>
               <div className="max-h-64 overflow-y-auto">
@@ -670,7 +906,12 @@ const CSVImportDialog: React.FC<{
                   <TableHeader>
                     <TableRow>
                       {templateFields.map(field => (
-                        <TableHead key={field.name}>{field.name}</TableHead>
+                        <TableHead key={field.name} className="px-2 py-1">
+                          <div className="flex items-center">
+                            {field.name}
+                            {field.required && <span className="text-red-500 ml-1">*</span>}
+                          </div>
+                        </TableHead>
                       ))}
                     </TableRow>
                   </TableHeader>
@@ -678,18 +919,46 @@ const CSVImportDialog: React.FC<{
                     {mappedPreview.map((row, idx) => (
                       <TableRow key={idx}>
                         {templateFields.map(field => (
-                          <TableCell key={`${idx}-${field.name}`}>{row[field.name] || '-'}</TableCell>
+                          <TableCell 
+                            key={`${idx}-${field.name}`} 
+                            className={`px-2 py-1 truncate max-w-[150px] ${
+                              field.required && (!row[field.name] || row[field.name].trim() === '') 
+                                ? 'bg-red-100' 
+                                : ''
+                            }`}
+                          >
+                            {row[field.name] || '-'}
+                          </TableCell>
                         ))}
                       </TableRow>
                     ))}
                   </TableBody>
                 </Table>
               </div>
-              <div className="mt-2 text-xs text-slate-500">
-                Showing preview of first {mappedPreview.length} rows. The actual import will process all rows.
-              </div>
+              
+              {/* Missing required fields warning */}
+              {mappedPreview.some(row => 
+                templateFields
+                  .filter(field => field.required)
+                  .some(field => !row[field.name] || row[field.name].trim() === '')
+              ) && (
+                <Alert variant="destructive" className="mt-2">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription>
+                    Some required fields are missing values. These rows may not import correctly.
+                  </AlertDescription>
+                </Alert>
+              )}
             </div>
           )}
+
+          {/* Example template download button */}
+          <div className="flex justify-center mt-4">
+            <Button variant="outline" onClick={generateExampleTemplate} size="sm">
+              <Download className="mr-2 h-4 w-4" />
+              Download Example Template
+            </Button>
+          </div>
         </div>
       </DialogContent>
     </Dialog>
@@ -1631,10 +1900,7 @@ const LetterMode: React.FC = () => {
                   >
                     {isSending ? (
                       <>
-                        <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                        </svg>
+                        <Loader2 className="animate-spin -ml-1 mr-2 h-4 w-4" />
                         Generating Letters...
                       </>
                     ) : (
