@@ -132,7 +132,31 @@ const CSVImportDialog: React.FC<{
           return;
         }
 
-        const headers = results.meta.fields;
+        // Filter out empty or invalid headers
+        const headers = results.meta.fields
+          .filter(header => header && typeof header === 'string' && header.trim() !== '')
+          .map(header => header.trim());
+        
+        if (headers.length === 0) {
+          toast({
+            title: 'Invalid CSV Headers',
+            description: 'The CSV file contains only empty or invalid headers.',
+            variant: 'destructive',
+          });
+          return;
+        }
+        
+        // Check for duplicate headers after trimming
+        const uniqueHeaders = new Set(headers);
+        if (uniqueHeaders.size !== headers.length) {
+          toast({
+            title: 'Duplicate CSV Headers',
+            description: 'The CSV file contains duplicate headers after trimming whitespace.',
+            variant: 'destructive',
+          });
+          return;
+        }
+        
         setCsvHeaders(headers);
         setPreviewData(results.data.slice(0, 5)); // Store first 5 rows for preview
       },
@@ -146,7 +170,7 @@ const CSVImportDialog: React.FC<{
   const previewMappedData = () => {
     // Get all template fields that have a mapping
     const mappedFields = templateFields
-      .filter(field => field.name && fieldMapping[field.name])
+      .filter(field => field.name && fieldMapping[field.name] && fieldMapping[field.name] !== '__placeholder__')
       .map(field => field.name);
     
     if (mappedFields.length === 0) {
@@ -166,7 +190,9 @@ const CSVImportDialog: React.FC<{
       mappedFields.forEach(fieldName => {
         if (!fieldName) return;
         const csvHeader = fieldMapping[fieldName];
-        mappedRow[fieldName] = row[csvHeader] || '';
+        if (csvHeader && csvHeader !== '__placeholder__') {
+          mappedRow[fieldName] = row[csvHeader] || '';
+        }
       });
       
       return mappedRow;
@@ -179,7 +205,7 @@ const CSVImportDialog: React.FC<{
   const processImport = () => {
     // Get all template fields that have a mapping
     const mappedFields = templateFields
-      .filter(field => field.name && fieldMapping[field.name])
+      .filter(field => field.name && fieldMapping[field.name] && fieldMapping[field.name] !== '__placeholder__')
       .map(field => field.name);
     
     if (mappedFields.length === 0) {
@@ -203,7 +229,9 @@ const CSVImportDialog: React.FC<{
           mappedFields.forEach(fieldName => {
             if (!fieldName) return;
             const csvHeader = fieldMapping[fieldName];
-            mappedRow[fieldName] = row[csvHeader] || '';
+            if (csvHeader && csvHeader !== '__placeholder__') {
+              mappedRow[fieldName] = row[csvHeader] || '';
+            }
           });
           
           return mappedRow;
@@ -237,10 +265,19 @@ const CSVImportDialog: React.FC<{
   };
 
   const updateFieldMapping = (templateField: string, csvHeader: string) => {
-    setFieldMapping((prev) => ({
-      ...prev,
-      [templateField]: csvHeader,
-    }));
+    // If the placeholder is selected, clear the mapping
+    if (csvHeader === '__placeholder__') {
+      setFieldMapping((prev) => {
+        const newMapping = { ...prev };
+        delete newMapping[templateField];
+        return newMapping;
+      });
+    } else {
+      setFieldMapping((prev) => ({
+        ...prev,
+        [templateField]: csvHeader,
+      }));
+    }
     
     // Reset the preview when mapping changes
     setShowMappedPreview(false);
@@ -359,12 +396,15 @@ const CSVImportDialog: React.FC<{
                         {field.name} {field.required && <span className="text-red-500 ml-1">*</span>}
                       </TableCell>
                       <TableCell>
-                        <Select value={fieldMapping[field.name] || ''} onValueChange={(value) => updateFieldMapping(field.name, value)}>
+                        <Select 
+                          value={fieldMapping[field.name] || '__placeholder__'} 
+                          onValueChange={(value) => updateFieldMapping(field.name, value)}
+                        >
                           <SelectTrigger>
                             <SelectValue placeholder="Select CSV Header" />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="">-- Select Header --</SelectItem>
+                            <SelectItem value="__placeholder__">-- Select Header --</SelectItem>
                             {csvHeaders.map((header) => (
                               <SelectItem key={header} value={header}>{header}</SelectItem>
                             ))}
