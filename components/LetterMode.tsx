@@ -479,6 +479,13 @@ const LetterMode: React.FC = () => {
   const [isSending, setIsSending] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
   const [templateCache, setTemplateCache] = useState<{[key: number]: TemplateField[]}>({});
+  
+  // Add state for template selection dialog
+  const [templates, setTemplates] = useState<{ id: number; name: string; fields: string[] }[]>([]);
+  const [filteredTemplates, setFilteredTemplates] = useState<{ id: number; name: string; fields: string[] }[]>([]);
+  const [isTemplateDialogOpen, setIsTemplateDialogOpen] = useState(false);
+  const [isTemplateListLoading, setIsTemplateListLoading] = useState(false);
+  const [templateSearchTerm, setTemplateSearchTerm] = useState('');
 
   // Add debounced template loading
   const debouncedFetchTemplate = useRef(
@@ -981,198 +988,428 @@ const LetterMode: React.FC = () => {
     </div>
   ), [letterDetails.lettersParams, templateFields, isLoading, isSending, addLetterParams, removeLetterParams, updateLetterParams]);
 
+  // Add handleClearAll function
+  const handleClearAll = useCallback(() => {
+    setLetterDetails((prev) => ({
+      ...prev,
+      templateId: null, // Clear Template ID
+      lettersParams: [{}], // Reset to one empty set of parameters
+      notificationMethod: undefined, // Clear notification method
+      recipients: [], // Clear recipients
+    }));
+    setTemplateFields([]); // Clear template fields
+    setIsNotificationEnabled(false); // Reset notification toggle
+    setApiError(null); // Clear any API errors
+    
+    toast({
+      description: "Form cleared (API key retained).",
+    });
+  }, []);
+
+  // Update fetchTemplates function to match API documentation
+  const fetchTemplates = async () => {
+    if (!letterDetails.apiKey) {
+      toast({
+        title: "API Key Required",
+        description: "Please enter your API key to fetch templates.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsTemplateListLoading(true);
+    setTemplateSearchTerm(''); // Reset search term when fetching new templates
+    
+    try {
+      // Using proxy endpoint to avoid exposing API key in frontend
+      const response = await fetch(`${API_PROXY_URL}/templates`, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          "X-API-Key": letterDetails.apiKey,
+        },
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || `Failed to fetch templates: ${response.status}`);
+      }
+
+      const data = await response.json();
+      
+      // Handle the response format according to the API documentation
+      if (data && Array.isArray(data.templates)) {
+        // Map the templates to the format expected by our component
+        const formattedTemplates = data.templates.map((template: any) => ({
+          id: template.templateId,
+          name: template.name,
+          fields: template.fields
+        }));
+        
+        setTemplates(formattedTemplates);
+        setFilteredTemplates(formattedTemplates); // Initialize filtered templates with all templates
+        
+        if (formattedTemplates.length === 0) {
+          toast({
+            description: "No templates found for this API key.",
+          });
+        } else {
+          toast({
+            description: `Found ${formattedTemplates.length} templates.`,
+          });
+        }
+      } else {
+        // Handle case where response doesn't match expected format
+        console.error("Unexpected API response format:", data);
+        setTemplates([]);
+        setFilteredTemplates([]);
+        toast({
+          title: "Error",
+          description: "Received unexpected data format from the API.",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error("Error fetching templates:", error);
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to fetch templates.",
+        variant: "destructive",
+      });
+      setTemplates([]);
+      setFilteredTemplates([]);
+    } finally {
+      setIsTemplateListLoading(false);
+    }
+  };
+
+  // Add function to handle template search
+  const handleTemplateSearch = useCallback((searchTerm: string) => {
+    setTemplateSearchTerm(searchTerm);
+    
+    if (!searchTerm.trim()) {
+      // If search term is empty, show all templates
+      setFilteredTemplates(templates);
+      return;
+    }
+    
+    // Filter templates based on search term
+    const normalizedSearchTerm = searchTerm.toLowerCase().trim();
+    const filtered = templates.filter(template => 
+      template.name.toLowerCase().includes(normalizedSearchTerm) || 
+      template.id.toString().includes(normalizedSearchTerm) ||
+      (template.fields && template.fields.some(field => 
+        field.toLowerCase().includes(normalizedSearchTerm)
+      ))
+    );
+    
+    setFilteredTemplates(filtered);
+  }, [templates]);
+
   return (
     <div className="container mx-auto py-6 max-w-4xl">
+      <h1 className="text-2xl font-bold mb-6">Bulk Letter Generation</h1>
+      
+      {apiError && (
+        <Alert variant="destructive" className="mb-4">
+          <AlertDescription className="whitespace-pre-line">{apiError}</AlertDescription>
+        </Alert>
+      )}
+      
       <div className="space-y-6">
-        <div className="flex justify-between items-center">
-          <h1 className="text-2xl font-bold">Letter Mode</h1>
-        </div>
-
-        {apiError && (
-          <Alert variant="destructive">
-            <AlertDescription className="whitespace-pre-line">{apiError}</AlertDescription>
-          </Alert>
-        )}
-
-        <div className="grid gap-4 md:grid-cols-2">
-          <div>
-            <Label>API Key</Label>
-            <div className="flex gap-2">
-              <Input
-                type="password"
-                placeholder="Enter your Letters.gov.sg API Key"
-                value={letterDetails.apiKey}
-                onChange={(e) => {
-                  updateLetterDetail('apiKey', e.target.value);
-                  localStorage.setItem('lettersGovSgApiKey', e.target.value);
-                }}
-                disabled={isLoading || isSending}
-              />
+        <Card>
+          <CardHeader>
+            <div className="flex justify-between items-center">
+              <CardTitle>API Configuration</CardTitle>
+              <div className="flex gap-2">
+                {/* Template Selection Dialog */}
+                <Dialog open={isTemplateDialogOpen} onOpenChange={setIsTemplateDialogOpen}>
+                  <DialogTrigger asChild>
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        fetchTemplates();
+                      }}
+                      disabled={isLoading || isSending || !letterDetails.apiKey}
+                    >
+                      Select Template
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="sm:max-w-[600px]">
+                    <DialogHeader>
+                      <DialogTitle>Select a Template</DialogTitle>
+                      <DialogDescription>Choose a template from the list below.</DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4 py-4">
+                      {isTemplateListLoading ? (
+                        <div className="flex justify-center items-center py-4">
+                          <svg className="animate-spin h-5 w-5 text-primary" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                          </svg>
+                          <span className="ml-2">Loading templates...</span>
+                        </div>
+                      ) : templates.length > 0 ? (
+                        <div className="space-y-4">
+                          <div className="relative">
+                            <Input
+                              type="text"
+                              placeholder="Search templates..."
+                              className="mb-2"
+                              value={templateSearchTerm}
+                              onChange={(e) => handleTemplateSearch(e.target.value)}
+                            />
+                          </div>
+                          
+                          <div className="max-h-[300px] overflow-y-auto border rounded-md">
+                            {filteredTemplates.length > 0 ? (
+                              filteredTemplates.map((template) => (
+                                <div 
+                                  key={template.id}
+                                  className="p-3 border-b last:border-b-0 hover:bg-slate-50 cursor-pointer flex justify-between items-center"
+                                  onClick={() => {
+                                    const templateId = template.id;
+                                    setLetterDetails((prev) => ({
+                                      ...prev,
+                                      templateId: templateId,
+                                    }));
+                                    setIsTemplateDialogOpen(false); // Close dialog after selection
+                                    
+                                    // Automatically load the template after selection
+                                    if (templateId) {
+                                      fetchTemplateDetails(templateId);
+                                    }
+                                  }}
+                                >
+                                  <div>
+                                    <div className="font-medium">{template.name}</div>
+                                    <div className="text-sm text-muted-foreground">ID: {template.id}</div>
+                                    {template.fields && template.fields.length > 0 && (
+                                      <div className="text-xs text-muted-foreground mt-1">
+                                        Fields: {template.fields.slice(0, 3).join(", ")}
+                                        {template.fields.length > 3 && ` +${template.fields.length - 3} more`}
+                                      </div>
+                                    )}
+                                  </div>
+                                  <Button variant="ghost" size="sm">
+                                    Select
+                                  </Button>
+                                </div>
+                              ))
+                            ) : (
+                              <div className="p-4 text-center">
+                                <p className="text-sm text-muted-foreground">No templates match your search.</p>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="text-center py-4">
+                          <p className="text-sm text-muted-foreground">No templates found for this API key.</p>
+                          <p className="text-xs text-muted-foreground mt-2">
+                            Make sure you've entered the correct API key and that you have access to templates.
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  </DialogContent>
+                </Dialog>
+                
+                <Button
+                  variant="outline"
+                  onClick={handleClearAll}
+                  disabled={isLoading || isSending}
+                >
+                  Clear All (Keep API Key)
+                </Button>
+              </div>
             </div>
-            <p className="text-xs text-muted-foreground mt-1">
-              Your API key is stored locally in your browser and never sent to our servers.
-            </p>
-          </div>
-
-          <div>
-            <Label>Template ID</Label>
-            <div className="flex gap-2">
-              <Input
-                type="number"
-                min="1"
-                placeholder="Enter Template ID"
-                value={letterDetails.templateId || ''}
-                onChange={(e) => {
-                  const value = e.target.value;
-                  // Prevent negative numbers and non-numeric input
-                  const numValue = parseInt(value);
-                  if (!isNaN(numValue) && numValue > 0) {
-                    updateLetterDetail('templateId', numValue);
-                  } else if (value === '') {
-                    updateLetterDetail('templateId', null);
-                  }
-                }}
-                disabled={isLoading || isSending || isTemplateLoading}
-              />
-              <Button 
-                variant="outline" 
-                onClick={() => letterDetails.templateId && fetchTemplateDetails(letterDetails.templateId)}
-                disabled={isLoading || isSending || isTemplateLoading || !letterDetails.templateId}
-              >
-                {isTemplateLoading ? (
-                  <>
-                    <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-current" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                    Loading...
-                  </>
-                ) : (
-                  'Load Template'
-                )}
-              </Button>
-            </div>
-          </div>
-        </div>
-
-        {templateFields.length > 0 && (
-          <div className="flex gap-2">
-            <CSVImportDialog templateFields={templateFields} onImport={handleCSVImport} />
-          </div>
-        )}
-
-        {templateFields.length > 0 && (
-          <>
-            {letterParamsForm}
-
-            <div className="space-y-4">
-              <div className="flex items-center space-x-2">
-                <Switch
-                  id="notification"
-                  checked={isNotificationEnabled}
-                  onCheckedChange={setIsNotificationEnabled}
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-4 md:grid-cols-2">
+              <div>
+                <Label htmlFor="apiKey">API Key</Label>
+                <Input
+                  id="apiKey"
+                  type="password"
+                  value={letterDetails.apiKey}
+                  onChange={(e) => {
+                    updateLetterDetail('apiKey', e.target.value);
+                    localStorage.setItem('lettersGovSgApiKey', e.target.value);
+                  }}
+                  placeholder="Enter your API key"
                   disabled={isLoading || isSending}
                 />
-                <Label htmlFor="notification">Enable Notification</Label>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Your API key is stored locally in your browser and never sent to our servers.
+                </p>
               </div>
-
-              {isNotificationEnabled && (
-                <div className="space-y-4 border rounded-lg p-4">
-                  <div>
-                    <Label>Notification Method</Label>
-                    <Select
-                      value={letterDetails.notificationMethod || ''}
-                      onValueChange={(value: 'SMS' | 'EMAIL') => updateLetterDetail('notificationMethod', value)}
-                      disabled={isLoading || isSending}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select notification method" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="SMS">SMS</SelectItem>
-                        <SelectItem value="EMAIL">Email</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div>
-                    <Label>Recipients</Label>
-                    <Textarea
-                      placeholder={
-                        letterDetails.notificationMethod === 'SMS'
-                          ? 'Enter phone numbers (one per line)'
-                          : 'Enter email addresses (one per line)'
+              <div>
+                <Label htmlFor="templateId">Template ID</Label>
+                <div className="flex gap-2">
+                  <Input
+                    id="templateId"
+                    type="number"
+                    min="1"
+                    placeholder="Enter Template ID"
+                    value={letterDetails.templateId || ''}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      // Prevent negative numbers and non-numeric input
+                      const numValue = parseInt(value);
+                      if (!isNaN(numValue) && numValue > 0) {
+                        updateLetterDetail('templateId', numValue);
+                      } else if (value === '') {
+                        updateLetterDetail('templateId', null);
                       }
-                      value={letterDetails.recipients?.join('\n') || ''}
-                      onChange={(e) => {
-                        const recipients = e.target.value.split('\n').filter(Boolean);
-                        updateLetterDetail('recipients', recipients);
-                      }}
-                      className="min-h-[100px]"
+                    }}
+                    disabled={isLoading || isSending || isTemplateLoading}
+                  />
+                  
+                  <Button
+                    variant="outline"
+                    onClick={() => letterDetails.templateId && fetchTemplateDetails(letterDetails.templateId)}
+                    disabled={isLoading || isSending || isTemplateLoading || !letterDetails.templateId}
+                  >
+                    {isTemplateLoading ? (
+                      <>
+                        <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-current" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        Loading...
+                      </>
+                    ) : (
+                      'Load Template'
+                    )}
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Enter the template ID or use the "Select Template" button above to choose from available templates.
+                </p>
+              </div>
+            </div>
+
+            {templateFields.length > 0 && (
+              <div className="flex gap-2">
+                <CSVImportDialog templateFields={templateFields} onImport={handleCSVImport} />
+              </div>
+            )}
+
+            {templateFields.length > 0 && (
+              <>
+                {letterParamsForm}
+
+                <div className="space-y-4">
+                  <div className="flex items-center space-x-2">
+                    <Switch
+                      id="notification"
+                      checked={isNotificationEnabled}
+                      onCheckedChange={setIsNotificationEnabled}
                       disabled={isLoading || isSending}
                     />
-                    <p className="text-xs text-muted-foreground mt-1">
-                      {letterDetails.notificationMethod === 'SMS'
-                        ? 'Enter one phone number per line in international format (e.g., +6591234567)'
-                        : 'Enter one email address per line'}
-                    </p>
-                    {letterDetails.recipients?.map((recipient, index) => (
-                      <div key={`recipient-${index}`} className="hidden">
-                        {recipient}
-                      </div>
-                    ))}
+                    <Label htmlFor="notification">Enable Notification</Label>
                   </div>
+
+                  {isNotificationEnabled && (
+                    <div className="space-y-4 border rounded-lg p-4">
+                      <div>
+                        <Label>Notification Method</Label>
+                        <Select
+                          value={letterDetails.notificationMethod || ''}
+                          onValueChange={(value: 'SMS' | 'EMAIL') => updateLetterDetail('notificationMethod', value)}
+                          disabled={isLoading || isSending}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select notification method" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="SMS">SMS</SelectItem>
+                            <SelectItem value="EMAIL">Email</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div>
+                        <Label>Recipients</Label>
+                        <Textarea
+                          placeholder={
+                            letterDetails.notificationMethod === 'SMS'
+                              ? 'Enter phone numbers (one per line)'
+                              : 'Enter email addresses (one per line)'
+                          }
+                          value={letterDetails.recipients?.join('\n') || ''}
+                          onChange={(e) => {
+                            const recipients = e.target.value.split('\n').filter(Boolean);
+                            updateLetterDetail('recipients', recipients);
+                          }}
+                          className="min-h-[100px]"
+                          disabled={isLoading || isSending}
+                        />
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {letterDetails.notificationMethod === 'SMS'
+                            ? 'Enter one phone number per line in international format (e.g., +6591234567)'
+                            : 'Enter one email address per line'}
+                        </p>
+                        {letterDetails.recipients?.map((recipient, index) => (
+                          <div key={`recipient-${index}`} className="hidden">
+                            {recipient}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  <Button 
+                    onClick={generateBulkLetters} 
+                    className="w-full" 
+                    disabled={isLoading || isSending || letterDetails.lettersParams.length === 0}
+                  >
+                    {isSending ? (
+                      <>
+                        <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        Generating Letters...
+                      </>
+                    ) : (
+                      <>
+                        <Send className="mr-2 h-4 w-4" />
+                        Generate Letters
+                      </>
+                    )}
+                  </Button>
                 </div>
-              )}
+              </>
+            )}
 
-              <Button 
-                onClick={generateBulkLetters} 
-                className="w-full" 
-                disabled={isLoading || isSending || letterDetails.lettersParams.length === 0}
-              >
-                {isSending ? (
-                  <>
-                    <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                    Generating Letters...
-                  </>
-                ) : (
-                  <>
-                    <Send className="mr-2 h-4 w-4" />
-                    Generate Letters
-                  </>
-                )}
-              </Button>
-            </div>
-          </>
-        )}
+            {!templateFields.length && !isTemplateLoading && letterDetails.templateId && (
+              <div className="text-center p-8 border rounded-lg">
+                <Info className="h-12 w-12 mx-auto text-muted-foreground" />
+                <h3 className="mt-2 text-lg font-medium">No Template Loaded</h3>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Enter a valid template ID and click "Load Template" to get started.
+                </p>
+              </div>
+            )}
 
-        {!templateFields.length && !isTemplateLoading && letterDetails.templateId && (
-          <div className="text-center p-8 border rounded-lg">
-            <Info className="h-12 w-12 mx-auto text-muted-foreground" />
-            <h3 className="mt-2 text-lg font-medium">No Template Loaded</h3>
-            <p className="text-sm text-muted-foreground mt-1">
-              Enter a valid template ID and click "Load Template" to get started.
-            </p>
-          </div>
-        )}
-
-        {isTemplateLoading && (
-          <div className="text-center p-8 border rounded-lg">
-            <div className="flex justify-center">
-              <svg className="animate-spin h-12 w-12 text-primary" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-              </svg>
-            </div>
-            <h3 className="mt-4 text-lg font-medium">Loading Template</h3>
-            <p className="text-sm text-muted-foreground mt-1">
-              Please wait while we fetch the template details...
-            </p>
-          </div>
-        )}
+            {isTemplateLoading && (
+              <div className="text-center p-8 border rounded-lg">
+                <div className="flex justify-center">
+                  <svg className="animate-spin h-12 w-12 text-primary" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                </div>
+                <h3 className="mt-4 text-lg font-medium">Loading Template</h3>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Please wait while we fetch the template details...
+                </p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
       </div>
     </div>
   );
