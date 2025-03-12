@@ -683,7 +683,7 @@ const CSVImportDialog: React.FC<{
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
-        <Button variant="outline" onClick={() => setOpen(true)}>
+        <Button variant="outline" onClick={() => setOpen(true)} className="bg-amber-50 text-amber-600 hover:bg-amber-100 border-amber-200 transition-all duration-200">
           <FileSpreadsheet className="mr-2 h-4 w-4" />
           Import CSV
         </Button>
@@ -865,12 +865,17 @@ const CSVImportDialog: React.FC<{
                   variant="outline" 
                   onClick={previewMappedData}
                   disabled={isImporting}
+                  className="border-blue-200 text-blue-600 hover:bg-blue-50"
                 >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                  </svg>
                   Preview Mapping
                 </Button>
                 <Button 
                   onClick={processImport}
-                  className="bg-green-600 hover:bg-green-700"
+                  className="bg-green-600 hover:bg-green-700 transition-all duration-200 shadow-sm hover:shadow"
                   disabled={isImporting}
                 >
                   {isImporting ? (
@@ -954,7 +959,12 @@ const CSVImportDialog: React.FC<{
 
           {/* Example template download button */}
           <div className="flex justify-center mt-4">
-            <Button variant="outline" onClick={generateExampleTemplate} size="sm">
+            <Button 
+              variant="outline" 
+              onClick={generateExampleTemplate} 
+              size="sm" 
+              className="text-teal-600 border-teal-200 hover:bg-teal-50 transition-all duration-200"
+            >
               <Download className="mr-2 h-4 w-4" />
               Download Example Template
             </Button>
@@ -1481,7 +1491,7 @@ const LetterMode: React.FC = () => {
       <Button
         variant="outline"
         onClick={addLetterParams}
-        className="w-full"
+        className="w-full bg-purple-50 text-purple-600 hover:bg-purple-100 border-purple-200 transition-all duration-200"
         disabled={isLoading || isSending}
       >
         <Plus className="mr-2 h-4 w-4" />
@@ -1633,7 +1643,11 @@ const LetterMode: React.FC = () => {
                         fetchTemplates();
                       }}
                       disabled={isLoading || isSending || !letterDetails.apiKey}
+                      className="bg-blue-50 text-blue-600 hover:bg-blue-100 border-blue-200 transition-all duration-200 flex items-center"
                     >
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                      </svg>
                       Select Template
                     </Button>
                   </DialogTrigger>
@@ -1721,6 +1735,7 @@ const LetterMode: React.FC = () => {
                   variant="outline"
                   onClick={handleClearAll}
                   disabled={isLoading || isSending}
+                  className="border-gray-300 hover:bg-gray-100 transition-all duration-200"
                 >
                   Clear All (Keep API Key)
                 </Button>
@@ -1772,6 +1787,7 @@ const LetterMode: React.FC = () => {
                     variant="outline"
                     onClick={() => letterDetails.templateId && fetchTemplateDetails(letterDetails.templateId)}
                     disabled={isLoading || isSending || isTemplateLoading || !letterDetails.templateId}
+                    className={letterDetails.templateId ? "bg-green-50 text-green-600 hover:bg-green-100 border-green-200 transition-all duration-200" : ""}
                   >
                     {isTemplateLoading ? (
                       <>
@@ -1782,7 +1798,12 @@ const LetterMode: React.FC = () => {
                         Loading...
                       </>
                     ) : (
-                      'Load Template'
+                      <>
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                        </svg>
+                        Load Template
+                      </>
                     )}
                   </Button>
                 </div>
@@ -1809,6 +1830,7 @@ const LetterMode: React.FC = () => {
                       checked={isNotificationEnabled}
                       onCheckedChange={setIsNotificationEnabled}
                       disabled={isLoading || isSending}
+                      className="data-[state=checked]:bg-blue-500"
                     />
                     <Label htmlFor="notification">Enable Notification</Label>
                   </div>
@@ -1895,9 +1917,10 @@ const LetterMode: React.FC = () => {
 
                   <Button 
                     onClick={generateBulkLetters} 
-                    className="w-full" 
+                    className="w-full relative overflow-hidden group bg-gradient-to-r from-green-500 to-blue-500 hover:from-green-600 hover:to-blue-600 text-white shadow-md hover:shadow-lg transition-all duration-300" 
                     disabled={isLoading || isSending || letterDetails.lettersParams.length === 0}
                   >
+                    <span className="absolute inset-0 bg-white opacity-0 group-hover:opacity-10 transition-opacity"></span>
                     {isSending ? (
                       <>
                         <Loader2 className="animate-spin -ml-1 mr-2 h-4 w-4" />
@@ -1911,6 +1934,11 @@ const LetterMode: React.FC = () => {
                           ` with ${letterDetails.notificationMethod === 'SMS' ? 'SMS' : 'Email'} Notifications`}
                       </>
                     )}
+                    <div className="absolute right-2 top-1/2 transform -translate-y-1/2 opacity-0 group-hover:opacity-100 group-hover:translate-x-0 translate-x-2 transition-all duration-300">
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                        <path fillRule="evenodd" d="M10.293 5.293a1 1 0 011.414 0l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414-1.414L12.586 11H5a1 1 0 110-2h7.586l-2.293-2.293a1 1 0 010-1.414z" clipRule="evenodd" />
+                      </svg>
+                    </div>
                   </Button>
                 </div>
 
