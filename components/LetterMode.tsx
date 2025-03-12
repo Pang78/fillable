@@ -1887,7 +1887,7 @@ const LetterMode: React.FC = () => {
                       <Alert className="bg-blue-50 text-blue-800 border-blue-200">
                         <Info className="h-4 w-4" />
                         <AlertDescription>
-                          <span className="font-medium">Important:</span> The number of recipients must match the number of letters. Each recipient will receive a notification for their corresponding letter.
+                          <span className="font-medium">Important:</span> Make sure to select a notification method (SMS or Email) and ensure the number of recipients matches the number of letters. Each recipient will receive a notification for their corresponding letter.
                         </AlertDescription>
                       </Alert>
                     </div>
