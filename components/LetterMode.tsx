@@ -1427,78 +1427,181 @@ const LetterMode: React.FC = () => {
     }
   };
 
-  // Memoize the letter params form to prevent unnecessary re-renders
-  const letterParamsForm = useMemo(() => (
-    <div className="space-y-4">
-      {letterDetails.lettersParams.map((params, index) => (
-        <Card key={`letter-params-${index}`}>
-          <CardHeader className="py-2 px-4 flex flex-row items-center justify-between space-y-0">
-            <CardTitle className="text-sm font-medium">
-              Letter {index + 1}
-            </CardTitle>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => removeLetterParams(index)}
-              disabled={letterDetails.lettersParams.length <= 1 || isLoading || isSending}
+  // Add new state for tracking current letter in the carousel
+  const [currentLetterIndex, setCurrentLetterIndex] = useState(0);
+
+  // Add navigation functions for the carousel
+  const goToNextLetter = useCallback(() => {
+    setCurrentLetterIndex((prev) => 
+      prev < letterDetails.lettersParams.length - 1 ? prev + 1 : prev
+    );
+  }, [letterDetails.lettersParams.length]);
+
+  const goToPrevLetter = useCallback(() => {
+    setCurrentLetterIndex((prev) => (prev > 0 ? prev - 1 : prev));
+  }, []);
+
+  const goToLetter = useCallback((index: number) => {
+    setCurrentLetterIndex(index);
+  }, []);
+
+  // Make sure currentLetterIndex stays in bounds if letters are removed
+  useEffect(() => {
+    if (currentLetterIndex >= letterDetails.lettersParams.length && letterDetails.lettersParams.length > 0) {
+      setCurrentLetterIndex(letterDetails.lettersParams.length - 1);
+    }
+  }, [letterDetails.lettersParams.length, currentLetterIndex]);
+
+  // Modify the letterParamsForm to implement a carousel
+  const letterParamsForm = useMemo(() => {
+    return (
+      <div className="space-y-6">
+        {/* Carousel Navigation */}
+        <div className="flex items-center justify-between mb-2">
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={goToPrevLetter}
+            disabled={currentLetterIndex === 0 || isLoading || isSending}
+            className="rounded-full w-10 h-10 flex items-center justify-center"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
+              <polyline points="15 18 9 12 15 6" />
+            </svg>
+          </Button>
+          
+          <div className="flex items-center">
+            <span className="font-medium text-sm">
+              Letter {currentLetterIndex + 1} of {letterDetails.lettersParams.length}
+            </span>
+          </div>
+          
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={goToNextLetter}
+            disabled={currentLetterIndex === letterDetails.lettersParams.length - 1 || isLoading || isSending}
+            className="rounded-full w-10 h-10 flex items-center justify-center"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
+              <polyline points="9 18 15 12 9 6" />
+            </svg>
+          </Button>
+        </div>
+        
+        {/* Carousel Content - Only display current letter */}
+        <div className="carousel-container relative">
+          {letterDetails.lettersParams.map((params, index) => (
+            <div
+              key={`letter-params-${index}`}
+              className={`carousel-item transition-opacity duration-300 ${
+                index === currentLetterIndex ? 'block opacity-100' : 'hidden opacity-0'
+              }`}
             >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="24"
-                height="24"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                className="h-4 w-4"
-              >
-                <path d="M18 6 6 18" />
-                <path d="m6 6 12 12" />
-              </svg>
-              <span className="sr-only">Remove</span>
-            </Button>
-          </CardHeader>
-          <CardContent className="p-4 pt-0">
-            <div className="grid gap-3">
-              {templateFields.map((field, fieldIndex) => {
-                // Ensure field.name exists and is a string
-                const fieldName = field?.name || '';
-                if (!fieldName) return null;
-                
-                return (
-                  <div key={`field-${index}-${fieldIndex}-${fieldName}`} className="space-y-1">
-                    <Label htmlFor={`${index}-${fieldName}`} className="flex items-center">
-                      <span className="font-medium">{fieldName}</span> 
-                      {field.required && <span className="text-red-500 ml-1">*</span>}
-                    </Label>
-                    <Textarea
-                      id={`${index}-${fieldName}`}
-                      value={params[fieldName] || ''}
-                      onChange={(e) => updateLetterParams(index, fieldName, e.target.value)}
-                      className="h-20 resize-none"
-                      placeholder={`Enter ${fieldName} value`}
-                      disabled={isLoading || isSending}
-                    />
+              <Card>
+                <CardHeader className="py-2 px-4 flex flex-row items-center justify-between space-y-0">
+                  <CardTitle className="text-sm font-medium">
+                    Letter {index + 1}
+                  </CardTitle>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => removeLetterParams(index)}
+                    disabled={letterDetails.lettersParams.length <= 1 || isLoading || isSending}
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="24"
+                      height="24"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      className="h-4 w-4"
+                    >
+                      <path d="M18 6 6 18" />
+                      <path d="m6 6 12 12" />
+                    </svg>
+                    <span className="sr-only">Remove</span>
+                  </Button>
+                </CardHeader>
+                <CardContent className="p-4 pt-0">
+                  <div className="grid gap-3">
+                    {templateFields.map((field, fieldIndex) => {
+                      // Ensure field.name exists and is a string
+                      const fieldName = field?.name || '';
+                      if (!fieldName) return null;
+                      
+                      return (
+                        <div key={`field-${index}-${fieldIndex}-${fieldName}`} className="space-y-1">
+                          <Label htmlFor={`${index}-${fieldName}`} className="flex items-center">
+                            <span className="font-medium">{fieldName}</span> 
+                            {field.required && <span className="text-red-500 ml-1">*</span>}
+                          </Label>
+                          <Textarea
+                            id={`${index}-${fieldName}`}
+                            value={params[fieldName] || ''}
+                            onChange={(e) => updateLetterParams(index, fieldName, e.target.value)}
+                            className="h-20 resize-none"
+                            placeholder={`Enter ${fieldName} value`}
+                            disabled={isLoading || isSending}
+                          />
+                        </div>
+                      );
+                    })}
                   </div>
-                );
-              })}
+                </CardContent>
+              </Card>
             </div>
-          </CardContent>
-        </Card>
-      ))}
-      <Button
-        variant="outline"
-        onClick={addLetterParams}
-        className="w-full bg-purple-50 text-purple-600 hover:bg-purple-100 border-purple-200 transition-all duration-200"
-        disabled={isLoading || isSending}
-      >
-        <Plus className="mr-2 h-4 w-4" />
-        Add Another Letter
-      </Button>
-    </div>
-  ), [letterDetails.lettersParams, templateFields, isLoading, isSending, addLetterParams, removeLetterParams, updateLetterParams]);
+          ))}
+        </div>
+        
+        {/* Carousel Indicators */}
+        <div className="flex justify-center gap-1 mt-2">
+          {letterDetails.lettersParams.map((_, index) => (
+            <button
+              key={`indicator-${index}`}
+              className={`w-2 h-2 rounded-full transition-all ${
+                index === currentLetterIndex
+                  ? 'bg-primary w-4'
+                  : 'bg-gray-300 hover:bg-gray-400'
+              }`}
+              onClick={() => goToLetter(index)}
+              aria-label={`Go to letter ${index + 1}`}
+              disabled={isLoading || isSending}
+            />
+          ))}
+        </div>
+        
+        {/* Add Letter Button */}
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            onClick={addLetterParams}
+            className="w-full bg-purple-50 text-purple-600 hover:bg-purple-100 border-purple-200 transition-all duration-200"
+            disabled={isLoading || isSending}
+          >
+            <Plus className="mr-2 h-4 w-4" />
+            Add Another Letter
+          </Button>
+        </div>
+      </div>
+    );
+  }, [
+    letterDetails.lettersParams, 
+    templateFields, 
+    isLoading, 
+    isSending, 
+    addLetterParams, 
+    removeLetterParams, 
+    updateLetterParams, 
+    currentLetterIndex, 
+    goToNextLetter, 
+    goToPrevLetter, 
+    goToLetter
+  ]);
 
   // Add handleClearAll function
   const handleClearAll = useCallback(() => {
