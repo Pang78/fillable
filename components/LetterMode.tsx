@@ -774,7 +774,7 @@ const CSVImportDialog: React.FC<{
             </div>
           )}
 
-          {/* Field Mapping Section with Carousel */}
+          {/* Field Mapping Section */}
           {csvHeaders.length > 0 && (
             <div className="space-y-5">
               <div className="flex items-center justify-between">
@@ -795,57 +795,18 @@ const CSVImportDialog: React.FC<{
                 </Button>
               </div>
               
-              {/* Carousel Navigation */}
-              <div className="flex items-center justify-between mb-4">
-                <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={() => setCurrentMappingIndex(prev => Math.max(0, prev - 1))}
-                  disabled={currentMappingIndex === 0}
-                  className="rounded-full w-12 h-12 flex items-center justify-center border-gray-300 hover:bg-gray-100 hover:border-gray-400 transition-all duration-200 shadow-sm"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-6 w-6">
-                    <polyline points="15 18 9 12 15 6" />
-                  </svg>
-                </Button>
-                
-                <div className="flex items-center bg-gray-100 px-4 py-2 rounded-full">
-                  <span className="text-base font-medium">
-                    Field <span className="text-purple-600">{currentMappingIndex + 1}</span> of <span className="text-purple-600">{templateFields.length}</span>
-                  </span>
-                </div>
-                
-                <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={() => setCurrentMappingIndex(prev => Math.min(templateFields.length - 1, prev + 1))}
-                  disabled={currentMappingIndex === templateFields.length - 1}
-                  className="rounded-full w-12 h-12 flex items-center justify-center border-gray-300 hover:bg-gray-100 hover:border-gray-400 transition-all duration-200 shadow-sm"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-6 w-6">
-                    <polyline points="9 18 15 12 9 6" />
-                  </svg>
-                </Button>
-              </div>
-              
-              {/* Field Mapping Carousel */}
-              <div className="relative">
-                {templateFields.map((field, index) => (
-                  <div
-                    key={field.name}
-                    className={`transition-all duration-500 ${
-                      index === currentMappingIndex
-                        ? 'block opacity-100 translate-x-0'
-                        : 'hidden opacity-0 absolute translate-x-full'
-                    }`}
-                  >
+              {/* Field Mapping Grid */}
+              <div className="max-h-[500px] overflow-y-auto border rounded-lg p-4 bg-slate-50">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {templateFields.map((field) => (
                     <div 
-                      className={`p-6 border rounded-lg ${
+                      key={field.name}
+                      className={`p-4 border rounded-lg ${
                         field.required ? 'border-red-200 bg-red-50' : 'border-gray-200'
                       }`}
                     >
-                      <div className="flex items-center mb-4">
-                        <span className="text-lg font-medium">{field.name}</span>
+                      <div className="flex items-center mb-3">
+                        <span className="text-base font-medium">{field.name}</span>
                         {field.required && <span className="ml-2 text-red-500">*</span>}
                       </div>
                       
@@ -853,7 +814,7 @@ const CSVImportDialog: React.FC<{
                         value={fieldMapping[field.name] || '__placeholder__'}
                         onValueChange={(value) => updateFieldMapping(field.name, value)}
                       >
-                        <SelectTrigger className="w-full py-6 text-base">
+                        <SelectTrigger className="w-full py-5 text-base">
                           <SelectValue placeholder="Map to CSV column" />
                         </SelectTrigger>
                         <SelectContent>
@@ -873,24 +834,8 @@ const CSVImportDialog: React.FC<{
                         </SelectContent>
                       </Select>
                     </div>
-                  </div>
-                ))}
-              </div>
-              
-              {/* Carousel Indicators */}
-              <div className="flex justify-center gap-2 mt-4">
-                {templateFields.map((_, index) => (
-                  <button
-                    key={`indicator-${index}`}
-                    className={`transition-all duration-300 ${
-                      index === currentMappingIndex
-                        ? 'bg-purple-600 w-8 h-2 rounded-full'
-                        : 'bg-gray-300 hover:bg-gray-400 w-2 h-2 rounded-full'
-                    }`}
-                    onClick={() => setCurrentMappingIndex(index)}
-                    aria-label={`Go to field ${index + 1}`}
-                  />
-                ))}
+                  ))}
+                </div>
               </div>
               
               {/* Preview and Import Buttons */}
@@ -1123,7 +1068,7 @@ const LetterMode: React.FC = () => {
   
     try {
       // Using proxy endpoint to avoid exposing API key in frontend
-      const response = await fetch(`${API_PROXY_URL}/templates/${templateId}`, {
+      const response = await fetch(`/api/letters/templates/${templateId}`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -1133,10 +1078,26 @@ const LetterMode: React.FC = () => {
   
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.message || `Failed to fetch template: ${response.status}`);
+        console.error('Template API error:', errorData);
+        
+        // Handle specific error cases
+        if (response.status === 401) {
+          throw new Error('Invalid API key. Please check your API key and try again.');
+        } else if (response.status === 404) {
+          throw new Error(`Template with ID ${templateId} not found.`);
+        } else if (response.status === 403) {
+          throw new Error('You do not have permission to access this template.');
+        } else {
+          throw new Error(errorData.message || `Failed to fetch template: ${response.status}`);
+        }
       }
   
       const templateData = await response.json();
+      
+      // Validate template data structure
+      if (!templateData || !templateData.fields) {
+        throw new Error('Invalid template data received from the API');
+      }
       
       // Handle both array of strings and array of objects
       const requiredFields: TemplateField[] = Array.isArray(templateData.fields) 
@@ -1161,6 +1122,10 @@ const LetterMode: React.FC = () => {
         : [];
   
       console.log('Processed template fields:', requiredFields);
+      
+      if (requiredFields.length === 0) {
+        throw new Error('No valid fields found in the template');
+      }
       
       // Reset letter parameters when loading a template directly
       const defaultParams: LetterParams = {};
@@ -1192,12 +1157,23 @@ const LetterMode: React.FC = () => {
       console.error('Error fetching template:', error);
       setApiError(error instanceof Error ? error.message : 'Failed to fetch template details');
       
-      // Show error toast
+      // Show error toast with more specific error message
       toast({
         title: 'Error Loading Template',
         description: error instanceof Error ? error.message : 'Failed to fetch template',
         variant: 'destructive',
       });
+      
+      // Clear template fields on error
+      setTemplateFields([]);
+      
+      // Reset template ID if it's an invalid template
+      if (error instanceof Error && error.message.includes('not found')) {
+        setLetterDetails(prev => ({
+          ...prev,
+          templateId: null
+        }));
+      }
     } finally {
       setIsTemplateLoading(false);
       setIsLoading(false);
