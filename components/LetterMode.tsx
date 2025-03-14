@@ -688,27 +688,27 @@ const CSVImportDialog: React.FC<{
           Import CSV
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[800px] max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-[900px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Import Letter Parameters from CSV</DialogTitle>
-          <DialogDescription>Map CSV headers to letter template fields</DialogDescription>
+          <DialogTitle className="text-xl">Import Letter Parameters from CSV</DialogTitle>
+          <DialogDescription className="text-base">Map CSV headers to letter template fields</DialogDescription>
         </DialogHeader>
 
         {/* Progress indicator */}
         {importProgress > 0 && (
-          <div className="w-full bg-gray-200 rounded-full h-1.5 mb-4">
+          <div className="w-full bg-gray-200 rounded-full h-2 mb-4">
             <div 
-              className="bg-primary h-1.5 rounded-full transition-all duration-300" 
+              className="bg-primary h-2 rounded-full transition-all duration-300" 
               style={{ width: `${importProgress}%` }}
             ></div>
           </div>
         )}
 
-        <div className="space-y-4">
+        <div className="space-y-5">
           {/* File upload section */}
           {!csvHeaders.length && (
             <div 
-              className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
+              className={`border-2 border-dashed rounded-lg p-10 text-center transition-colors ${
                 isDragging ? 'border-primary bg-primary/10' : 'border-gray-300'
               }`}
               onDragOver={handleDragOver}
@@ -727,58 +727,29 @@ const CSVImportDialog: React.FC<{
                 }}
                 className="hidden"
               />
-              <Upload className="mx-auto h-12 w-12 text-gray-400" />
-              <p className="mt-2 text-sm font-medium">
+              <Upload className="mx-auto h-16 w-16 text-gray-400" />
+              <p className="mt-3 text-base font-medium">
                 Drag and drop your CSV file here, or click to browse
               </p>
-              <p className="mt-1 text-xs text-gray-500">
+              <p className="mt-2 text-sm text-gray-500">
                 CSV files only, max 5MB
               </p>
             </div>
           )}
 
-          {/* Selected file info */}
-          {selectedFile && !csvHeaders.length && (
-            <div className="mt-4 p-3 bg-gray-50 rounded-lg flex items-center justify-between">
-              <div className="flex items-center">
-                <FileSpreadsheet className="h-5 w-5 mr-2 text-green-500" />
-                <div>
-                  <p className="text-sm font-medium">{selectedFile.name}</p>
-                  <p className="text-xs text-gray-500">{formatFileSize(selectedFile.size)}</p>
-                </div>
-              </div>
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                className="text-gray-500 hover:text-red-500"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setSelectedFile(null);
-                  if (fileInputRef.current) {
-                    fileInputRef.current.value = '';
-                  }
-                  setCsvHeaders([]);
-                  setPreviewData([]);
-                }}
-              >
-                <XCircle className="h-4 w-4" />
-              </Button>
-            </div>
-          )}
-
           {/* CSV Preview */}
           {previewData.length > 0 && (
-            <div className="border rounded-lg p-4 bg-slate-50">
-              <div className="flex items-center justify-between mb-2">
-                <h4 className="text-sm font-semibold">CSV Preview</h4>
-                <p className="text-xs text-gray-500">Showing first 5 rows</p>
+            <div className="border rounded-lg p-5 bg-slate-50">
+              <div className="flex items-center justify-between mb-3">
+                <h4 className="text-base font-semibold">CSV Preview</h4>
+                <p className="text-sm text-gray-500">Showing first 5 rows</p>
               </div>
-              <div className="max-h-32 overflow-y-auto">
-                <Table className="text-xs">
+              <div className="max-h-48 overflow-y-auto">
+                <Table className="text-sm">
                   <TableHeader>
                     <TableRow>
                       {csvHeaders.map(header => (
-                        <TableHead key={header} className="px-2 py-1">{header}</TableHead>
+                        <TableHead key={header} className="px-3 py-2">{header}</TableHead>
                       ))}
                     </TableRow>
                   </TableHeader>
@@ -786,7 +757,7 @@ const CSVImportDialog: React.FC<{
                     {previewData.map((row, idx) => (
                       <TableRow key={idx}>
                         {csvHeaders.map(header => (
-                          <TableCell key={`${idx}-${header}`} className="px-2 py-1 truncate max-w-[150px]">
+                          <TableCell key={`${idx}-${header}`} className="px-3 py-2 truncate max-w-[180px]">
                             {row[header]}
                           </TableCell>
                         ))}
@@ -798,11 +769,11 @@ const CSVImportDialog: React.FC<{
             </div>
           )}
 
-          {/* Field Mapping Section */}
+          {/* Field Mapping Section - Make the grid 3 columns on large screens */}
           {csvHeaders.length > 0 && (
-            <div className="space-y-4">
+            <div className="space-y-5">
               <div className="flex items-center justify-between">
-                <h4 className="font-semibold">Map CSV Headers to Template Fields</h4>
+                <h4 className="text-base font-semibold">Map CSV Headers to Template Fields</h4>
                 <Button 
                   variant="ghost" 
                   size="sm" 
@@ -820,11 +791,11 @@ const CSVImportDialog: React.FC<{
                 </Button>
               </div>
               
-              <div className="grid gap-4 md:grid-cols-2">
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                 {templateFields.map((field) => (
                   <div 
                     key={field.name}
-                    className={`p-3 border rounded-lg ${
+                    className={`p-4 border rounded-lg ${
                       field.required ? 'border-red-200 bg-red-50' : 'border-gray-200'
                     }`}
                   >
@@ -847,7 +818,7 @@ const CSVImportDialog: React.FC<{
                             <div className="flex items-center">
                               <span>{header}</span>
                               {previewData[0] && (
-                                <span className="ml-2 text-xs text-gray-500 truncate max-w-[150px]">
+                                <span className="ml-2 text-xs text-gray-500 truncate max-w-[180px]">
                                   (e.g., {previewData[0][header]})
                                 </span>
                               )}
@@ -860,7 +831,7 @@ const CSVImportDialog: React.FC<{
                 ))}
               </div>
               
-              <div className="mt-4 flex justify-end gap-2">
+              <div className="mt-5 flex justify-end gap-3">
                 <Button 
                   variant="outline" 
                   onClick={previewMappedData}
@@ -875,17 +846,17 @@ const CSVImportDialog: React.FC<{
                 </Button>
                 <Button 
                   onClick={processImport}
-                  className="bg-green-600 hover:bg-green-700 transition-all duration-200 shadow-sm hover:shadow"
+                  className="bg-green-600 hover:bg-green-700 transition-all duration-200 shadow-sm hover:shadow font-medium text-base px-5 py-2"
                   disabled={isImporting}
                 >
                   {isImporting ? (
                     <>
-                      <Loader2 className="animate-spin -ml-1 mr-2 h-4 w-4" />
+                      <Loader2 className="animate-spin -ml-1 mr-2 h-5 w-5" />
                       Importing...
                     </>
                   ) : (
                     <>
-                      <CheckCircle className="mr-2 h-4 w-4" />
+                      <CheckCircle className="mr-2 h-5 w-5" />
                       Import Data & Close
                     </>
                   )}
@@ -894,24 +865,24 @@ const CSVImportDialog: React.FC<{
             </div>
           )}
 
-          {/* Mapped Data Preview */}
+          {/* Mapped Data Preview - Make it larger */}
           {showMappedPreview && mappedPreview.length > 0 && (
-            <div className="border rounded-lg p-4 bg-slate-50 mt-4">
-              <div className="flex items-center justify-between mb-2">
-                <h4 className="font-semibold">Mapped Data Preview</h4>
-                <p className="text-xs text-gray-500">
+            <div className="border rounded-lg p-5 bg-slate-50 mt-5">
+              <div className="flex items-center justify-between mb-3">
+                <h4 className="text-base font-semibold">Mapped Data Preview</h4>
+                <p className="text-sm text-gray-500">
                   Showing {mappedPreview.length} of {previewData.length} rows
                 </p>
               </div>
-              <p className="text-sm text-slate-600 mb-2">
+              <p className="text-sm text-slate-600 mb-3">
                 This is how your CSV data will be mapped to the template fields. Please verify before importing.
               </p>
-              <div className="max-h-64 overflow-y-auto">
-                <Table className="text-xs">
+              <div className="max-h-80 overflow-y-auto">
+                <Table className="text-sm">
                   <TableHeader>
                     <TableRow>
                       {templateFields.map(field => (
-                        <TableHead key={field.name} className="px-2 py-1">
+                        <TableHead key={field.name} className="px-3 py-2">
                           <div className="flex items-center">
                             {field.name}
                             {field.required && <span className="text-red-500 ml-1">*</span>}
@@ -926,7 +897,7 @@ const CSVImportDialog: React.FC<{
                         {templateFields.map(field => (
                           <TableCell 
                             key={`${idx}-${field.name}`} 
-                            className={`px-2 py-1 truncate max-w-[150px] ${
+                            className={`px-3 py-2 truncate max-w-[180px] ${
                               field.required && (!row[field.name] || row[field.name].trim() === '') 
                                 ? 'bg-red-100' 
                                 : ''
@@ -947,9 +918,9 @@ const CSVImportDialog: React.FC<{
                   .filter(field => field.required)
                   .some(field => !row[field.name] || row[field.name].trim() === '')
               ) && (
-                <Alert variant="destructive" className="mt-2">
-                  <AlertCircle className="h-4 w-4" />
-                  <AlertDescription>
+                <Alert variant="destructive" className="mt-3">
+                  <AlertCircle className="h-5 w-5" />
+                  <AlertDescription className="text-sm">
                     Some required fields are missing values. These rows may not import correctly.
                   </AlertDescription>
                 </Alert>
@@ -958,7 +929,7 @@ const CSVImportDialog: React.FC<{
           )}
 
           {/* Example template download button */}
-          <div className="flex justify-center mt-4">
+          <div className="flex justify-center mt-5">
             <Button 
               variant="outline" 
               onClick={generateExampleTemplate} 
@@ -1009,9 +980,12 @@ const LetterMode: React.FC = () => {
     }, 500)
   ).current;
 
-  // Add useEffect for debounced template loading
+  // New useEffect for debounced template loading
   useEffect(() => {
     if (letterDetails.templateId && letterDetails.templateId > 0) {
+      // We don't need to reset parameters here since we'll do it in fetchTemplateDetails
+      // or when templateFields change
+      
       // Check if we already have this template in cache
       if (templateCache[letterDetails.templateId]) {
         setTemplateFields(templateCache[letterDetails.templateId]);
@@ -1045,11 +1019,14 @@ const LetterMode: React.FC = () => {
         }
       });
       
-      // Initialize with one empty set of parameters
+      // Always initialize with the new default parameters
       setLetterDetails(prev => ({
         ...prev,
-        lettersParams: prev.lettersParams.length ? prev.lettersParams : [defaultParams]
+        lettersParams: [defaultParams]
       }));
+      
+      // Reset currentLetterIndex to the first letter when loading a new template
+      setCurrentLetterIndex(0);
       
       // Show toast notification when template is loaded
       toast({
@@ -1122,6 +1099,24 @@ const LetterMode: React.FC = () => {
   
       console.log('Processed template fields:', requiredFields);
       
+      // Reset letter parameters when loading a template directly
+      const defaultParams: LetterParams = {};
+      requiredFields.forEach((field: TemplateField) => {
+        if (field.name && field.required) {
+          defaultParams[field.name] = '';
+        }
+      });
+      
+      // Update letterDetails with reset parameters and fields
+      setLetterDetails(prev => ({
+        ...prev,
+        lettersParams: [defaultParams]
+      }));
+      
+      // Reset carousel position
+      setCurrentLetterIndex(0);
+      
+      // Update the template fields
       setTemplateFields(requiredFields);
       
       // Cache the template fields for future use
@@ -1130,7 +1125,6 @@ const LetterMode: React.FC = () => {
         [templateId]: requiredFields
       }));
       
-      // Remove the initialization logic from here since it's now in the useEffect
     } catch (error) {
       console.error('Error fetching template:', error);
       setApiError(error instanceof Error ? error.message : 'Failed to fetch template details');
@@ -1401,9 +1395,10 @@ const LetterMode: React.FC = () => {
       const { batchId } = await response.json();
 
       toast({
-        title: 'Bulk Letters Generated',
-        description: `Batch ID: ${batchId}. Letters generated successfully.`,
+        title: lettersParams.length === 1 ? 'Letter Successfully Sent' : 'Letters Successfully Sent',
+        description: `Batch ID: ${batchId}. ${lettersParams.length} ${lettersParams.length === 1 ? 'letter' : 'letters'} generated and sent successfully.`,
         variant: 'default',
+        className: 'bg-green-50 border-green-200 text-green-800',
       });
     } catch (error) {
       console.error('Error generating bulk letters:', error);
@@ -1788,10 +1783,18 @@ const LetterMode: React.FC = () => {
                                   className="p-3 border-b last:border-b-0 hover:bg-slate-50 cursor-pointer flex justify-between items-center"
                                   onClick={() => {
                                     const templateId = template.id;
+                                    
+                                    // Reset state for the new template
+                                    setCurrentLetterIndex(0);
+                                    setTemplateFields([]); // Clear template fields temporarily
+                                    
+                                    // Update the template ID
                                     setLetterDetails((prev) => ({
                                       ...prev,
                                       templateId: templateId,
+                                      lettersParams: [{}], // Reset to empty parameters
                                     }));
+                                    
                                     setIsTemplateDialogOpen(false); // Close dialog after selection
                                     
                                     // Automatically load the template after selection
