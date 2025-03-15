@@ -9,7 +9,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription, DialogClose } from '@/components/ui/dialog';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { Info, Upload, Download, FileSpreadsheet, HelpCircle, Loader2, XCircle, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Info, Upload, Download, FileSpreadsheet, HelpCircle, Loader2, XCircle, ChevronLeft, ChevronRight, LinkIcon, CheckCircle, Copy, ExternalLink, ArrowRight, AlertCircle } from 'lucide-react';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 
@@ -334,7 +334,7 @@ const BatchFormPrefill = () => {
     labelField: 'none',
     additionalFields: []
   });
-  const [currentStep, setCurrentStep] = useState<'upload' | 'generate' | 'export'>('upload');
+  const [currentStep, setCurrentStep] = useState<'formUrl' | 'upload' | 'generate' | 'export'>('formUrl');
   const [showCsvPreview, setShowCsvPreview] = useState(false);
   const [csvUploadState, setCsvUploadState] = useState<CsvUploadState>({
     status: 'idle',
@@ -343,6 +343,8 @@ const BatchFormPrefill = () => {
     rowCount: 0,
     preview: []
   });
+  const [urlValidated, setUrlValidated] = useState(false);
+  const [showAllFields, setShowAllFields] = useState(false);
 
   // Add a function to add toast notifications
   const addToast = useCallback((message: string, type: 'success' | 'error' | 'info' = 'info') => {
@@ -514,14 +516,37 @@ const BatchFormPrefill = () => {
     setToasts(prev => prev.filter(toast => toast.id !== id));
   }, []);
 
-  // Update validation function with proper types
+  // Add a function to toggle all export fields
+  const toggleAllExportFields = useCallback((checked: boolean) => {
+    setExportConfig(prev => ({
+      ...prev,
+      additionalFields: checked ? fields.map(field => field.FieldID) : []
+    }));
+  }, [fields]);
+
+  // Update the validateFormUrl function to set urlValidated state
   const validateFormUrl = useCallback((url: string): boolean => {
-    if (!url) throw new Error('Form URL is required');
-    if (!FORM_URL_REGEX.test(url)) {
-      throw new Error('Invalid form URL. Must be in format: https://form.gov.sg/[24-digit hexadecimal]');
+    try {
+      if (!url) throw new Error('Form URL is required');
+      if (!FORM_URL_REGEX.test(url)) {
+        throw new Error('Invalid form URL. Must be in format: https://form.gov.sg/[24-digit hexadecimal]');
+      }
+      setUrlValidated(true);
+      return true;
+    } catch (error: any) {
+      setError(error.message);
+      setUrlValidated(false);
+      return false;
     }
-    return true;
   }, []);
+
+  // Add function to proceed from formUrl step to upload step
+  const proceedToUpload = useCallback(() => {
+    if (validateFormUrl(formUrl)) {
+      setCurrentStep('upload');
+      addToast('Form URL validated successfully. Now import your CSV file.', 'success');
+    }
+  }, [formUrl, validateFormUrl, addToast]);
 
   // Generate links with improved error handling
   const generateLinks = useCallback(() => {
@@ -692,43 +717,53 @@ const BatchFormPrefill = () => {
     );
   };
 
-  // Add a function to render step indicator
+  // Update the render step indicator to include the new formUrl step
   const renderStepIndicator = () => {
     const steps = [
+      { key: 'formUrl', label: 'Enter Form URL' },
       { key: 'upload', label: 'Upload CSV' },
       { key: 'generate', label: 'Generate Links' },
       { key: 'export', label: 'Export Results' }
     ];
     
     return (
-      <div className="flex items-center justify-center mb-6">
+      <div className="flex items-center justify-between mb-8 px-2">
         {steps.map((step, index) => (
           <React.Fragment key={step.key}>
-            <div className={`flex flex-col items-center ${currentStep === step.key ? 'text-blue-600' : 'text-gray-400'}`}>
-              <div className={`w-8 h-8 rounded-full flex items-center justify-center border-2 ${
-                currentStep === step.key 
-                  ? 'border-blue-600 bg-blue-50' 
-                  : currentStep === steps[index + 1]?.key || currentStep === steps[index + 2]?.key 
-                    ? 'border-green-500 bg-green-50 text-green-500' 
-                    : 'border-gray-300'
-              }`}>
-                {currentStep === steps[index + 1]?.key || currentStep === steps[index + 2]?.key ? (
-                  <svg className="w-4 h-4 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                  </svg>
+            <div className="flex flex-col items-center relative">
+              <div 
+                className={`w-12 h-12 rounded-full flex items-center justify-center border-2 transition-all duration-300 ${
+                  currentStep === step.key 
+                    ? 'border-blue-600 bg-blue-50 text-blue-600 font-bold scale-110 shadow-md' 
+                    : currentStep === steps[index + 1]?.key || currentStep === steps[index + 2]?.key || currentStep === steps[index + 3]?.key
+                      ? 'border-green-500 bg-green-50 text-green-500' 
+                      : 'border-gray-300 bg-gray-50'
+                }`}
+              >
+                {currentStep === steps[index + 1]?.key || currentStep === steps[index + 2]?.key || currentStep === steps[index + 3]?.key ? (
+                  <CheckCircle className="w-6 h-6 text-green-500" />
                 ) : (
-                  index + 1
+                  <span className="text-lg font-semibold">{index + 1}</span>
                 )}
               </div>
-              <span className="text-xs mt-1 font-medium">{step.label}</span>
+              <span className={`text-sm mt-2 font-medium transition-all duration-300 ${
+                currentStep === step.key ? 'text-blue-600' : 'text-gray-500'
+              }`}>
+                {step.label}
+              </span>
+              {currentStep === step.key && (
+                <div className="absolute -bottom-1 left-1/2 transform -translate-x-1/2 w-16 h-1 bg-blue-600 rounded-full" />
+              )}
             </div>
             
             {index < steps.length - 1 && (
-              <div className={`w-12 h-0.5 mx-1 ${
-                currentStep === steps[index + 1]?.key || currentStep === steps[index + 2]?.key 
-                  ? 'bg-green-500' 
-                  : 'bg-gray-300'
-              }`} />
+              <div className="flex-1 relative">
+                <div className={`h-0.5 mx-1 transition-all duration-500 ${
+                  currentStep === steps[index + 1]?.key || currentStep === steps[index + 2]?.key || currentStep === steps[index + 3]?.key
+                    ? 'bg-green-500' 
+                    : 'bg-gray-300'
+                }`} />
+              </div>
             )}
           </React.Fragment>
         ))}
@@ -737,7 +772,7 @@ const BatchFormPrefill = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100 p-6">
+    <div className="min-h-screen bg-gradient-to-b from-blue-50 to-blue-100 p-6">
       {/* Render toast notifications */}
       {toasts.map(toast => (
         <Toast
@@ -748,9 +783,12 @@ const BatchFormPrefill = () => {
         />
       ))}
       
-      <Card className="w-full max-w-4xl mx-auto shadow-lg">
+      <Card className="w-full max-w-4xl mx-auto shadow-lg border border-blue-100">
         <CardHeader className="flex flex-row items-center justify-between bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-t-lg">
-          <CardTitle className="text-2xl">FormSG Prefill Batch Generator</CardTitle>
+          <CardTitle className="text-2xl flex items-center">
+            <FileSpreadsheet className="h-6 w-6 mr-2" />
+            FormSG Prefill Batch Generator
+          </CardTitle>
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
@@ -776,332 +814,553 @@ const BatchFormPrefill = () => {
           {renderStepIndicator()}
           
           {successMessage && (
-            <Alert className="bg-green-50 border-green-200">
-              <AlertDescription className="text-green-700">{successMessage}</AlertDescription>
+            <Alert className="bg-green-50 border-green-200 animate-fadeIn">
+              <AlertDescription className="text-green-700 flex items-center">
+                <svg className="h-5 w-5 text-green-500 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+                {successMessage}
+              </AlertDescription>
             </Alert>
           )}
 
           {error && (
-            <Alert variant="destructive" className="bg-red-50 border-red-200">
+            <Alert variant="destructive" className="bg-red-50 border-red-200 animate-fadeIn">
               <XCircle className="h-4 w-4 text-red-500 mr-2" />
               <AlertDescription className="text-red-700">{error}</AlertDescription>
             </Alert>
           )}
 
-          <div className="space-y-2">
-            <Label htmlFor="form-url" className="text-lg font-medium text-gray-700">Batch URL Generator and Exporter</Label>
-            <Input
-              id="form-url"
-              className="border-2 focus:ring-2 focus:ring-blue-500"
-              placeholder="https://form.gov.sg/67488b8b1210a416d2d7cb5b [24-digit hexadecimal]"
-              value={formUrl}
-              onChange={(e) => setFormUrl(e.target.value)}
-              aria-describedby="form-url-format"
-            />
-            <p id="form-url-format" className="text-xs text-gray-500">Format: https://form.gov.sg/[24-digit hexadecimal]</p>
-          </div>
-
-          <div className="grid gap-4 md:grid-cols-3">
-            <Dialog>
-              <DialogTrigger asChild>
+          {/* Only show the URL section for steps after formUrl */}
+          {(currentStep === 'upload' || currentStep === 'generate' || currentStep === 'export') && (
+            <div className="space-y-2 py-2 animate-fadeIn mb-6">
+              <h3 className="text-lg font-medium text-gray-700 flex items-center">
+                <LinkIcon className="h-5 w-5 mr-2 text-blue-600" />
+                FormSG URL
+              </h3>
+              <div className="flex items-center">
+                <div className="flex-1 bg-blue-50 p-3 rounded-md border border-blue-200 text-blue-800 font-mono text-sm truncate">
+                  {formUrl}
+                </div>
                 <Button 
-                  variant={currentStep === 'upload' ? 'default' : 'outline'} 
-                  className={`w-full ${currentStep === 'upload' ? 'bg-blue-600 hover:bg-blue-700' : 'hover:bg-blue-50'}`}
+                  variant="outline" 
+                  size="sm" 
+                  className="ml-2 border-blue-200 hover:bg-blue-50"
+                  onClick={() => setCurrentStep('formUrl')}
                 >
-                  <Upload className="mr-2 h-4 w-4" />
-                  Import CSV
+                  Edit
                 </Button>
-              </DialogTrigger>
-              <DialogContent className="sm:max-w-md">
-                <DialogHeader>
-                  <DialogTitle>Import CSV File</DialogTitle>
-                  <DialogDescription>
-                    Upload a CSV file with your form fields and values
-                  </DialogDescription>
-                </DialogHeader>
-                <div className="space-y-4">
-                  <Alert className="bg-blue-50 border-blue-200">
-                    <Info className="h-4 w-4 text-blue-500" />
-                    <AlertDescription className="text-blue-700">
-                      <p className="font-medium">Your CSV must include these columns:</p>
-                      <ul className="list-disc list-inside mt-1 text-sm">
-                        <li><span className="font-bold">FieldID</span> - 24-digit hexadecimal ID</li>
-                        <li><span className="font-bold">values</span> - List of values separated by {valuesDelimiter}</li>
-                        <li><span className="font-bold">description</span> (optional) - Field name</li>
-                      </ul>
-                    </AlertDescription>
-                  </Alert>
-                  
-                  <Button variant="outline" onClick={downloadTemplate} className="w-full">
-                    <Download className="mr-2 h-4 w-4" />
-                    Download Template
-                  </Button>
+              </div>
+            </div>
+          )}
 
-                  <div className="space-y-2">
-                    <Label htmlFor="values-delimiter-select">Values Delimiter</Label>
-                    <Select
-                      value={valuesDelimiter}
-                      onValueChange={setValuesDelimiter}
-                    >
-                      <SelectTrigger id="values-delimiter-select">
-                        <SelectValue placeholder="Select delimiter" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {SUPPORTED_VALUES_DELIMITERS.map((d) => (
-                          <SelectItem key={d.value} value={d.value}>
-                            {d.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <p className="text-xs text-gray-500">
-                      <span className="font-bold">Important:</span> This is the delimiter that separates values within the "values" column of your CSV.
-                    </p>
-                    <p className="text-xs text-gray-500">
-                      Example: For values like "Apple;Banana;Cherry", use semicolon (;)
+          {/* FormURL Step */}
+          {currentStep === 'formUrl' && (
+            <div className="space-y-6 py-4 animate-fadeIn">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center">
+                  <div className="flex items-center justify-center w-8 h-8 rounded-full bg-blue-600 text-white font-bold">
+                    1
+                  </div>
+                  <div className="ml-3">
+                    <h3 className="font-semibold text-lg">FormSG URL</h3>
+                    <p className="text-sm text-gray-500">Enter your form URL</p>
+                  </div>
+                </div>
+                <div className="flex items-center text-sm text-gray-500">
+                  <span className="font-medium text-blue-600">Step 1</span>
+                  <span className="mx-2 text-gray-400">/</span>
+                  <span>3</span>
+                </div>
+              </div>
+              
+              <div className="bg-blue-50 p-5 rounded-lg border border-blue-200 mb-6">
+                <div className="flex items-start">
+                  <Info className="h-10 w-10 text-blue-500 mr-4 flex-shrink-0 mt-1" />
+                  <div>
+                    <h3 className="font-semibold text-blue-800 text-lg mb-2">Step 1: Enter Your FormSG URL</h3>
+                    <p className="text-blue-700">
+                      Enter the URL of your FormSG form. This is the base URL you'll use to create 
+                      prefilled links. It should be in the format: <span className="font-mono bg-blue-100 px-1 rounded">https://form.gov.sg/[24-digit code]</span>
                     </p>
                   </div>
+                </div>
+              </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="csv-file">CSV File</Label>
+              <div className="space-y-4">
+                <Label htmlFor="form-url" className="text-lg font-medium text-gray-700 flex items-center">
+                  <LinkIcon className="h-5 w-5 mr-2 text-blue-600" />
+                  FormSG URL
+                </Label>
+                <div className="relative">
+                  <Input
+                    id="form-url"
+                    className={`border-2 focus:ring-2 focus:ring-blue-500 pr-10 text-base h-12 ${
+                      urlValidated ? 'border-green-500 bg-green-50' : 'border-blue-200'
+                    }`}
+                    placeholder="https://form.gov.sg/67488b8b1210a416d2d7cb5b"
+                    value={formUrl}
+                    onChange={(e) => {
+                      setFormUrl(e.target.value);
+                      setUrlValidated(false);
+                      setError('');
+                    }}
+                    onBlur={() => validateFormUrl(formUrl)}
+                    aria-describedby="form-url-format"
+                  />
+                  {urlValidated && (
+                    <div className="absolute top-1/2 right-3 transform -translate-y-1/2 text-green-500">
+                      <CheckCircle className="h-5 w-5" />
+                    </div>
+                  )}
+                </div>
+                <p id="form-url-format" className="text-sm text-gray-500 flex items-center">
+                  <Info className="h-4 w-4 mr-1 text-blue-500" />
+                  URL format: https://form.gov.sg/ followed by a 24-character hexadecimal code
+                </p>
+
+                <div className="pt-8">
+                  <Button 
+                    onClick={proceedToUpload} 
+                    className="w-full bg-blue-600 hover:bg-blue-700 text-lg h-12 font-medium transition-all duration-200 shadow-md hover:shadow-lg flex items-center justify-center"
+                    disabled={!formUrl.trim()}
+                  >
+                    {urlValidated ? (
+                      <>
+                        Continue to CSV Upload
+                        <ArrowRight className="ml-2 h-5 w-5" />
+                      </>
+                    ) : (
+                      <>
+                        Validate URL First
+                        <AlertCircle className="ml-2 h-5 w-5" />
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Upload Step */}
+          {currentStep === 'upload' && (
+            <div className="space-y-6 py-4 animate-fadeIn">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center">
+                  <div className="flex items-center justify-center w-8 h-8 rounded-full bg-blue-600 text-white font-bold">
+                    2
+                  </div>
+                  <div className="ml-3">
+                    <h3 className="font-semibold text-lg">CSV Upload</h3>
+                    <p className="text-sm text-gray-500">Import your data</p>
+                  </div>
+                </div>
+                <div className="flex items-center text-sm text-gray-500">
+                  <span className="font-medium text-blue-600">Step 2</span>
+                  <span className="mx-2 text-gray-400">/</span>
+                  <span>3</span>
+                </div>
+              </div>
+              
+              <div className="bg-blue-50 p-5 rounded-lg border border-blue-200 mb-6">
+                <div className="flex items-start">
+                  <Info className="h-10 w-10 text-blue-500 mr-4 flex-shrink-0 mt-1" />
+                  <div>
+                    <h3 className="font-semibold text-blue-800 text-lg mb-2">Upload Your CSV File</h3>
+                    <p className="text-blue-700 mb-2">
+                      Upload a CSV file containing your form field values. Each row will generate a unique prefilled link.
+                    </p>
+                    <div className="flex items-center mt-3">
+                      <Button 
+                        onClick={downloadTemplate} 
+                        variant="outline" 
+                        size="sm"
+                        className="text-blue-600 border-blue-300 hover:bg-blue-100"
+                      >
+                        <Download className="mr-2 h-4 w-4" />
+                        Download Template
+                      </Button>
+                      <span className="text-xs text-blue-600 ml-3">Need help? Download our template to get started.</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="delimiter" className="text-gray-700">Value Delimiter</Label>
+                  <Select 
+                    value={valuesDelimiter} 
+                    onValueChange={setValuesDelimiter}
+                  >
+                    <SelectTrigger className="w-full border-2 border-blue-200 h-12">
+                      <SelectValue placeholder="Select delimiter" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value=";">Semicolon (;)</SelectItem>
+                      <SelectItem value=",">Comma (,)</SelectItem>
+                      <SelectItem value="|">Pipe (|)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-gray-500">
+                    <span className="font-bold">Important:</span> This is the delimiter that separates values within the "values" column of your CSV.
+                  </p>
+                </div>
+
+                <div className="space-y-2 mt-4">
+                  <Label htmlFor="csv-file" className="text-gray-700">CSV File</Label>
+                  <div className="border-2 border-dashed border-blue-200 rounded-lg p-6 text-center hover:bg-blue-50 transition-colors cursor-pointer">
                     <Input
                       id="csv-file"
                       type="file"
                       accept=".csv"
                       onChange={handleFileUpload}
-                      className="cursor-pointer"
+                      className="hidden"
                     />
+                    <label htmlFor="csv-file" className="cursor-pointer flex flex-col items-center">
+                      <FileSpreadsheet className="h-12 w-12 text-blue-500 mb-3" />
+                      <span className="text-blue-700 font-medium mb-1">Click to upload CSV file</span>
+                      <span className="text-sm text-gray-500">or drag and drop</span>
+                    </label>
+                  </div>
+                </div>
+                
+                {/* CSV Upload Status */}
+                {csvUploadState.status !== 'idle' && (
+                  <div className="mt-4 p-4 bg-white rounded-lg border border-gray-200 shadow-sm">
+                    <div className="flex items-center justify-between">
+                      <span className="font-medium text-gray-700">
+                        {csvUploadState.fileName}
+                      </span>
+                      <span className="text-gray-500 text-sm">
+                        {csvUploadState.fileSize}
+                      </span>
+                    </div>
                     
-                    {/* CSV Upload Status */}
-                    {csvUploadState.status !== 'idle' && (
-                      <div className="mt-2 text-sm">
-                        <div className="flex items-center justify-between">
-                          <span className="font-medium">
-                            {csvUploadState.fileName}
-                          </span>
-                          <span className="text-gray-500">
-                            {csvUploadState.fileSize}
-                          </span>
+                    {csvUploadState.status === 'uploading' && (
+                      <div className="flex items-center mt-2 text-blue-600">
+                        <Loader2 className="animate-spin h-4 w-4 mr-2" />
+                        <span>Uploading file...</span>
+                      </div>
+                    )}
+                    
+                    {csvUploadState.status === 'processing' && (
+                      <div className="flex items-center mt-2 text-blue-600">
+                        <Loader2 className="animate-spin h-4 w-4 mr-2" />
+                        <span>Processing CSV data...</span>
+                      </div>
+                    )}
+                    
+                    {csvUploadState.status === 'success' && (
+                      <div className="mt-2 text-green-600">
+                        <div className="flex items-center">
+                          <CheckCircle className="h-4 w-4 mr-2" />
+                          <span>Successfully processed {csvUploadState.rowCount} fields</span>
                         </div>
-                        
-                        {csvUploadState.status === 'uploading' && (
-                          <div className="flex items-center mt-2 text-blue-600">
-                            <Loader2 className="animate-spin h-4 w-4 mr-2" />
-                            <span>Uploading file...</span>
-                          </div>
-                        )}
-                        
-                        {csvUploadState.status === 'processing' && (
-                          <div className="flex items-center mt-2 text-blue-600">
-                            <Loader2 className="animate-spin h-4 w-4 mr-2" />
-                            <span>Processing CSV data...</span>
-                          </div>
-                        )}
-                        
-                        {csvUploadState.status === 'success' && (
-                          <div className="mt-2 text-green-600">
-                            <div className="flex items-center">
-                              <svg className="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                              </svg>
-                              <span>Successfully processed {csvUploadState.rowCount} fields</span>
-                            </div>
-                          </div>
-                        )}
-                        
-                        {csvUploadState.status === 'error' && (
-                          <div className="flex items-center mt-2 text-red-600">
-                            <XCircle className="h-4 w-4 mr-2" />
-                            <span>Error processing file</span>
-                          </div>
-                        )}
                       </div>
                     )}
                   </div>
-                </div>
+                )}
                 
-                {showCsvPreview && renderCsvPreview()}
-                
-                <DialogFooter>
-                  <DialogClose asChild>
-                    <Button 
-                      onClick={() => {
-                        if (csvUploadState.status === 'success') {
-                          setCurrentStep('generate');
-                        }
-                      }}
-                      disabled={csvUploadState.status !== 'success'}
-                      className="bg-blue-600 hover:bg-blue-700"
-                    >
-                      Continue to Generate Links
-                    </Button>
-                  </DialogClose>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
-
-            <Button
-              onClick={generateLinks}
-              disabled={isProcessing || fields.length === 0}
-              className={`w-full ${currentStep === 'generate' ? 'bg-blue-600 hover:bg-blue-700' : 'bg-gray-400 hover:bg-gray-500'}`}
-            >
-              {isProcessing ? (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              ) : (
-                <FileSpreadsheet className="mr-2 h-4 w-4" />
-              )}
-              Generate Links
-            </Button>
-            
-            <Dialog>
-              <DialogTrigger asChild>
-                <Button
-                  variant={currentStep === 'export' ? 'default' : 'outline'}
-                  disabled={generatedLinks.length === 0}
-                  className={`w-full ${currentStep === 'export' ? 'bg-blue-600 hover:bg-blue-700' : ''}`}
-                >
-                  <Download className="mr-2 h-4 w-4" />
-                  Export Options
-                </Button>
-              </DialogTrigger>
-              <ImprovedDialogContent size="md" position="center">
-                <DialogHeader>
-                  <DialogTitle>Configure Export</DialogTitle>
-                  <DialogDescription>
-                    Customize which fields to include in your exported CSV file
-                  </DialogDescription>
-                </DialogHeader>
-                <div className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="label-field">Primary Label Field (Optional)</Label>
-                    <Select 
-                      value={exportConfig.labelField}
-                      onValueChange={(value) => setExportConfig(prev => ({
-                        ...prev,
-                        labelField: value
-                      }))}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Choose field for labeling rows" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="none">None</SelectItem>
-                        <SelectItem value="index">Entry Number</SelectItem>
-                        {fields.map((field) => (
-                          <SelectItem key={field.FieldID} value={field.FieldID}>
-                            {field.description || field.FieldID}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <p className="text-xs text-gray-500">
-                      This field will be used as the primary identifier for each row in the exported CSV
-                    </p>
-                  </div>
-
-                  <div className="flex items-center space-x-2">
-                    <Checkbox
-                      id="include-url"
-                      checked={exportConfig.includeUrl}
-                      onCheckedChange={(checked) => setExportConfig(prev => ({
-                        ...prev,
-                        includeUrl: Boolean(checked)
-                      }))}
-                    />
-                    <Label htmlFor="include-url" className="cursor-pointer">
-                      Include Form URL
-                    </Label>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label className="block mb-2">Additional Fields to Export</Label>
-                    <div className="space-y-2 max-h-48 overflow-y-auto border rounded-md p-2">
-                      {fields.map((field) => (
-                        <div key={field.FieldID} className="flex items-center space-x-2">
-                          <Checkbox
-                            id={`field-${field.FieldID}`}
-                            checked={exportConfig.additionalFields.includes(field.FieldID)}
-                            onCheckedChange={(checked) => toggleAdditionalField(field.FieldID, Boolean(checked))}
-                          />
-                          <Label htmlFor={`field-${field.FieldID}`} className="cursor-pointer">
-                            {field.description || field.FieldID}
-                          </Label>
-                        </div>
-                      ))}
-                    </div>
-                    <p className="text-xs text-gray-500">
-                      Select which field values to include as columns in your exported CSV
-                    </p>
-                  </div>
-                </div>
-                <DialogFooter>
-                  <Button onClick={exportLinks} className="bg-blue-600 hover:bg-blue-700">
-                    Export CSV
+                <div className="pt-8 flex space-x-4">
+                  <Button 
+                    onClick={() => setCurrentStep('formUrl')} 
+                    variant="outline"
+                    className="flex-1 h-12"
+                  >
+                    <ChevronLeft className="mr-2 h-5 w-5" />
+                    Back
                   </Button>
-                </DialogFooter>
-              </ImprovedDialogContent>
-            </Dialog>
-          </div>
-
-          {fields.length > 0 && (
-            <div className="space-y-4">
-              <h3 className="text-lg font-medium text-gray-700">Imported Fields ({fields.length})</h3>
-              <div className="grid gap-4 max-h-80 overflow-y-auto pr-2">
-                {fields.map((field, index) => (
-                  <div key={index} className="p-4 bg-gray-50 rounded-lg border hover:border-blue-300 transition-colors">
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <h4 className="font-medium text-gray-900">{field.description || field.FieldID}</h4>
-                        <p className="text-sm text-gray-500">Field ID: {field.FieldID}</p>
-                      </div>
-                      <div className="text-sm font-medium bg-blue-100 text-blue-800 px-2 py-1 rounded">
-                        {field.values.length} values
-                      </div>
-                    </div>
-                    <div className="mt-2">
-                      <p className="text-sm text-gray-600 max-h-16 overflow-y-auto">
-                        <span className="font-medium">Values:</span> {field.values.slice(0, 10).join(', ')}
-                        {field.values.length > 10 && '...'}
-                      </p>
-                    </div>
-                  </div>
-                ))}
+                  <Button 
+                    onClick={() => {
+                      if (fields.length > 0) {
+                        setCurrentStep('generate');
+                        addToast('CSV data imported successfully. Now generate your links.', 'success');
+                      } else {
+                        setError('Please upload a CSV file first');
+                      }
+                    }} 
+                    className="flex-1 bg-blue-600 hover:bg-blue-700 h-12 font-medium"
+                    disabled={fields.length === 0}
+                  >
+                    Continue
+                    <ChevronRight className="ml-2 h-5 w-5" />
+                  </Button>
+                </div>
               </div>
             </div>
           )}
 
-          {generatedLinks.length > 0 && (
-            <div className="space-y-4">
-              <div className="flex justify-between items-center">
-                <h3 className="text-lg font-medium text-gray-700">Generated Links</h3>
-                <span className="text-sm font-medium bg-blue-100 text-blue-800 px-2 py-1 rounded">
-                  Total: {generatedLinks.length}
-                </span>
-              </div>
-              <div className="max-h-60 overflow-y-auto space-y-2 pr-2">
-                {generatedLinks.slice(0, 5).map((link, index) => (
-                  <div key={index} className="p-3 bg-gray-50 rounded border hover:border-blue-300 transition-colors group">
-                    <div className="flex justify-between items-center mb-1">
-                      <span className="text-xs text-gray-500">Link {index + 1}</span>
-                      <a 
-                        href={link.url} 
-                        target="_blank" 
-                        rel="noopener noreferrer" 
-                        className="text-xs text-blue-600 opacity-0 group-hover:opacity-100 transition-opacity"
-                      >
-                        Open in new tab
-                      </a>
-                    </div>
-                    <a href={link.url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-800 break-all text-sm">
-                      {link.url}
-                    </a>
+          {/* Generate Links Step */}
+          {currentStep === 'generate' && (
+            <div className="space-y-6 py-4 animate-fadeIn">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center">
+                  <div className="flex items-center justify-center w-8 h-8 rounded-full bg-blue-600 text-white font-bold">
+                    3
                   </div>
-                ))}
-                {generatedLinks.length > 5 && (
-                  <p className="text-sm text-gray-500 italic">
-                    + {generatedLinks.length - 5} more links (export to CSV to view all)
-                  </p>
+                  <div className="ml-3">
+                    <h3 className="font-semibold text-lg">Generate Links</h3>
+                    <p className="text-sm text-gray-500">Create prefilled form links</p>
+                  </div>
+                </div>
+                <div className="flex items-center text-sm text-gray-500">
+                  <span className="font-medium text-blue-600">Step 3</span>
+                  <span className="mx-2 text-gray-400">/</span>
+                  <span>3</span>
+                </div>
+              </div>
+              
+              <div className="bg-blue-50 p-5 rounded-lg border border-blue-200 mb-6">
+                <div className="flex items-start">
+                  <Info className="h-10 w-10 text-blue-500 mr-4 flex-shrink-0 mt-1" />
+                  <div>
+                    <h3 className="font-semibold text-blue-800 text-lg mb-2">Generate Prefilled Links</h3>
+                    <p className="text-blue-700">
+                      Click the button below to generate prefilled links for each row in your CSV file.
+                      Each link will contain the field values from the corresponding row.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-6">
+                {fields.length > 0 && (
+                  <div className="space-y-4">
+                    <h3 className="text-lg font-medium text-gray-700">Imported Fields ({fields.length})</h3>
+                    <div className="grid gap-4 max-h-60 overflow-y-auto pr-2">
+                      {fields.slice(0, showAllFields ? fields.length : 3).map((field, index) => (
+                        <div key={index} className="p-4 bg-gray-50 rounded-lg border hover:border-blue-300 transition-colors">
+                          <div className="flex justify-between items-start">
+                            <div>
+                              <h4 className="font-medium text-gray-900">{field.description || field.FieldID}</h4>
+                              <p className="text-sm text-gray-500">Field ID: {field.FieldID}</p>
+                            </div>
+                            <div className="text-sm font-medium bg-blue-100 text-blue-800 px-2 py-1 rounded">
+                              {field.values.length} values
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    {fields.length > 3 && (
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={() => setShowAllFields(!showAllFields)}
+                        className="text-blue-600 border-blue-200"
+                      >
+                        {showAllFields ? 'Show Less' : `Show All (${fields.length})`}
+                      </Button>
+                    )}
+                  </div>
                 )}
+
+                <div className="pt-4 flex space-x-4">
+                  <Button 
+                    onClick={() => setCurrentStep('upload')} 
+                    variant="outline"
+                    className="flex-1 h-12"
+                  >
+                    <ChevronLeft className="mr-2 h-5 w-5" />
+                    Back
+                  </Button>
+                  <Button 
+                    onClick={generateLinks} 
+                    className="flex-1 bg-blue-600 hover:bg-blue-700 h-12 font-medium"
+                    disabled={fields.length === 0 || isProcessing}
+                  >
+                    {isProcessing ? (
+                      <>
+                        <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                        Generating...
+                      </>
+                    ) : (
+                      <>
+                        Generate Links
+                        <ChevronRight className="ml-2 h-5 w-5" />
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Export Step */}
+          {currentStep === 'export' && (
+            <div className="space-y-6 py-4 animate-fadeIn">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center">
+                  <div className="flex items-center justify-center w-8 h-8 rounded-full bg-blue-600 text-white font-bold">
+                    4
+                  </div>
+                  <div className="ml-3">
+                    <h3 className="font-semibold text-lg">Export Results</h3>
+                    <p className="text-sm text-gray-500">Download your prefilled links</p>
+                  </div>
+                </div>
+                <div className="flex items-center text-sm text-gray-500">
+                  <span className="font-medium text-blue-600">Step 4</span>
+                  <span className="mx-2 text-gray-400">/</span>
+                  <span>3</span>
+                </div>
+              </div>
+              
+              <div className="bg-blue-50 p-5 rounded-lg border border-blue-200 mb-6">
+                <div className="flex items-start">
+                  <Info className="h-10 w-10 text-blue-500 mr-4 flex-shrink-0 mt-1" />
+                  <div>
+                    <h3 className="font-semibold text-blue-800 text-lg mb-2">Export Prefilled Links</h3>
+                    <p className="text-blue-700">
+                      Click the button below to export your prefilled links as a CSV file.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="label-field">Primary Label Field (Optional)</Label>
+                  <Select 
+                    value={exportConfig.labelField}
+                    onValueChange={(value) => setExportConfig(prev => ({
+                      ...prev,
+                      labelField: value
+                    }))}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Choose field for labeling rows" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">None</SelectItem>
+                      <SelectItem value="index">Entry Number</SelectItem>
+                      {fields.map((field) => (
+                        <SelectItem key={field.FieldID} value={field.FieldID}>
+                          {field.description || field.FieldID}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-gray-500">
+                    This field will be used as the primary identifier for each row in the exported CSV
+                  </p>
+                </div>
+
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="include-url"
+                    checked={exportConfig.includeUrl}
+                    onCheckedChange={(checked) => setExportConfig(prev => ({
+                      ...prev,
+                      includeUrl: Boolean(checked)
+                    }))}
+                  />
+                  <Label htmlFor="include-url" className="cursor-pointer">
+                    Include Form URL
+                  </Label>
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="block mb-2">Additional Fields to Export</Label>
+                  <div className="space-y-2 max-h-48 overflow-y-auto border rounded-md p-2">
+                    <div className="flex items-center space-x-2 pb-2 mb-2 border-b">
+                      <Checkbox
+                        id="select-all-fields"
+                        checked={fields.length > 0 && exportConfig.additionalFields.length === fields.length}
+                        onCheckedChange={(checked) => toggleAllExportFields(Boolean(checked))}
+                      />
+                      <Label htmlFor="select-all-fields" className="cursor-pointer font-medium">
+                        Select All Fields
+                      </Label>
+                    </div>
+                    {fields.map((field) => (
+                      <div key={field.FieldID} className="flex items-center space-x-2">
+                        <Checkbox
+                          id={`field-${field.FieldID}`}
+                          checked={exportConfig.additionalFields.includes(field.FieldID)}
+                          onCheckedChange={(checked) => toggleAdditionalField(field.FieldID, Boolean(checked))}
+                        />
+                        <Label htmlFor={`field-${field.FieldID}`} className="cursor-pointer">
+                          {field.description || field.FieldID}
+                        </Label>
+                      </div>
+                    ))}
+                  </div>
+                  <p className="text-xs text-gray-500">
+                    Select which field values to include as columns in your exported CSV
+                  </p>
+                </div>
+
+                {generatedLinks.length > 0 && (
+                  <div className="space-y-2 mt-4">
+                    <div className="flex justify-between items-center">
+                      <h3 className="text-md font-medium text-gray-700">Generated Links Preview</h3>
+                      <span className="text-sm font-medium bg-blue-100 text-blue-800 px-2 py-1 rounded">
+                        Total: {generatedLinks.length}
+                      </span>
+                    </div>
+                    <div className="max-h-40 overflow-y-auto space-y-2 pr-2 border rounded-md p-2">
+                      {generatedLinks.slice(0, 3).map((link, index) => (
+                        <div key={index} className="p-2 bg-gray-50 rounded border hover:border-blue-300 transition-colors group">
+                          <div className="flex justify-between items-center mb-1">
+                            <span className="text-xs text-gray-500">Link {index + 1}</span>
+                            <div className="flex space-x-2">
+                              <Button 
+                                variant="ghost" 
+                                size="sm" 
+                                className="h-6 px-2 text-blue-600"
+                                onClick={() => {
+                                  navigator.clipboard.writeText(link.url);
+                                  addToast('Link copied to clipboard', 'success');
+                                }}
+                              >
+                                <Copy className="h-3 w-3 mr-1" />
+                                <span className="text-xs">Copy</span>
+                              </Button>
+                              <a 
+                                href={link.url} 
+                                target="_blank" 
+                                rel="noopener noreferrer" 
+                                className="inline-flex items-center h-6 px-2 text-xs text-blue-600 hover:underline"
+                              >
+                                <ExternalLink className="h-3 w-3 mr-1" />
+                                Open
+                              </a>
+                            </div>
+                          </div>
+                          <p className="text-blue-600 break-all text-xs font-mono">
+                            {link.url.length > 80 ? `${link.url.substring(0, 80)}...` : link.url}
+                          </p>
+                        </div>
+                      ))}
+                      {generatedLinks.length > 3 && (
+                        <p className="text-sm text-gray-500 italic text-center py-1">
+                          + {generatedLinks.length - 3} more links (export to CSV to view all)
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div className="pt-8 flex space-x-4">
+                <Button 
+                  onClick={() => setCurrentStep('generate')} 
+                  variant="outline"
+                  className="flex-1 h-12"
+                >
+                  <ChevronLeft className="mr-2 h-5 w-5" />
+                  Back
+                </Button>
+                <Button 
+                  onClick={exportLinks} 
+                  className="flex-1 bg-blue-600 hover:bg-blue-700 h-12 font-medium"
+                  disabled={generatedLinks.length === 0}
+                >
+                  <Download className="mr-2 h-5 w-5" />
+                  Export CSV
+                </Button>
               </div>
             </div>
           )}
