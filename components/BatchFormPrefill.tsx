@@ -971,6 +971,53 @@ const BatchFormPrefill = () => {
                     <p className="text-blue-700 mb-2">
                       Upload a CSV file containing your form field values. Each row will generate a unique prefilled link.
                     </p>
+                    <div className="mt-3 bg-white p-3 rounded border border-blue-100">
+                      <h4 className="font-medium text-blue-800 mb-1">How Values Are Processed</h4>
+                      <p className="text-sm text-blue-700 mb-2">
+                        When uploading a CSV with varying numbers of values per field:
+                      </p>
+                      <ul className="text-sm text-blue-700 list-disc pl-5 space-y-1">
+                        <li>If a field has <strong>multiple values</strong> separated by your chosen delimiter, all values will be used</li>
+                        <li>If a field has <strong>fewer values</strong> than others, the last value will be repeated</li>
+                        <li>If a field has <strong>only one value</strong>, it will be used for all generated links</li>
+                      </ul>
+                      <div className="mt-2 overflow-auto text-xs">
+                        <table className="min-w-full border border-blue-100 rounded">
+                          <thead className="bg-blue-50">
+                            <tr>
+                              <th className="p-1 border border-blue-100 text-left">Field Values in CSV</th>
+                              <th className="p-1 border border-blue-100 text-left">Generated Links (3 entries)</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            <tr>
+                              <td className="p-1 border border-blue-100 font-mono">Apple;Orange;Banana</td>
+                              <td className="p-1 border border-blue-100">
+                                1: Apple<br/>
+                                2: Orange<br/>
+                                3: Banana
+                              </td>
+                            </tr>
+                            <tr>
+                              <td className="p-1 border border-blue-100 font-mono">Red;Blue</td>
+                              <td className="p-1 border border-blue-100">
+                                1: Red<br/>
+                                2: Blue<br/>
+                                3: Blue <span className="text-blue-500">(last value repeated)</span>
+                              </td>
+                            </tr>
+                            <tr>
+                              <td className="p-1 border border-blue-100 font-mono">First</td>
+                              <td className="p-1 border border-blue-100">
+                                1: First<br/>
+                                2: First<br/>
+                                3: First <span className="text-blue-500">(single value repeated)</span>
+                              </td>
+                            </tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
                     <div className="flex items-center mt-3">
                       <Button 
                         onClick={downloadTemplate} 
