@@ -65,6 +65,7 @@ interface FormState {
 }
 
 interface ImportableField {
+  id?: string;
   value: string;
   label?: string;
 }
@@ -82,6 +83,15 @@ const CSVImportDialog: React.FC<{
     Papa.parse(file, {
       header: true,
       complete: (results) => {
+        if (results.errors.length > 0) {
+          toast({
+            title: "CSV Parse Error",
+            description: results.errors[0].message,
+            variant: "destructive"
+          });
+          return;
+        }
+
         const validData = results.data.filter(
           (row: any) => row.value && row.value.trim() !== ''
         ) as ImportableField[];
@@ -96,7 +106,7 @@ const CSVImportDialog: React.FC<{
         }
 
         const formFields: Field[] = validData.map((item, index) => ({
-          id: `imported-${index}`,
+          id: item.id && item.id.trim() !== '' ? item.id : `imported-${index}`,
           value: item.value,
           label: item.label || ''
         }));
@@ -124,10 +134,12 @@ const CSVImportDialog: React.FC<{
     }
   };
 
-  const exampleCSVTemplate = `value,label
-John Doe,Full Name
-john.doe@example.com,Email Address
-+1 (555) 123-4567,Phone Number`;
+  const exampleCSVTemplate = `id,value,label
+672883d1aa22e8a167d22f56,John Doe,Full Name
+5f8e4d2c1a3b7c9e6d2f1a3b,john.doe@example.com,Email Address
+1a2b3c4d5e6f7g8h9i0j1k2l,+1 (555) 123-4567,Phone Number
+,Singapore,Country
+,123 Main Street,Address`;
 
   const downloadTemplate = () => {
     const blob = new Blob([exampleCSVTemplate], { type: 'text/csv;charset=utf-8;' });
@@ -144,7 +156,7 @@ john.doe@example.com,Email Address
   return (
     <Dialog>
       <DialogTrigger asChild>
-        <Button variant="outline">
+        <Button variant="outline" id="csvImportButton" className="hidden">
           <FileSpreadsheet className="mr-2 h-4 w-4" />
           Import CSV
         </Button>
@@ -158,6 +170,25 @@ john.doe@example.com,Email Address
         </DialogHeader>
         
         <div className="space-y-4">
+          <div className="bg-gradient-to-r from-blue-50/80 to-blue-50 p-4 rounded-lg border border-blue-100 mb-2">
+            <div className="flex items-start">
+              <div className="bg-blue-100 p-2 rounded-full mr-3 flex-shrink-0">
+                <Lightbulb className="h-4 w-4 text-blue-600" />
+              </div>
+              <div>
+                <h3 className="font-medium text-blue-800 mb-1 text-sm">CSV Import Guide</h3>
+                <p className="text-xs text-blue-700">
+                  Your CSV file should have these columns:
+                </p>
+                <ul className="mt-1 space-y-1 text-xs text-blue-700 list-disc pl-4">
+                  <li><span className="font-semibold">id</span> - The field ID from FormSG (optional)</li>
+                  <li><span className="font-semibold">value</span> - The data to pre-fill (required)</li>
+                  <li><span className="font-semibold">label</span> - A description of the field (optional)</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
           <div className="flex items-center gap-2">
             <input 
               type="file" 
@@ -168,6 +199,7 @@ john.doe@example.com,Email Address
             />
             <Button 
               onClick={() => fileInputRef.current?.click()}
+              className="bg-primary hover:bg-primary/90"
             >
               <Upload className="mr-2 h-4 w-4" />
               Select CSV File
@@ -175,19 +207,25 @@ john.doe@example.com,Email Address
             <Button 
               variant="outline" 
               onClick={downloadTemplate}
+              className="border-primary/20 hover:bg-primary/5"
             >
+              <Download className="mr-2 h-4 w-4" />
               Download Template
             </Button>
           </div>
 
           {importedData.length > 0 && (
-            <div className="border rounded-lg p-4">
+            <div className="border rounded-lg p-4 bg-card">
               <div className="flex justify-between items-center mb-2">
-                <h4 className="font-semibold">Imported Fields</h4>
+                <h4 className="font-semibold flex items-center">
+                  <CheckCircle className="h-4 w-4 text-green-600 mr-2" />
+                  Imported Fields ({importedData.length})
+                </h4>
                 <Button 
-                  variant="destructive" 
+                  variant="outline" 
                   size="sm"
                   onClick={handleClearImport}
+                  className="h-8 text-xs border-destructive/20 hover:bg-destructive/10 text-destructive"
                 >
                   <X className="mr-2 h-4 w-4" />
                   Clear
@@ -195,17 +233,19 @@ john.doe@example.com,Email Address
               </div>
               <div className="max-h-48 overflow-y-auto">
                 <table className="w-full text-sm">
-                  <thead>
+                  <thead className="bg-muted/50">
                     <tr>
-                      <th className="text-left">Value</th>
-                      <th className="text-left">Label</th>
+                      <th className="text-left px-2 py-1 text-xs font-medium">ID</th>
+                      <th className="text-left px-2 py-1 text-xs font-medium">Value</th>
+                      <th className="text-left px-2 py-1 text-xs font-medium">Label</th>
                     </tr>
                   </thead>
                   <tbody>
                     {importedData.map((item, index) => (
-                      <tr key={index} className="border-t">
-                        <td>{item.value}</td>
-                        <td>{item.label || '-'}</td>
+                      <tr key={index} className="border-t hover:bg-muted/20">
+                        <td className="px-2 py-1 text-xs">{item.id || <span className="text-muted-foreground italic">auto-generated</span>}</td>
+                        <td className="px-2 py-1 text-xs">{item.value}</td>
+                        <td className="px-2 py-1 text-xs">{item.label || '-'}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -215,11 +255,16 @@ john.doe@example.com,Email Address
           )}
 
           <div className="bg-muted p-4 rounded-lg">
-            <h4 className="font-semibold mb-2">CSV File Requirements</h4>
+            <h4 className="font-semibold mb-2 flex items-center">
+              <Info className="h-4 w-4 mr-2 text-primary" />
+              CSV File Requirements
+            </h4>
             <ul className="list-disc pl-5 text-sm space-y-1">
-              <li>Must contain a 'value' column</li>
-              <li>'label' column is optional</li>
-              <li>Supports comma-separated values</li>
+              <li>Must contain a <code className="bg-muted-foreground/20 px-1 rounded text-xs">value</code> column</li>
+              <li><code className="bg-muted-foreground/20 px-1 rounded text-xs">id</code> column is optional - if missing, IDs will be auto-generated</li>
+              <li><code className="bg-muted-foreground/20 px-1 rounded text-xs">label</code> column is optional</li>
+              <li>Supports comma-separated values (CSV)</li>
+              <li>First row must be the header row</li>
             </ul>
           </div>
         </div>
@@ -817,7 +862,7 @@ const FormPrefillGuide = () => {
                         <div className="flex-1 relative">
                           <Input
                             id="formUrl"
-                            placeholder="Enter form URL (e.g., https://form.gov.sg/1234567890123455678901234)"
+                            placeholder="Enter form URL (e.g., https://form.gov.sg/67488b8b1210a416d2d7cb5b)"
                             value={formUrl}
                             onChange={(e) => setFormUrl(e.target.value)}
                             aria-label="Form URL"
@@ -1376,16 +1421,82 @@ const FormPrefillGuide = () => {
               </TabsContent>
 
               <TabsContent value="deconstruct" className="space-y-4">
+                <div className="bg-gradient-to-r from-blue-50/80 to-blue-50 p-4 rounded-lg border border-blue-100 mb-4">
+                  <div className="flex items-start">
+                    <div className="bg-blue-100 p-2 rounded-full mr-3 flex-shrink-0">
+                      <Lightbulb className="h-4 w-4 text-blue-600" />
+                    </div>
+                    <div>
+                      <h3 className="font-medium text-blue-800 mb-1 text-sm">Deconstruct Mode Guide</h3>
+                      <p className="text-xs text-blue-700">
+                        Paste a pre-filled URL to analyze and extract its field IDs and values. This helps you understand how URLs are structured and reuse field IDs.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
                 <div>
-                  <label htmlFor="prefilledUrl" className="block mb-2">Pre-filled URL</label>
+                  <label htmlFor="prefilledUrl" className="block mb-2 font-medium">Pre-filled URL</label>
                   <Input
                     id="prefilledUrl"
                     placeholder="Paste pre-filled URL to deconstruct"
                     onChange={(e) => deconstructUrl(e.target.value)}
                     aria-label="Pre-filled URL"
+                    className="border-primary/20 focus-visible:ring-primary/30"
                   />
                 </div>
+
+                <div className="bg-muted/20 p-4 rounded-lg border mt-4">
+                  <h4 className="font-medium mb-2 flex items-center">
+                    <Info className="h-4 w-4 mr-2 text-primary" />
+                    Example URL
+                  </h4>
+                  <div className="bg-white p-3 rounded border border-primary/20 text-xs break-all">
+                    <p className="font-medium text-primary mb-1">Try this example:</p>
+                    <a 
+                      href="https://form.gov.sg/67488b8b1210a416d2d7cb5b?67488bb37e8c75e33b9f9191=Tan%20Ah%20Kow&67488f8e088e833537af24aa=Tan_ah_kow%40agency.gov.sg&67488f2425bc895113f36755=H123456&67488f4706223a28046116b7=Human%20Resource&67488fa4961741ba92f3d064=Artificial%20Intelligence%20%231&674890985ff109b4e0969bfd=%241234.00&6748910f1210a416d2d81521=09%2F12%2F24&6748918845919bff0a00bcb6=10%2F12%2F24"
+                      className="text-blue-600 hover:text-blue-800 hover:underline"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      https://form.gov.sg/67488b8b1210a416d2d7cb5b?67488bb37e8c75e33b9f9191=Tan%20Ah%20Kow&67488f8e088e833537af24aa=Tan_ah_kow%40agency.gov.sg&67488f2425bc895113f36755=H123456&67488f4706223a28046116b7=Human%20Resource&67488fa4961741ba92f3d064=Artificial%20Intelligence%20%231&674890985ff109b4e0969bfd=%241234.00&6748910f1210a416d2d81521=09%2F12%2F24&6748918845919bff0a00bcb6=10%2F12%2F24
+                    </a>
+                  </div>
+                  <div className="mt-3 space-y-2">
+                    <div className="flex items-start">
+                      <button
+                        onClick={() => {
+                          navigator.clipboard.writeText("https://form.gov.sg/67488b8b1210a416d2d7cb5b?67488bb37e8c75e33b9f9191=Tan%20Ah%20Kow&67488f8e088e833537af24aa=Tan_ah_kow%40agency.gov.sg&67488f2425bc895113f36755=H123456&67488f4706223a28046116b7=Human%20Resource&67488fa4961741ba92f3d064=Artificial%20Intelligence%20%231&674890985ff109b4e0969bfd=%241234.00&6748910f1210a416d2d81521=09%2F12%2F24&6748918845919bff0a00bcb6=10%2F12%2F24");
+                          toast({
+                            description: "Example URL copied to clipboard",
+                          });
+                        }}
+                        className="text-xs flex items-center text-primary hover:text-primary/80 bg-primary/5 rounded-full px-3 py-1.5"
+                      >
+                        <Copy className="h-3.5 w-3.5 mr-1.5" />
+                        Copy Example URL
+                      </button>
+                      <button
+                        onClick={() => deconstructUrl("https://form.gov.sg/67488b8b1210a416d2d7cb5b?67488bb37e8c75e33b9f9191=Tan%20Ah%20Kow&67488f8e088e833537af24aa=Tan_ah_kow%40agency.gov.sg&67488f2425bc895113f36755=H123456&67488f4706223a28046116b7=Human%20Resource&67488fa4961741ba92f3d064=Artificial%20Intelligence%20%231&674890985ff109b4e0969bfd=%241234.00&6748910f1210a416d2d81521=09%2F12%2F24&6748918845919bff0a00bcb6=10%2F12%2F24")}
+                        className="text-xs flex items-center text-primary hover:text-primary/80 bg-primary/5 rounded-full px-3 py-1.5 ml-2"
+                      >
+                        <FileSpreadsheet className="h-3.5 w-3.5 mr-1.5" />
+                        Try with Example
+                      </button>
+                    </div>
+                  </div>
+                  <div className="text-xs text-muted-foreground mt-3">
+                    <p>This example contains pre-filled values for:</p>
+                    <ul className="list-disc pl-5 mt-1 space-y-0.5">
+                      <li>Name, Email, ID number</li>
+                      <li>Department, Project</li>
+                      <li>Budget amount</li>
+                      <li>Start date, End date</li>
+                    </ul>
+                  </div>
+                </div>
               </TabsContent>
+
               <TabsContent value="batch" className="space-y-4">
               <BatchFormPrefill />
               </TabsContent>
