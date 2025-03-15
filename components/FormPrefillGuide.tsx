@@ -261,7 +261,7 @@ const CSVImportDialog: React.FC<{
             </h4>
             <ul className="list-disc pl-5 text-sm space-y-1">
               <li>Must contain a <code className="bg-muted-foreground/20 px-1 rounded text-xs">value</code> column</li>
-              <li><code className="bg-muted-foreground/20 px-1 rounded text-xs">id</code> column is optional - if missing, IDs will be auto-generated</li>
+              <li><code className="bg-muted-foreground/20 px-1 rounded text-xs">Field ID</code> column is mandatory - if missing, IDs will be auto-generated</li>
               <li><code className="bg-muted-foreground/20 px-1 rounded text-xs">label</code> column is optional</li>
               <li>Supports comma-separated values (CSV)</li>
               <li>First row must be the header row</li>
