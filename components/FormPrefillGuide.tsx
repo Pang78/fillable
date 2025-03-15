@@ -289,6 +289,9 @@ const FormPrefillGuide = () => {
   const [historyIndex, setHistoryIndex] = useState(-1);
   const [savedUrls, setSavedUrls] = useState<SavedUrl[]>([]);
   const [urlName, setUrlName] = useState('');
+  const [isUrlNameHighlighted, setIsUrlNameHighlighted] = useState(false);
+  const [selectedUrlIndex, setSelectedUrlIndex] = useState<number | null>(null);
+  const nameUrlInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     setMounted(true);
@@ -331,9 +334,26 @@ const FormPrefillGuide = () => {
   };
 
   const deleteSavedUrl = (index: number) => {
-    setSavedUrls(prev => prev.filter((_, i) => i !== index));
-    toast({
-      description: "URL deleted successfully",
+    setSavedUrls(prevUrls => {
+      if (index < 0 || index >= prevUrls.length) {
+        return prevUrls; // Index out of bounds
+      }
+      
+      // Get the name for the toast message
+      const deletedUrlName = prevUrls[index].name;
+      
+      // Create a new array without the deleted URL
+      const newUrls = [...prevUrls];
+      newUrls.splice(index, 1);
+      
+      // Show success toast with the name
+      toast({
+        title: "URL Deleted",
+        description: `"${deletedUrlName}" has been removed from your saved URLs.`,
+        variant: "default",
+      });
+      
+      return newUrls;
     });
   };
 
@@ -347,17 +367,33 @@ const FormPrefillGuide = () => {
   const saveGeneratedUrl = () => {
     if (!generatedUrl) return;
     
+    if (!urlName.trim()) {
+      toast({
+        title: "Name Required",
+        description: "Please give your URL a descriptive name before saving.",
+        variant: "destructive",
+      });
+      
+      if (nameUrlInputRef.current) {
+        nameUrlInputRef.current.focus();
+      }
+      setIsUrlNameHighlighted(true);
+      return;
+    }
+    
     const newSavedUrl: SavedUrl = {
       url: generatedUrl,
-      name: urlName || `Prefill URL ${savedUrls.length + 1}`,
+      name: urlName.trim(),
       createdAt: new Date().toISOString(),
     };
     
     setSavedUrls(prev => [newSavedUrl, ...prev]);
     setUrlName('');
+    setIsUrlNameHighlighted(false);
     
     toast({
-      description: "URL saved successfully",
+      title: "URL Saved",
+      description: `"${newSavedUrl.name}" has been added to your saved URLs.`,
     });
   };
 
@@ -457,6 +493,37 @@ const FormPrefillGuide = () => {
     setFields(newFields);
   };
 
+  const suggestUrlName = (): string => {
+    // Try to create a meaningful name from the fields
+    const labeledFields = fields.filter(f => f.label && f.label.trim() !== '');
+    
+    if (labeledFields.length > 0) {
+      // Try to find a field labeled like "name" or "full name"
+      const nameField = labeledFields.find(f => 
+        f.label.toLowerCase().includes('name') && 
+        f.value.trim() !== ''
+      );
+      
+      if (nameField) {
+        return `Form for ${nameField.value}`;
+      }
+      
+      // Or use the first labeled field with a value
+      const firstField = labeledFields.find(f => f.value.trim() !== '');
+      if (firstField) {
+        return `${firstField.label}: ${firstField.value}`;
+      }
+    }
+    
+    // Fallback: use the domain name from the URL
+    try {
+      const domain = new URL(formUrl).hostname.replace('www.', '');
+      return `${domain.split('.')[0].charAt(0).toUpperCase() + domain.split('.')[0].slice(1)} Form`;
+    } catch {
+      return `Prefill URL ${new Date().toLocaleTimeString()}`;
+    }
+  };
+
   const generateUrl = () => {
     if (!validateUrl(formUrl)) {
       toast({
@@ -480,9 +547,45 @@ const FormPrefillGuide = () => {
 
       setGeneratedUrl(finalUrl);
       navigator.clipboard.writeText(finalUrl);
+      
+      // Suggest a name for the URL
+      const suggestedName = suggestUrlName();
+      setUrlName(suggestedName);
+      
+      // Show toast with suggestion to name the URL
       toast({
-        description: "Link successfully generated",
+        title: "URL Generated",
+        description: "Your pre-filled URL is ready! Give it a name to save it for later use.",
+        action: (
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={() => {
+              if (nameUrlInputRef.current) {
+                nameUrlInputRef.current.focus();
+                nameUrlInputRef.current.select();
+              }
+              setIsUrlNameHighlighted(true);
+            }}
+            className="h-8 border-primary/20 hover:bg-primary/5 text-xs"
+          >
+            Name URL
+          </Button>
+        ),
+        duration: 5000,
       });
+      
+      // Highlight the name field
+      setIsUrlNameHighlighted(true);
+      
+      // Focus on the name input field
+      setTimeout(() => {
+        if (nameUrlInputRef.current) {
+          nameUrlInputRef.current.focus();
+          nameUrlInputRef.current.select();
+        }
+      }, 500);
+      
       addToHistory({ formUrl, fields });
     } catch (error) {
       console.error("URL generation error:", error);
@@ -1056,7 +1159,10 @@ const FormPrefillGuide = () => {
                                     <Button
                                       variant="ghost"
                                       size="icon"
-                                      onClick={() => removeField(index)}
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        removeField(index);
+                                      }}
                                       aria-label={`Remove field ${index + 1}`}
                                       className="ml-1 h-9 w-9 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
                                     >
@@ -1144,7 +1250,8 @@ const FormPrefillGuide = () => {
                                   <Button
                                     size="sm"
                                     variant="outline"
-                                    onClick={() => {
+                                    onClick={(e) => {
+                                      e.stopPropagation();
                                       navigator.clipboard.writeText(generatedUrl);
                                       toast({
                                         description: "URL copied to clipboard",
@@ -1169,7 +1276,10 @@ const FormPrefillGuide = () => {
                                   <Button 
                                     size="sm" 
                                     variant="outline"
-                                    onClick={() => window.open(generatedUrl, '_blank')}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      window.open(generatedUrl, '_blank');
+                                    }}
                                     className="h-8 border-primary/30 text-primary hover:bg-primary/10"
                                   >
                                     <ExternalLink className="h-3.5 w-3.5 mr-1.5" />
@@ -1277,11 +1387,17 @@ const FormPrefillGuide = () => {
                   {generatedUrl && (
                     <div className="space-y-4">
                       <div className="flex gap-2">
-                        <div className="relative flex-grow">
+                        <div className={`relative flex-grow transition-all duration-300 ${isUrlNameHighlighted ? 'ring-2 ring-primary/50 rounded-md' : ''}`}>
                           <Input
+                            ref={nameUrlInputRef}
                             placeholder="Give this URL a name (e.g., 'Customer Support Form')"
                             value={urlName}
-                            onChange={(e) => setUrlName(e.target.value)}
+                            onChange={(e) => {
+                              setUrlName(e.target.value);
+                              setIsUrlNameHighlighted(false);
+                            }}
+                            onFocus={() => setIsUrlNameHighlighted(true)}
+                            onBlur={() => setIsUrlNameHighlighted(false)}
                             aria-label="URL name"
                             title="Enter a descriptive name for this URL to easily identify it later"
                             className="pr-8"
@@ -1294,12 +1410,10 @@ const FormPrefillGuide = () => {
                               <Button 
                                 onClick={() => {
                                   saveGeneratedUrl();
-                                  toast({
-                                    description: "URL saved successfully",
-                                  });
                                 }}
                                 title="Save this URL to your list"
                                 className="whitespace-nowrap"
+                                disabled={!urlName.trim()}
                               >
                                 <Plus className="h-4 w-4 mr-1.5" />
                                 Save URL
@@ -1311,6 +1425,12 @@ const FormPrefillGuide = () => {
                           </Tooltip>
                         </TooltipProvider>
                       </div>
+                      {isUrlNameHighlighted && (
+                        <div className="text-xs text-primary animate-pulse">
+                          <CheckCircle className="h-3.5 w-3.5 inline-block mr-1.5" />
+                          A descriptive name helps you find this URL later
+                        </div>
+                      )}
                     </div>
                   )}
 
@@ -1334,9 +1454,17 @@ const FormPrefillGuide = () => {
                       <div className="space-y-2">
                         {savedUrls.map((savedUrl, index) => (
                           <div
-                            key={index}
-                            className="p-4 bg-muted/20 border rounded-lg flex justify-between items-center group hover:bg-muted/30 transition-colors"
+                            key={`saved-url-${index}-${savedUrl.createdAt}`}
+                            className="p-4 bg-muted/20 border rounded-lg flex justify-between items-center group hover:bg-muted/30 transition-colors cursor-pointer relative"
+                            onClick={() => setSelectedUrlIndex(index)}
                           >
+                            {/* Overlay hint on hover */}
+                            <div className="absolute inset-0 bg-primary/10 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center pointer-events-none rounded-lg">
+                              <div className="bg-primary/90 text-white px-3 py-1.5 rounded-full text-xs font-medium shadow-sm">
+                                Click to review
+                              </div>
+                            </div>
+                            
                             <div className="space-y-1 flex-1 mr-4">
                               <div className="font-medium flex items-center text-primary">
                                 <FileSpreadsheet className="h-3.5 w-3.5 mr-1.5 text-primary" />
@@ -1354,14 +1482,15 @@ const FormPrefillGuide = () => {
                                 Created: {new Date(savedUrl.createdAt).toLocaleString()}
                               </div>
                             </div>
-                            <div className="flex gap-2">
+                            <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
                               <TooltipProvider>
                                 <Tooltip>
                                   <TooltipTrigger asChild>
                                     <Button
                                       size="icon"
                                       variant="outline"
-                                      onClick={() => {
+                                      onClick={(e) => {
+                                        e.stopPropagation();
                                         navigator.clipboard.writeText(savedUrl.url);
                                         toast({
                                           description: "URL copied to clipboard",
@@ -1385,6 +1514,11 @@ const FormPrefillGuide = () => {
                                         <Button
                                           size="icon"
                                           variant="outline"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            deleteSavedUrl(index);
+                                            setSelectedUrlIndex(null);
+                                          }}
                                           className="h-8 w-8 text-destructive hover:bg-destructive/10 border-destructive/20"
                                         >
                                           <Trash2 className="h-3.5 w-3.5" />
@@ -1405,7 +1539,12 @@ const FormPrefillGuide = () => {
                                   </AlertDialogHeader>
                                   <AlertDialogFooter>
                                     <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                    <AlertDialogAction onClick={() => deleteSavedUrl(index)}>
+                                    <AlertDialogAction 
+                                      onClick={() => {
+                                        deleteSavedUrl(index);
+                                        setSelectedUrlIndex(null);
+                                      }}
+                                    >
                                       Delete
                                     </AlertDialogAction>
                                   </AlertDialogFooter>
@@ -1455,7 +1594,7 @@ const FormPrefillGuide = () => {
                     <p className="font-medium text-primary mb-1">Try this example:</p>
                     <a 
                       href="https://form.gov.sg/67488b8b1210a416d2d7cb5b?67488bb37e8c75e33b9f9191=Tan%20Ah%20Kow&67488f8e088e833537af24aa=Tan_ah_kow%40agency.gov.sg&67488f2425bc895113f36755=H123456&67488f4706223a28046116b7=Human%20Resource&67488fa4961741ba92f3d064=Artificial%20Intelligence%20%231&674890985ff109b4e0969bfd=%241234.00&6748910f1210a416d2d81521=09%2F12%2F24&6748918845919bff0a00bcb6=10%2F12%2F24"
-                      className="text-blue-600 hover:text-blue-800 hover:underline"
+                      className="text-blue-600 hover:text-blue-800 hover:underline flex items-center"
                       target="_blank"
                       rel="noopener noreferrer"
                     >
@@ -1507,6 +1646,147 @@ const FormPrefillGuide = () => {
           </CardContent>
         </Card>
       </div>
+
+      {/* URL Review Dialog */}
+      <Dialog open={selectedUrlIndex !== null} onOpenChange={(open) => !open && setSelectedUrlIndex(null)}>
+        {selectedUrlIndex !== null && selectedUrlIndex >= 0 && savedUrls[selectedUrlIndex] ? (
+          <DialogContent className="sm:max-w-[550px]">
+            <DialogHeader>
+              <DialogTitle className="flex items-center">
+                <FileSpreadsheet className="h-5 w-5 mr-2 text-primary" />
+                {savedUrls[selectedUrlIndex].name}
+              </DialogTitle>
+              <DialogDescription>
+                Review the details of your saved URL
+              </DialogDescription>
+            </DialogHeader>
+            
+            <div className="space-y-4 py-2">
+              <div className="space-y-1">
+                <div className="text-sm font-medium flex items-center">
+                  <LinkIcon className="h-4 w-4 mr-1.5 text-primary" />
+                  URL Details
+                </div>
+                <div className="p-3 bg-muted/20 rounded border text-sm break-all">
+                  <a 
+                    href={savedUrls[selectedUrlIndex].url} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="text-blue-600 hover:text-blue-800 hover:underline flex items-center"
+                  >
+                    {savedUrls[selectedUrlIndex].url}
+                    <ExternalLink className="h-3.5 w-3.5 ml-1 inline-flex" />
+                  </a>
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <div className="text-sm font-medium flex items-center">
+                    <Info className="h-4 w-4 mr-1.5 text-primary" />
+                    Created
+                  </div>
+                  <div className="text-sm text-muted-foreground">
+                    {new Date(savedUrls[selectedUrlIndex].createdAt).toLocaleString()}
+                  </div>
+                </div>
+                <div>
+                  <div className="text-sm font-medium flex items-center">
+                    <CheckCircle className="h-4 w-4 mr-1.5 text-primary" /> 
+                    Actions
+                  </div>
+                  <div className="flex gap-2 mt-1">
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="h-8"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        navigator.clipboard.writeText(savedUrls[selectedUrlIndex].url);
+                        toast({
+                          description: "URL copied to clipboard",
+                        });
+                      }}
+                    >
+                      <Copy className="h-3.5 w-3.5 mr-1.5" />
+                      Copy URL
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="h-8"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        window.open(savedUrls[selectedUrlIndex].url, '_blank');
+                      }}
+                    >
+                      <ExternalLink className="h-3.5 w-3.5 mr-1.5" />
+                      Open
+                    </Button>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="pt-3 border-t mt-3">
+                <div className="text-sm font-medium flex items-center text-destructive">
+                  <AlertTriangle className="h-4 w-4 mr-1.5" />
+                  Danger Zone
+                </div>
+                <p className="text-xs text-muted-foreground mb-2 mt-1">
+                  Once deleted, this URL will be removed from your collection and cannot be recovered.
+                </p>
+                
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="destructive" size="sm" className="mt-1">
+                      <Trash2 className="h-4 w-4 mr-1.5" />
+                      Delete URL
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Delete this saved URL?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        This action cannot be undone. The URL "{savedUrls[selectedUrlIndex].name}" will be permanently deleted.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction 
+                        onClick={() => {
+                          if (selectedUrlIndex !== null) {
+                            deleteSavedUrl(selectedUrlIndex);
+                            setSelectedUrlIndex(null);
+                          }
+                        }}
+                      >
+                        Delete
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </div>
+            </div>
+          </DialogContent>
+        ) : (
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>URL Not Found</DialogTitle>
+              <DialogDescription>
+                The URL you're trying to review could not be found. It may have been deleted.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="flex justify-end mt-4">
+              <Button 
+                variant="outline" 
+                onClick={() => setSelectedUrlIndex(null)}
+              >
+                Close
+              </Button>
+            </div>
+          </DialogContent>
+        )}
+      </Dialog>
     </div>
   );
 };
