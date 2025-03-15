@@ -166,7 +166,7 @@ const InstructionalGuide = () => {
             alt="Generate Links"
             className="w-full h-full object-cover bg-gray-100 rounded"
           />
-          <p className="text-sm text-gray-600 mt-2 font-bold">Step 5: After verifying your imported fields, click on the "Generate Links" Button</p>
+          <p className="text-sm text-gray-600 mt-2 font-bold">Step 4: After verifying your imported fields, click on the "Generate Links" Button</p>
         </div>
       )
     },
@@ -181,7 +181,7 @@ const InstructionalGuide = () => {
               alt="Export Options"
               className="w-full h-full object-cover bg-gray-100 rounded"
             />
-            <p className="text-sm text-gray-600 mt-2 font-bold">Step 6: Click on the "Export Options" Button</p>
+            <p className="text-sm text-gray-600 mt-2 font-bold">Step 5: Click on the "Export Options" Button</p>
           </div>
           <div>
             <img
@@ -189,7 +189,7 @@ const InstructionalGuide = () => {
               alt="Export CSV"
               className="w-full h-full object-cover bg-gray-100 rounded"
             />
-            <p className="text-sm text-gray-600 mt-2 font-bold">Step 7: Click on the "Export Csv" Button to export csv with primary fields (Default:None) and Additional Fields (Description(Optional) of Fields)</p>
+            <p className="text-sm text-gray-600 mt-2 font-bold">Step 6: Click on the "Export Csv" Button to export csv with primary fields (Default:None) and Additional Fields (Description(Optional) of Fields)</p>
           </div>
         </div>
       )
@@ -345,6 +345,7 @@ const BatchFormPrefill = () => {
   });
   const [urlValidated, setUrlValidated] = useState(false);
   const [showAllFields, setShowAllFields] = useState(false);
+  const [showValueDetails, setShowValueDetails] = useState<string | null>(null);
 
   // Add a function to add toast notifications
   const addToast = useCallback((message: string, type: 'success' | 'error' | 'info' = 'info') => {
@@ -870,7 +871,7 @@ const BatchFormPrefill = () => {
                 <div className="flex items-center text-sm text-gray-500">
                   <span className="font-medium text-blue-600">Step 1</span>
                   <span className="mx-2 text-gray-400">/</span>
-                  <span>3</span>
+                  <span>4</span>
                 </div>
               </div>
               
@@ -958,7 +959,7 @@ const BatchFormPrefill = () => {
                 <div className="flex items-center text-sm text-gray-500">
                   <span className="font-medium text-blue-600">Step 2</span>
                   <span className="mx-2 text-gray-400">/</span>
-                  <span>3</span>
+                  <span>4</span>
                 </div>
               </div>
               
@@ -1107,7 +1108,7 @@ const BatchFormPrefill = () => {
                 <div className="flex items-center text-sm text-gray-500">
                   <span className="font-medium text-blue-600">Step 3</span>
                   <span className="mx-2 text-gray-400">/</span>
-                  <span>3</span>
+                  <span>4</span>
                 </div>
               </div>
               
@@ -1139,6 +1140,22 @@ const BatchFormPrefill = () => {
                             <div className="text-sm font-medium bg-blue-100 text-blue-800 px-2 py-1 rounded">
                               {field.values.length} values
                             </div>
+                          </div>
+                          <div className="mt-2 pt-2 border-t border-gray-200">
+                            <p className="text-sm text-gray-600 max-h-16 overflow-y-auto">
+                              <span className="font-medium">Sample values:</span> {field.values.slice(0, 3).join(', ')}
+                              {field.values.length > 3 && '...'}
+                            </p>
+                            <Button 
+                              variant="ghost" 
+                              size="sm" 
+                              className="mt-1 h-6 px-2 text-blue-600 text-xs hover:bg-blue-50"
+                              onClick={() => {
+                                setShowValueDetails(field.FieldID);
+                              }}
+                            >
+                              Show all values
+                            </Button>
                           </div>
                         </div>
                       ))}
@@ -1203,7 +1220,7 @@ const BatchFormPrefill = () => {
                 <div className="flex items-center text-sm text-gray-500">
                   <span className="font-medium text-blue-600">Step 4</span>
                   <span className="mx-2 text-gray-400">/</span>
-                  <span>3</span>
+                  <span>4</span>
                 </div>
               </div>
               
@@ -1366,6 +1383,57 @@ const BatchFormPrefill = () => {
           )}
         </CardContent>
       </Card>
+
+      {/* Modal for showing field values */}
+      {showValueDetails && (
+        <Dialog open={!!showValueDetails} onOpenChange={() => setShowValueDetails(null)}>
+          <ImprovedDialogContent size="md" position="center">
+            <DialogHeader>
+              <DialogTitle>
+                <div className="flex items-center">
+                  <FileSpreadsheet className="mr-2 h-5 w-5 text-blue-600" />
+                  Field Values
+                </div>
+              </DialogTitle>
+              <DialogDescription>
+                All values for this field
+              </DialogDescription>
+            </DialogHeader>
+            
+            <div className="max-h-80 overflow-y-auto mt-4">
+              <div className="bg-gray-50 p-4 rounded-lg mb-4">
+                {fields.find(f => f.FieldID === showValueDetails)?.description && (
+                  <h3 className="font-medium text-lg mb-1">
+                    {fields.find(f => f.FieldID === showValueDetails)?.description}
+                  </h3>
+                )}
+                <p className="text-sm text-gray-500 mb-3">
+                  Field ID: {showValueDetails}
+                </p>
+                <div className="border-t pt-3">
+                  <h4 className="font-medium mb-2">Values:</h4>
+                  <div className="grid gap-2">
+                    {fields.find(f => f.FieldID === showValueDetails)?.values.map((value, idx) => (
+                      <div key={idx} className="p-2 bg-white rounded border text-sm">
+                        <div className="flex justify-between">
+                          <span>{value}</span>
+                          <span className="text-gray-400 text-xs">{idx + 1}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setShowValueDetails(null)}>
+                Close
+              </Button>
+            </DialogFooter>
+          </ImprovedDialogContent>
+        </Dialog>
+      )}
 
       <Dialog open={showHelpDialog} onOpenChange={setShowHelpDialog}>
         <ImprovedDialogContent size="xl" position="center">
