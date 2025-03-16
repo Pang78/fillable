@@ -181,7 +181,7 @@ const CSVImportDialog: React.FC<{
                   Your CSV file should have these columns:
                 </p>
                 <ul className="mt-1 space-y-1 text-xs text-blue-700 list-disc pl-4">
-                  <li><span className="font-semibold">id</span> - The field ID from FormSG (optional)</li>
+                  <li><span className="font-semibold">id</span> - The 24 character field ID from FormSG (required)</li>
                   <li><span className="font-semibold">value</span> - The data to pre-fill (required)</li>
                   <li><span className="font-semibold">label</span> - A description of the field (optional)</li>
                 </ul>
