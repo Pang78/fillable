@@ -2138,6 +2138,117 @@ const LetterMode: React.FC = () => {
                             )}
                           </div>
                         </div>
+                        
+                        {/* Add CSV Import Button */}
+                        {letterDetails.notificationMethod && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              // Create a file input element
+                              const input = document.createElement('input');
+                              input.type = 'file';
+                              input.accept = '.csv';
+                              
+                              // Handle file selection
+                              input.onchange = async (e) => {
+                                const file = (e.target as HTMLInputElement).files?.[0];
+                                if (!file) return;
+                                
+                                try {
+                                  // Read file as text
+                                  const reader = new FileReader();
+                                  const text = await new Promise<string>((resolve, reject) => {
+                                    reader.onload = () => resolve(reader.result as string);
+                                    reader.onerror = reject;
+                                    reader.readAsText(file);
+                                  });
+                                  
+                                  // Parse CSV
+                                  const results = await new Promise<any>((resolve, reject) => {
+                                    Papa.parse(text, {
+                                      header: true,
+                                      skipEmptyLines: true,
+                                      complete: (results) => resolve(results),
+                                      error: (error) => reject(error),
+                                    });
+                                  });
+                                  
+                                  // Check if the CSV has data
+                                  if (results.data.length === 0 || !results.meta.fields || results.meta.fields.length === 0) {
+                                    toast({
+                                      title: "Empty CSV",
+                                      description: "The CSV file contains no data or valid headers.",
+                                      variant: "destructive",
+                                    });
+                                    return;
+                                  }
+                                  
+                                  // Look for email or phone columns based on notification method
+                                  const headers = results.meta.fields;
+                                  let targetHeader = '';
+                                  
+                                  if (letterDetails.notificationMethod === 'EMAIL') {
+                                    // Look for email-related headers
+                                    targetHeader = headers.find((header: string) => 
+                                      header.toLowerCase().includes('email') || 
+                                      header.toLowerCase().includes('mail') ||
+                                      header.toLowerCase().includes('e-mail')
+                                    ) || headers[0]; // Default to first column if no match
+                                  } else if (letterDetails.notificationMethod === 'SMS') {
+                                    // Look for phone-related headers
+                                    targetHeader = headers.find((header: string) => 
+                                      header.toLowerCase().includes('phone') || 
+                                      header.toLowerCase().includes('mobile') || 
+                                      header.toLowerCase().includes('cell') ||
+                                      header.toLowerCase().includes('tel') ||
+                                      header.toLowerCase().includes('number')
+                                    ) || headers[0]; // Default to first column if no match
+                                  }
+                                  
+                                  // Extract and validate contacts
+                                  const contacts = results.data
+                                    .map((row: any) => row[targetHeader])
+                                    .filter(Boolean)
+                                    .map((contact: string) => contact.trim());
+                                  
+                                  if (contacts.length === 0) {
+                                    toast({
+                                      title: "No Contacts Found",
+                                      description: `No valid ${letterDetails.notificationMethod === 'EMAIL' ? 'email addresses' : 'phone numbers'} found in the selected column.`,
+                                      variant: "destructive",
+                                    });
+                                    return;
+                                  }
+                                  
+                                  // Update recipients
+                                  updateLetterDetail('recipients', contacts);
+                                  
+                                  toast({
+                                    description: `Imported ${contacts.length} ${letterDetails.notificationMethod === 'EMAIL' ? 'email addresses' : 'phone numbers'}.`,
+                                    duration: 3000,
+                                  });
+                                } catch (error: unknown) {
+                                  console.error('Error importing contacts:', error);
+                                  toast({
+                                    title: "Import Error",
+                                    description: "Failed to process the CSV file. Please ensure it's a valid CSV format.",
+                                    variant: "destructive",
+                                  });
+                                }
+                              };
+                              
+                              // Trigger file selection
+                              input.click();
+                            }}
+                            disabled={isLoading || isSending}
+                            className="w-full mt-2 mb-2"
+                          >
+                            <FileSpreadsheet className="mr-2 h-4 w-4" />
+                            Import {letterDetails.notificationMethod === 'SMS' ? 'Phone Numbers' : 'Email Addresses'} from CSV
+                          </Button>
+                        )}
+                        
                         <div className="flex flex-wrap justify-between items-start mt-1">
                           <p className="text-xs text-gray-500 flex items-center">
                             <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 mr-1 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
