@@ -253,7 +253,13 @@ const DEFAULT_CSV_DELIMITER = ',';  // Default delimiter for CSV columns
 const DEFAULT_VALUES_DELIMITER = ';';  // Default delimiter for values within the "values" column
 const TEMPLATE_STRUCTURE = [
   { FieldID: '67488bb37e8c75e33b9f9191', values: 'John;Jane;Alex', description: 'Names' },
-  { FieldID: '67488f8e088e833537af24aa', values: 'john@agency.gov.sg;jane@agency.gov.sg;alex@agency.gov.sg', description: 'Email' }
+  { FieldID: '67488f8e088e833537af24aa', values: 'john@agency.gov.sg;jane@agency.gov.sg;alex@agency.gov.sg', description: 'Email' },
+  { FieldID: '67488f2425bc895113f36755', values: 'S1234567A;S1234567B;S1234567C', description: 'Employee ID' },
+  { FieldID: '67488f4706223a28046116b7', values: 'HR;Ops;Finance', description: 'Department' },
+  { FieldID: '67488fa4961741ba92f3d064', values: 'Artificial Intelligence #101;Machine Learning #102', description: 'Course ID' },
+  { FieldID: '674890985ff109b4e0969bfd', values: '$1234.00', description: 'Cost' },
+  { FieldID: '6748910f1210a416d2d81521', values: '09/10/2025', description: 'Start Date' },
+  { FieldID: '6748918845919bff0a00bcb6', values: '10/10/2025', description: 'End Date'  },
 ];
 
 // Add supported delimiters with their display names
