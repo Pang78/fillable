@@ -136,11 +136,14 @@ const CSVImportDialog: React.FC<{
   };
 
   const exampleCSVTemplate = `id,value,label
-672883d1aa22e8a167d22f56,John Doe,Full Name
-5f8e4d2c1a3b7c9e6d2f1a3b,john.doe@example.com,Email Address
-1a2b3c4d5e6f7g8h9i0j1k2l,+1 (555) 123-4567,Phone Number
-,Singapore,Country
-,123 Main Street,Address`;
+67488bb37e8c75e33b9f9191,John,Full Name
+67488f8e088e833537af24aa,john@agency.gov.sg,Email Address
+67488f2425bc895113f36755,S1234567A;S1234567B;S1234567C,Employee ID
+67488f4706223a28046116b7,HR,Department
+67488fa4961741ba92f3d064,Artificial Intelligence #101,Course ID
+674890985ff109b4e0969bfd,$1234.00,Cost
+6748910f1210a416d2d81521,9/10/25,Start Date
+6748918845919bff0a00bcb6,10/10/25,End Date`;
 
   const downloadTemplate = () => {
     const blob = new Blob([exampleCSVTemplate], { type: 'text/csv;charset=utf-8;' });
