@@ -46,6 +46,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import TransformColumnToRow from '@/components/TransformColumnToRow';
 
 interface Field {
   id: string;
@@ -915,6 +916,44 @@ const FormPrefillGuide = () => {
                     </TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
+
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <TabsTrigger 
+                        value="transform"
+                        className="
+                          inline-flex items-center justify-center 
+                          whitespace-nowrap rounded-full
+                          px-4 py-1.5
+                          text-sm font-medium
+                          transition-all duration-200
+                          focus-visible:outline-none
+                          data-[state=active]:bg-gradient-to-r
+                          data-[state=active]:from-purple-500 
+                          data-[state=active]:to-pink-500
+                          data-[state=active]:text-white
+                          data-[state=active]:shadow-md
+                          hover:bg-purple-500/10
+                          hover:text-purple-500
+                        "
+                      >
+                        <span className="flex items-center">
+                          <svg className="h-3.5 w-3.5 mr-1.5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M2 16C2 13.172 2 11.757 2.879 10.879C3.757 10 5.172 10 8 10H16C18.828 10 20.243 10 21.121 10.879C22 11.757 22 13.172 22 16C22 18.828 22 20.243 21.121 21.121C20.243 22 18.828 22 16 22H8C5.172 22 3.757 22 2.879 21.121C2 20.243 2 18.828 2 16Z"></path>
+                            <path d="M8 10V6C8 4.343 9.343 3 11 3H13C14.657 3 16 4.343 16 6V10"></path>
+                            <path d="M12 14V18"></path>
+                            <path d="M10 16H14"></path>
+                          </svg>
+                          Transform Mode
+                        </span>
+                      </TabsTrigger>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom">
+                      <p className="text-xs">Transform column data to a single delimited row</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
               </TabsList>
 
               <TabsContent value="construct" className="space-y-6">
@@ -1666,6 +1705,31 @@ const FormPrefillGuide = () => {
               <TabsContent value="letterMode" className="space-y-4">
               <LetterMode />
               </TabsContent> 
+              <TabsContent value="transform" className="space-y-4">
+                {/* Mode description and explanatory panel */}
+                <div className="bg-gradient-to-r from-purple-50/80 to-pink-50 p-4 rounded-lg border border-purple-100 mb-4 shadow-sm">
+                  <div className="flex items-start">
+                    <div className="bg-purple-100 p-2 rounded-full mr-3 flex-shrink-0">
+                      <svg className="h-5 w-5 text-purple-600" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M2 16C2 13.172 2 11.757 2.879 10.879C3.757 10 5.172 10 8 10H16C18.828 10 20.243 10 21.121 10.879C22 11.757 22 13.172 22 16C22 18.828 22 20.243 21.121 21.121C20.243 22 18.828 22 16 22H8C5.172 22 3.757 22 2.879 21.121C2 20.243 2 18.828 2 16Z"></path>
+                        <path d="M8 10V6C8 4.343 9.343 3 11 3H13C14.657 3 16 4.343 16 6V10"></path>
+                        <path d="M12 14V18"></path>
+                        <path d="M10 16H14"></path>
+                      </svg>
+                    </div>
+                    <div>
+                      <h3 className="font-medium text-purple-800 mb-1 text-base">Transform Mode</h3>
+                      <p className="text-sm text-purple-700">
+                        Convert column data (like from a spreadsheet) into a single row with delimiters. 
+                        This is useful for creating lists, CSV exports, or any data that needs to be transformed from vertical to horizontal format.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Column to Row Transformer */}
+                <TransformColumnToRow />
+              </TabsContent>
             </Tabs>
           </CardContent>
         </Card>
