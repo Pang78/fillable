@@ -39,7 +39,7 @@
     --background: 240 10% 3.9%;
     --foreground: 0 0% 98%;
     
-    --card: 240 10% 3.9%;
+    --card: 240 10% 12%;
     --card-foreground: 0 0% 98%;
     
     --popover: 240 10% 3.9%;
@@ -80,4 +80,110 @@ body {
 
 .dialog-content {
   @apply fixed left-[50%] top-[50%] z-50 grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 border bg-background p-6 shadow-lg duration-200 sm:rounded-lg;
+}
+
+/* Dark mode optimizations */
+.dark .shadow-sm {
+  @apply shadow-md shadow-black/20;
+}
+
+.dark .shadow-lg {
+  @apply shadow-lg shadow-black/30;
+}
+
+.dark .shadow-xl {
+  @apply shadow-xl shadow-black/40;
+}
+
+/* Fix gradients in dark mode */
+.dark .from-purple-50,
+.dark .from-blue-50,
+.dark .from-amber-50 {
+  --tw-gradient-from: hsl(var(--card)) var(--tw-gradient-from-position);
+  --tw-gradient-to: hsl(var(--card)) var(--tw-gradient-to-position);
+  --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to);
+}
+
+.dark .to-indigo-50,
+.dark .to-blue-500\/10,
+.dark .to-pink-50,
+.dark .to-orange-50 {
+  --tw-gradient-to: hsl(var(--card)) var(--tw-gradient-to-position);
+}
+
+/* Fix text colors in dark mode */
+.dark .text-blue-800,
+.dark .text-purple-800 {
+  @apply text-primary;
+}
+
+.dark .text-blue-600,
+.dark .text-purple-600,
+.dark .text-amber-600 {
+  @apply text-primary/80;
+}
+
+/* Fix container backgrounds in dark mode */
+.dark .bg-white,
+.dark .bg-slate-50,
+.dark .bg-gray-50 {
+  @apply bg-gray-800;
+}
+
+/* Improve card visibility */
+.dark .bg-gradient-to-r {
+  background: hsl(var(--card));
+  border-bottom: 1px solid hsl(var(--border));
+}
+
+/* Additional dark mode improvements */
+.dark .bg-card {
+  background-color: hsl(var(--card));
+  color: hsl(var(--card-foreground));
+}
+
+.dark .bg-muted\/20 {
+  background-color: hsl(var(--muted) / 0.2);
+}
+
+.dark .bg-primary\/10 {
+  background-color: hsl(var(--primary) / 0.1);
+}
+
+.dark .bg-primary\/5 {
+  background-color: hsl(var(--primary) / 0.05);
+}
+
+.dark .bg-warning\/10 {
+  background-color: hsl(var(--warning) / 0.1);
+}
+
+.dark .bg-info\/10 {
+  background-color: hsl(var(--info) / 0.1);
+}
+
+.dark .bg-destructive\/10 {
+  background-color: hsl(var(--destructive) / 0.1);
+}
+
+/* Improve link colors in dark mode */
+.dark a {
+  @apply text-primary hover:text-primary/80;
+}
+
+/* Improve border visibility in dark mode */
+.dark .border-primary\/20 {
+  border-color: hsl(var(--primary) / 0.2);
+}
+
+.dark .border-warning\/20 {
+  border-color: hsl(var(--warning) / 0.2);
+}
+
+.dark .border-info\/20 {
+  border-color: hsl(var(--info) / 0.2);
+}
+
+.dark .border-destructive\/20 {
+  border-color: hsl(var(--destructive) / 0.2);
 }

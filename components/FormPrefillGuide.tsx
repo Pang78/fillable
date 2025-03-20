@@ -936,20 +936,20 @@ const FormPrefillGuide = () => {
                 </div>
 
                 {/* Step 1: Form URL Section */}
-                <div className="bg-white p-5 rounded-lg border shadow-sm relative overflow-hidden">
+                <div className="bg-card p-5 rounded-lg border shadow-sm relative overflow-hidden url-generator-card">
                   <div className="absolute top-0 left-0 w-1 h-full bg-primary"></div>
                   <div className="flex items-center mb-4">
-                    <div className="bg-primary/90 text-white rounded-full h-8 w-8 flex items-center justify-center mr-3 shadow-sm">
+                    <div className="bg-primary/90 text-primary-foreground rounded-full h-8 w-8 flex items-center justify-center mr-3 shadow-sm">
                       <span className="font-semibold">1</span>
                     </div>
-                    <h3 className="font-medium text-lg">Enter Form URL</h3>
+                    <h3 className="font-medium text-lg text-foreground">Enter Form URL</h3>
                   </div>
                   
                   <div className="space-y-3 ml-11">
                     <div className="relative">
-                      <label htmlFor="formUrl" className="block text-sm font-medium mb-1 flex items-center">
+                      <label htmlFor="formUrl" className="block text-sm font-medium mb-1 flex items-center text-foreground">
                         <span>Form URL</span> 
-                        <span className="text-red-500 ml-1">*</span>
+                        <span className="text-destructive ml-1">*</span>
                         <TooltipProvider>
                           <Tooltip>
                             <TooltipTrigger asChild>
@@ -969,7 +969,7 @@ const FormPrefillGuide = () => {
                             value={formUrl}
                             onChange={(e) => setFormUrl(e.target.value)}
                             aria-label="Form URL"
-                            className="pr-10 border-primary/20 focus-visible:ring-primary/30"
+                            className="pr-10 border-primary/20 focus-visible:ring-primary/30 bg-background"
                           />
                           <div className="absolute right-3 top-[50%] transform -translate-y-1/2 pointer-events-none">
                             <LinkIcon className="h-4 w-4 text-muted-foreground" />
@@ -988,21 +988,21 @@ const FormPrefillGuide = () => {
                         </Button>
                       </div>
                       <p className="text-xs text-muted-foreground mt-1">
-                        <span className="text-amber-600">Tip:</span> Make sure to include the full URL including "https://"
+                        <span className="text-warning">Tip:</span> Make sure to include the full URL including "https://"
                       </p>
                     </div>
                   </div>
                 </div>
 
                 {/* Step 2: Form Fields Section */}
-                <div className="bg-white p-5 rounded-lg border shadow-sm relative overflow-hidden">
+                <div className="bg-card p-5 rounded-lg border shadow-sm relative overflow-hidden url-generator-card">
                   <div className="absolute top-0 left-0 w-1 h-full bg-primary"></div>
                   <div className="flex items-center justify-between mb-4">
                     <div className="flex items-center">
-                      <div className="bg-primary/90 text-white rounded-full h-8 w-8 flex items-center justify-center mr-3 shadow-sm">
+                      <div className="bg-primary/90 text-primary-foreground rounded-full h-8 w-8 flex items-center justify-center mr-3 shadow-sm">
                         <span className="font-semibold">2</span>
                       </div>
-                      <h3 className="font-medium text-lg">Add Form Fields</h3>
+                      <h3 className="font-medium text-lg text-foreground">Add Form Fields</h3>
                     </div>
                     <div className="flex gap-2">
                       <TooltipProvider>
@@ -1051,16 +1051,16 @@ const FormPrefillGuide = () => {
                     </div>
                   </div>
 
-                  <div className="bg-gradient-to-r from-amber-50 to-amber-50/60 p-3 rounded-md border border-amber-100 mb-4 ml-11">
+                  <div className="bg-warning/10 p-3 rounded-md border border-warning/20 mb-4 ml-11">
                     <div className="flex items-start">
-                      <div className="bg-amber-100 p-1 rounded-full mr-2 flex-shrink-0">
-                        <HelpCircle className="h-4 w-4 text-amber-600" />
+                      <div className="bg-warning/20 p-1 rounded-full mr-2 flex-shrink-0">
+                        <HelpCircle className="h-4 w-4 text-warning" />
                       </div>
                       <div>
-                        <p className="text-xs font-medium text-amber-800">
+                        <p className="text-xs font-medium text-warning">
                           How to find Field IDs:
                         </p>
-                        <ol className="list-decimal text-xs mt-1 ml-4 text-amber-700 space-y-0.5">
+                        <ol className="list-decimal text-xs mt-1 ml-4 text-warning/90 space-y-0.5">
                           <li>In FormSG, enable pre-filling for a short answer field</li>
                           <li>Click on the field to copy its 24-character ID</li>
                           <li>Or use <span className="font-semibold">Deconstruct Mode</span> to extract IDs from an existing form URL</li>
@@ -1088,15 +1088,15 @@ const FormPrefillGuide = () => {
                       fields.map((field, index) => (
                         <div 
                           key={index} 
-                          className="grid grid-cols-12 gap-3 p-4 rounded-md border bg-card hover:bg-muted/5 transition-colors relative group shadow-sm"
+                          className="grid grid-cols-12 gap-3 p-4 rounded-md border bg-card hover:bg-accent transition-colors relative group shadow-sm"
                         >
                           <div className="absolute -top-2.5 -left-1 bg-primary text-primary-foreground text-xs rounded-full px-2 py-0.5 font-medium shadow-sm">
                             Field #{index + 1}
                           </div>
                           <div className="col-span-5 sm:col-span-4">
-                            <label className="text-xs font-medium mb-1 flex items-center">
+                            <label className="text-xs font-medium mb-1 flex items-center text-foreground">
                               <span>Field ID</span>
-                              <span className="text-red-500 ml-0.5">*</span>
+                              <span className="text-destructive ml-0.5">*</span>
                               <TooltipProvider>
                                 <Tooltip>
                                   <TooltipTrigger asChild>
@@ -1113,13 +1113,13 @@ const FormPrefillGuide = () => {
                               value={field.id}
                               onChange={(e) => updateField(index, 'id', e.target.value)}
                               aria-label={`Field ${index + 1} ID`}
-                              className="h-9 text-sm border-primary/20 focus-visible:ring-primary/30"
+                              className="h-9 text-sm border-primary/20 focus-visible:ring-primary/30 bg-background"
                             />
                           </div>
                           <div className="col-span-5 sm:col-span-4">
-                            <label className="text-xs font-medium mb-1 flex items-center">
+                            <label className="text-xs font-medium mb-1 flex items-center text-foreground">
                               <span>Value</span>
-                              <span className="text-red-500 ml-0.5">*</span>
+                              <span className="text-destructive ml-0.5">*</span>
                               <TooltipProvider>
                                 <Tooltip>
                                   <TooltipTrigger asChild>
@@ -1136,7 +1136,7 @@ const FormPrefillGuide = () => {
                               value={field.value}
                               onChange={(e) => updateField(index, 'value', e.target.value)}
                               aria-label={`Field ${index + 1} Value`}
-                              className="h-9 text-sm border-primary/20 focus-visible:ring-primary/30"
+                              className="h-9 text-sm border-primary/20 focus-visible:ring-primary/30 bg-background"
                             />
                           </div>
                           <div className="col-span-2 sm:col-span-3">
@@ -1150,7 +1150,7 @@ const FormPrefillGuide = () => {
                                   value={field.label}
                                   onChange={(e) => updateField(index, 'label', e.target.value)}
                                   aria-label={`Field ${index + 1} Label`}
-                                  className="h-9 text-sm border-primary/20 focus-visible:ring-primary/30"
+                                  className="h-9 text-sm border-primary/20 focus-visible:ring-primary/30 bg-background"
                                 />
                               </div>
                               <TooltipProvider>
@@ -1199,17 +1199,17 @@ const FormPrefillGuide = () => {
                 </div>
 
                 {/* Step 3: Generate URL section */}
-                <div className="bg-white p-5 rounded-lg border shadow-sm relative overflow-hidden">
+                <div className="bg-card p-5 rounded-lg border shadow-sm relative overflow-hidden url-generator-card">
                   <div className="absolute top-0 left-0 w-1 h-full bg-primary"></div>
                   <div className="flex items-center mb-4">
-                    <div className="bg-primary/90 text-white rounded-full h-8 w-8 flex items-center justify-center mr-3 shadow-sm">
+                    <div className="bg-primary/90 text-primary-foreground rounded-full h-8 w-8 flex items-center justify-center mr-3 shadow-sm">
                       <span className="font-semibold">3</span>
                     </div>
-                    <h3 className="font-medium text-lg">Generate URL</h3>
+                    <h3 className="font-medium text-lg text-foreground">Generate URL</h3>
                   </div>
 
                   <div className="ml-11">
-                    <div className="flex flex-col items-center bg-muted/10 p-4 rounded-lg border mb-4">
+                    <div className="flex flex-col items-center bg-accent p-4 rounded-lg border mb-4">
                       <div className="mb-3 text-center">
                         <p className="text-sm mb-1">Ready to create your pre-filled form link?</p>
                         <p className="text-xs text-muted-foreground">Click the button below to generate a URL with all your field values</p>
@@ -1225,8 +1225,8 @@ const FormPrefillGuide = () => {
                       </Button>
                       
                       {(!formUrl.trim() || fields.length === 0 || fields.some(f => !f.id.trim() || !f.value.trim())) && (
-                        <div className="mt-3 bg-amber-50 border border-amber-200 rounded-md p-2 text-xs text-amber-800 max-w-md text-center">
-                          <AlertTriangle className="h-3.5 w-3.5 inline-block mr-1 text-amber-600" />
+                        <div className="mt-3 bg-warning/10 border border-warning/20 rounded-md p-2 text-xs text-warning max-w-md text-center">
+                          <AlertTriangle className="h-3.5 w-3.5 inline-block mr-1 text-warning" />
                           {!formUrl.trim() 
                             ? "Please enter a form URL first" 
                             : fields.length === 0 
@@ -1237,10 +1237,10 @@ const FormPrefillGuide = () => {
                     </div>
 
                     {generatedUrl && (
-                      <div className="mt-4 border border-primary/30 rounded-md p-4 bg-gradient-to-r from-primary/5 to-primary/10 shadow-sm">
+                      <div className="mt-4 border border-primary/30 rounded-md p-4 bg-accent shadow-sm">
                         <div className="flex justify-between items-center mb-3">
                           <div className="flex items-center">
-                            <CheckCircle className="h-4 w-4 text-green-600 mr-2" />
+                            <CheckCircle className="h-4 w-4 text-success mr-2" />
                             <h4 className="font-medium text-primary">Your Pre-filled URL is Ready!</h4>
                           </div>
                           <div className="flex gap-2">
@@ -1293,19 +1293,19 @@ const FormPrefillGuide = () => {
                             </TooltipProvider>
                           </div>
                         </div>
-                        <div className="p-3 bg-white rounded border border-primary/20 break-all text-sm relative">
+                        <div className="p-3 bg-card rounded border border-primary/20 break-all text-sm relative">
                           <div className="absolute top-0 right-0 bg-primary/10 text-primary text-xs px-2 py-0.5 rounded-bl">
                             URL
                           </div>
                           <p className="pr-8 pt-2">{generatedUrl}</p>
                         </div>
                         
-                        <div className="mt-4 bg-blue-50 p-3 rounded-md border border-blue-100 text-xs">
+                        <div className="mt-4 bg-info/10 p-3 rounded-md border border-info/20 text-xs">
                           <div className="flex items-start">
-                            <Info className="h-4 w-4 text-blue-600 mt-0.5 mr-2 flex-shrink-0" />
+                            <Info className="h-4 w-4 text-info mt-0.5 mr-2 flex-shrink-0" />
                             <div>
-                              <p className="font-medium text-blue-800 mb-1">What's next?</p>
-                              <ul className="list-disc ml-4 text-blue-700 space-y-1">
+                              <p className="font-medium text-info mb-1">What's next?</p>
+                              <ul className="list-disc ml-4 text-info/90 space-y-1">
                                 <li>Share this URL to pre-fill the form for your recipients</li>
                                 <li>Bookmark it for future use or add to your systems</li>
                                 <li>Edit the fields above and regenerate if needed</li>
@@ -1323,7 +1323,7 @@ const FormPrefillGuide = () => {
                   <div className="flex justify-between items-center">
                     <div className="flex items-center">
                       <Download className="h-5 w-5 text-primary mr-2" />
-                      <h3 className="text-lg font-semibold">URL Manager</h3>
+                      <h3 className="text-lg font-semibold text-foreground">URL Manager</h3>
                     </div>
                     <div className="flex items-center gap-2">
                       <TooltipProvider>
@@ -1377,9 +1377,9 @@ const FormPrefillGuide = () => {
                     </div>
                   </div>
 
-                  <Alert className="bg-blue-50 border-blue-100">
-                    <Info className="h-4 w-4 text-blue-600" />
-                    <AlertDescription className="text-blue-700">
+                  <Alert className="bg-info/10 border-info/20">
+                    <Info className="h-4 w-4 text-info" />
+                    <AlertDescription className="text-info">
                       Save and organize your generated URLs for future use. Give each URL a name to help you remember its purpose.
                     </AlertDescription>
                   </Alert>
@@ -1400,7 +1400,7 @@ const FormPrefillGuide = () => {
                             onBlur={() => setIsUrlNameHighlighted(false)}
                             aria-label="URL name"
                             title="Enter a descriptive name for this URL to easily identify it later"
-                            className="pr-8"
+                            className="pr-8 bg-background"
                           />
                           <FileSpreadsheet className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
                         </div>
@@ -1436,14 +1436,14 @@ const FormPrefillGuide = () => {
 
                   <div className="space-y-4">
                     <div className="flex justify-between items-center">
-                      <h4 className="font-medium flex items-center">
+                      <h4 className="font-medium flex items-center text-foreground">
                         <FileSpreadsheet className="h-4 w-4 mr-1.5 text-primary" />
                         Saved URLs ({savedUrls.length})
                       </h4>
                     </div>
 
                     {savedUrls.length === 0 ? (
-                      <div className="flex flex-col items-center justify-center py-8 px-4 border border-dashed rounded-lg bg-muted/20 text-center">
+                      <div className="flex flex-col items-center justify-center py-8 px-4 border border-dashed rounded-lg bg-accent text-center">
                         <FileSpreadsheet className="h-10 w-10 text-muted-foreground mb-3 opacity-60" />
                         <h5 className="font-medium text-foreground mb-1">No saved URLs yet</h5>
                         <p className="text-sm text-muted-foreground max-w-md">
@@ -1455,12 +1455,12 @@ const FormPrefillGuide = () => {
                         {savedUrls.map((savedUrl, index) => (
                           <div
                             key={`saved-url-${index}-${savedUrl.createdAt}`}
-                            className="p-4 bg-muted/20 border rounded-lg flex justify-between items-center group hover:bg-muted/30 transition-colors cursor-pointer relative"
+                            className="p-4 bg-accent border rounded-lg flex justify-between items-center group hover:bg-accent/80 transition-colors cursor-pointer relative"
                             onClick={() => setSelectedUrlIndex(index)}
                           >
                             {/* Overlay hint on hover */}
                             <div className="absolute inset-0 bg-primary/10 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center pointer-events-none rounded-lg">
-                              <div className="bg-primary/90 text-white px-3 py-1.5 rounded-full text-xs font-medium shadow-sm">
+                              <div className="bg-primary/90 text-primary-foreground px-3 py-1.5 rounded-full text-xs font-medium shadow-sm">
                                 Click to review
                               </div>
                             </div>
@@ -1590,11 +1590,11 @@ const FormPrefillGuide = () => {
                     <Info className="h-4 w-4 mr-2 text-primary" />
                     Example URL
                   </h4>
-                  <div className="bg-white p-3 rounded border border-primary/20 text-xs break-all">
+                  <div className="bg-card p-3 rounded border border-primary/20 text-xs break-all">
                     <p className="font-medium text-primary mb-1">Try this example:</p>
                     <a 
                       href="https://form.gov.sg/67488b8b1210a416d2d7cb5b?67488bb37e8c75e33b9f9191=Tan%20Ah%20Kow&67488f8e088e833537af24aa=Tan_ah_kow%40agency.gov.sg&67488f2425bc895113f36755=H123456&67488f4706223a28046116b7=Human%20Resource&67488fa4961741ba92f3d064=Artificial%20Intelligence%20%231&674890985ff109b4e0969bfd=%241234.00&6748910f1210a416d2d81521=09%2F12%2F24&6748918845919bff0a00bcb6=10%2F12%2F24"
-                      className="text-blue-600 hover:text-blue-800 hover:underline flex items-center"
+                      className="text-primary hover:text-primary/80 hover:underline flex items-center"
                       target="_blank"
                       rel="noopener noreferrer"
                     >
@@ -1667,12 +1667,12 @@ const FormPrefillGuide = () => {
                   <LinkIcon className="h-4 w-4 mr-1.5 text-primary" />
                   URL Details
                 </div>
-                <div className="p-3 bg-muted/20 rounded border text-sm break-all">
+                <div className="p-3 bg-card rounded border text-sm break-all">
                   <a 
                     href={savedUrls[selectedUrlIndex].url} 
                     target="_blank" 
                     rel="noopener noreferrer"
-                    className="text-blue-600 hover:text-blue-800 hover:underline flex items-center"
+                    className="text-primary hover:text-primary/80 hover:underline flex items-center"
                   >
                     {savedUrls[selectedUrlIndex].url}
                     <ExternalLink className="h-3.5 w-3.5 ml-1 inline-flex" />
