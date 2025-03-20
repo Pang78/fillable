@@ -777,20 +777,26 @@ const FormPrefillGuide = () => {
           </CardHeader>
           <CardContent>
           <Tabs value={activeTab} onValueChange={setActiveTab}>
-              <TabsList className="mb-4 bg-muted p-1 rounded-full">
+              <TabsList className="mb-4 bg-gradient-to-r from-muted/80 via-muted to-muted/80 p-1 rounded-full shadow-sm border border-muted/50">
                 <TooltipProvider>
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <TabsTrigger 
                         value="construct" 
                         className="
-                          data-[state=active]:bg-primary 
-                          data-[state=active]:text-primary-foreground 
-                          data-[state=active]:shadow-sm
-                          rounded-full
-                          px-4
-                          transition-all
-                          duration-300
+                          inline-flex items-center justify-center 
+                          whitespace-nowrap rounded-full
+                          px-4 py-1.5
+                          text-sm font-medium
+                          transition-all duration-200
+                          focus-visible:outline-none
+                          data-[state=active]:bg-gradient-to-r
+                          data-[state=active]:from-primary 
+                          data-[state=active]:to-blue-500
+                          data-[state=active]:text-white
+                          data-[state=active]:shadow-md
+                          hover:bg-primary/10
+                          hover:text-primary
                         "
                       >
                         <span className="flex items-center">
@@ -811,13 +817,19 @@ const FormPrefillGuide = () => {
                       <TabsTrigger 
                         value="deconstruct" 
                         className="
-                          data-[state=active]:bg-primary 
-                          data-[state=active]:text-primary-foreground 
-                          data-[state=active]:shadow-sm
-                          rounded-full
-                          px-4
-                          transition-all
-                          duration-300
+                          inline-flex items-center justify-center 
+                          whitespace-nowrap rounded-full
+                          px-4 py-1.5
+                          text-sm font-medium
+                          transition-all duration-200
+                          focus-visible:outline-none
+                          data-[state=active]:bg-gradient-to-r
+                          data-[state=active]:from-blue-500 
+                          data-[state=active]:to-indigo-500
+                          data-[state=active]:text-white
+                          data-[state=active]:shadow-md
+                          hover:bg-blue-500/10
+                          hover:text-blue-500
                         "
                       >
                         <span className="flex items-center">
@@ -842,13 +854,19 @@ const FormPrefillGuide = () => {
                       <TabsTrigger 
                         value="batch"
                         className="
-                          data-[state=active]:bg-primary 
-                          data-[state=active]:text-primary-foreground 
-                          data-[state=active]:shadow-sm
-                          rounded-full
-                          px-4
-                          transition-all
-                          duration-300
+                          inline-flex items-center justify-center 
+                          whitespace-nowrap rounded-full
+                          px-4 py-1.5
+                          text-sm font-medium
+                          transition-all duration-200
+                          focus-visible:outline-none
+                          data-[state=active]:bg-gradient-to-r
+                          data-[state=active]:from-green-500 
+                          data-[state=active]:to-emerald-500
+                          data-[state=active]:text-white
+                          data-[state=active]:shadow-md
+                          hover:bg-green-500/10
+                          hover:text-green-500
                         "
                       > 
                         <span className="flex items-center">
@@ -869,13 +887,19 @@ const FormPrefillGuide = () => {
                       <TabsTrigger 
                         value="letterMode"
                         className="
-                          data-[state=active]:bg-primary 
-                          data-[state=active]:text-primary-foreground 
-                          data-[state=active]:shadow-sm
-                          rounded-full
-                          px-4
-                          transition-all
-                          duration-300
+                          inline-flex items-center justify-center 
+                          whitespace-nowrap rounded-full
+                          px-4 py-1.5
+                          text-sm font-medium
+                          transition-all duration-200
+                          focus-visible:outline-none
+                          data-[state=active]:bg-gradient-to-r
+                          data-[state=active]:from-amber-500 
+                          data-[state=active]:to-orange-500
+                          data-[state=active]:text-white
+                          data-[state=active]:shadow-md
+                          hover:bg-amber-500/10
+                          hover:text-amber-500
                         "
                       >
                         <span className="flex items-center">
