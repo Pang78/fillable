@@ -46,7 +46,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import TransformColumnToRow from '@/components/TransformColumnToRow';
+import TransformBidirectional from '@/components/TransformColumnToRow';
 
 interface Field {
   id: string;
@@ -953,7 +953,7 @@ const FormPrefillGuide = () => {
                       </TabsTrigger>
                     </TooltipTrigger>
                     <TooltipContent side="bottom">
-                      <p className="text-xs">Transform column data to a single delimited row</p>
+                      <p className="text-xs">Transform data between column and row formats</p>
                     </TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
@@ -1721,17 +1721,17 @@ const FormPrefillGuide = () => {
                       </svg>
                     </div>
                     <div>
-                      <h3 className="font-medium text-purple-800 mb-1 text-base">Transform Mode</h3>
+                      <h3 className="font-medium text-purple-800 mb-1 text-base">Data Format Transformer</h3>
                       <p className="text-sm text-purple-700">
-                        Convert column data (like from a spreadsheet) into a single row with delimiters. 
-                        This is useful for creating lists, CSV exports, or any data that needs to be transformed from vertical to horizontal format.
+                        Transform your data between column and row formats. Use Column → Row to combine multiple lines into a single delimited row, 
+                        or Row → Column to split a delimited row into separate lines.
                       </p>
                     </div>
                   </div>
                 </div>
 
                 {/* Column to Row Transformer */}
-                <TransformColumnToRow />
+                <TransformBidirectional />
               </TabsContent>
             </Tabs>
           </CardContent>

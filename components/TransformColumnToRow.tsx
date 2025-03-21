@@ -35,7 +35,7 @@ Jennifer Miller
 William Davis
 Elizabeth Wilson`;
 
-const TransformColumnToRow = () => {
+const TransformBidirectional = () => {
   const [inputText, setInputText] = useState('');
   const [outputText, setOutputText] = useState('');
   const [delimiter, setDelimiter] = useState(',');
@@ -58,6 +58,18 @@ const TransformColumnToRow = () => {
     removeTrailingNumbers: false,
     useCustomRegex: false
   });
+  
+  // Add type definition for SavedConfig after cleaningOptions is defined
+  type SavedConfig = {
+    id: string;
+    name: string;
+    delimiter: string;
+    customDelimiter: string;
+    cleaningOptions: typeof cleaningOptions;
+    customRegexPattern: string;
+    customRegexReplacement: string;
+    timestamp: number;
+  };
   
   // Add new state variables for preview stats
   const [previewStats, setPreviewStats] = useState({
@@ -85,6 +97,22 @@ const TransformColumnToRow = () => {
     showPreview: false
   });
   
+  // Add state for live preview
+  const [liveModeEnabled, setLiveModeEnabled] = useState(true);
+  const [livePreview, setLivePreview] = useState('');
+  
+  // Add state for drag and drop
+  const [isDragging, setIsDragging] = useState(false);
+  
+  // Add state for configurations
+  const [savedConfigs, setSavedConfigs] = useState<SavedConfig[]>([]);
+  const [configName, setConfigName] = useState('');
+  const [showSaveConfigModal, setShowSaveConfigModal] = useState(false);
+  const [showLoadConfigModal, setShowLoadConfigModal] = useState(false);
+  
+  // Add transformation direction state
+  const [transformDirection, setTransformDirection] = useState<'columnToRow' | 'rowToColumn'>('columnToRow');
+  
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const outputRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -99,75 +127,169 @@ const TransformColumnToRow = () => {
       return;
     }
     
-    // Split text by newlines
-    let lines = inputText.split('\n');
-    
-    // Apply cleaning options
-    if (cleaningOptions.trimWhitespace) {
-      lines = lines.map(line => line.trim());
-    }
-    
-    if (cleaningOptions.removeEmptyLines) {
-      lines = lines.filter(line => line.trim() !== '');
-    }
-    
-    if (cleaningOptions.toLowerCase) {
-      lines = lines.map(line => line.toLowerCase());
-    }
-    
-    if (cleaningOptions.toUpperCase) {
-      lines = lines.map(line => line.toUpperCase());
-    }
-    
-    if (cleaningOptions.removeSpecialChars) {
-      lines = lines.map(line => line.replace(/[^\w\s]/gi, ''));
-    }
-    
-    // Add new cleaning options
-    if (cleaningOptions.replaceMultipleSpaces) {
-      lines = lines.map(line => line.replace(/\s+/g, ' '));
-    }
-    
-    if (cleaningOptions.removeLeadingNumbers) {
-      lines = lines.map(line => line.replace(/^\d+\s*/, ''));
-    }
-    
-    if (cleaningOptions.removeTrailingNumbers) {
-      lines = lines.map(line => line.replace(/\s*\d+$/, ''));
-    }
-    
-    // Apply custom regex if enabled and valid
-    if (cleaningOptions.useCustomRegex && customRegexPattern) {
+    if (transformDirection === 'columnToRow') {
+      // Existing column to row transformation
+      // Split text by newlines
+      let lines = inputText.split('\n');
+      
+      // Apply cleaning options
+      if (cleaningOptions.trimWhitespace) {
+        lines = lines.map(line => line.trim());
+      }
+      
+      if (cleaningOptions.removeEmptyLines) {
+        lines = lines.filter(line => line.trim() !== '');
+      }
+      
+      if (cleaningOptions.toLowerCase) {
+        lines = lines.map(line => line.toLowerCase());
+      }
+      
+      if (cleaningOptions.toUpperCase) {
+        lines = lines.map(line => line.toUpperCase());
+      }
+      
+      if (cleaningOptions.removeSpecialChars) {
+        lines = lines.map(line => line.replace(/[^\w\s]/gi, ''));
+      }
+      
+      if (cleaningOptions.replaceMultipleSpaces) {
+        lines = lines.map(line => line.replace(/\s+/g, ' '));
+      }
+      
+      if (cleaningOptions.removeLeadingNumbers) {
+        lines = lines.map(line => line.replace(/^\d+\s*/, ''));
+      }
+      
+      if (cleaningOptions.removeTrailingNumbers) {
+        lines = lines.map(line => line.replace(/\s*\d+$/, ''));
+      }
+      
+      // Apply custom regex if enabled and valid
+      if (cleaningOptions.useCustomRegex && customRegexPattern) {
+        try {
+          const regex = new RegExp(customRegexPattern, 'g');
+          lines = lines.map(line => line.replace(regex, customRegexReplacement || ''));
+          setCustomRegexError('');
+        } catch (error) {
+          setCustomRegexError('Invalid regex pattern');
+          toast({
+            title: "Regex Error",
+            description: "Invalid regular expression pattern. Skipping custom regex replacement.",
+            variant: "destructive",
+          });
+        }
+      }
+      
+      if (cleaningOptions.removeDuplicates) {
+        lines = [...new Set(lines)];
+      }
+      
+      setTotalItems(lines.length);
+      
+      // Join with the selected delimiter
+      const actualDelimiter = delimiter === 'custom' ? customDelimiter : delimiter;
+      const transformed = lines.join(actualDelimiter);
+      
+      setOutputText(transformed);
+      setIsTransformed(true);
+      
+      toast({
+        description: `Successfully transformed ${lines.length} items into a single row`,
+      });
+    } else {
+      // New row to column transformation
+      // Get the delimiter
+      const actualDelimiter = delimiter === 'custom' ? customDelimiter : delimiter;
+      
+      // Handle special delimiter cases
+      let delimiterForSplit = actualDelimiter;
+      if (actualDelimiter === '\\t') delimiterForSplit = '\t';
+      
+      // Split the input by delimiter
+      let items: string[];
+      
       try {
-        const regex = new RegExp(customRegexPattern, 'g');
-        lines = lines.map(line => line.replace(regex, customRegexReplacement || ''));
-        setCustomRegexError('');
-      } catch (error) {
-        setCustomRegexError('Invalid regex pattern');
+        // For complex delimiters, use RegExp to split
+        if (['|', '.', '*', '+', '?', '^', '$', '\\'].some(c => actualDelimiter.includes(c))) {
+          items = inputText.split(new RegExp(delimiterForSplit.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'));
+        } else {
+          // Simple string split for basic delimiters
+          items = inputText.split(delimiterForSplit);
+        }
+        
+        // Apply cleaning options to each item
+        if (cleaningOptions.trimWhitespace) {
+          items = items.map(item => item.trim());
+        }
+        
+        if (cleaningOptions.removeEmptyLines) {
+          items = items.filter(item => item.trim() !== '');
+        }
+        
+        if (cleaningOptions.toLowerCase) {
+          items = items.map(item => item.toLowerCase());
+        }
+        
+        if (cleaningOptions.toUpperCase) {
+          items = items.map(item => item.toUpperCase());
+        }
+        
+        if (cleaningOptions.removeSpecialChars) {
+          items = items.map(item => item.replace(/[^\w\s]/gi, ''));
+        }
+        
+        if (cleaningOptions.replaceMultipleSpaces) {
+          items = items.map(item => item.replace(/\s+/g, ' '));
+        }
+        
+        if (cleaningOptions.removeLeadingNumbers) {
+          items = items.map(item => item.replace(/^\d+\s*/, ''));
+        }
+        
+        if (cleaningOptions.removeTrailingNumbers) {
+          items = items.map(item => item.replace(/\s*\d+$/, ''));
+        }
+        
+        // Apply custom regex if enabled and valid
+        if (cleaningOptions.useCustomRegex && customRegexPattern) {
+          try {
+            const regex = new RegExp(customRegexPattern, 'g');
+            items = items.map(item => item.replace(regex, customRegexReplacement || ''));
+            setCustomRegexError('');
+          } catch (error) {
+            setCustomRegexError('Invalid regex pattern');
+            toast({
+              title: "Regex Error",
+              description: "Invalid regular expression pattern. Skipping custom regex replacement.",
+              variant: "destructive",
+            });
+          }
+        }
+        
+        if (cleaningOptions.removeDuplicates) {
+          items = [...new Set(items)];
+        }
+        
+        setTotalItems(items.length);
+        
+        // Join items with newline to create columns
+        const transformed = items.join('\n');
+        
+        setOutputText(transformed);
+        setIsTransformed(true);
+        
         toast({
-          title: "Regex Error",
-          description: "Invalid regular expression pattern. Skipping custom regex replacement.",
+          description: `Successfully transformed row into ${items.length} lines`,
+        });
+      } catch (error) {
+        toast({
+          title: "Transformation Error",
+          description: "An error occurred while splitting the input. Please check your delimiter.",
           variant: "destructive",
         });
       }
     }
-    
-    if (cleaningOptions.removeDuplicates) {
-      lines = [...new Set(lines)];
-    }
-    
-    setTotalItems(lines.length);
-    
-    // Join with the selected delimiter
-    const actualDelimiter = delimiter === 'custom' ? customDelimiter : delimiter;
-    const transformed = lines.join(actualDelimiter);
-    
-    setOutputText(transformed);
-    setIsTransformed(true);
-    
-    toast({
-      description: `Successfully transformed ${lines.length} items`,
-    });
   };
   
   const copyToClipboard = () => {
@@ -200,16 +322,76 @@ const TransformColumnToRow = () => {
   };
   
   const loadSampleData = () => {
-    setInputText(SAMPLE_DATA);
+    if (transformDirection === 'columnToRow') {
+      setInputText(SAMPLE_DATA);
+    } else {
+      setInputText("John Smith,Jane Doe,Michael Johnson,Emily Williams,David Brown");
+    }
     setIsSampleLoaded(true);
     toast({
       description: "Sample data loaded",
     });
   };
   
-  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
+  // Add drag and drop event handlers
+  const handleDragEnter = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+  };
+
+  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+  };
+
+  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+
+    const files = e.dataTransfer.files;
+    if (files && files.length > 0) {
+      const file = files[0];
+      handleFileContent(file);
+    }
+  };
+
+  // Extract file handling logic into separate function to reuse with drag-and-drop
+  const handleFileContent = (file: File) => {
     if (!file) return;
+    
+    // Check file type and size
+    const validTypes = ['.txt', '.csv', '.md', '.json', 'text/plain', 'text/csv', 'text/markdown', 'application/json'];
+    const isValidType = validTypes.some(type => 
+      file.name.toLowerCase().endsWith(type) || file.type.includes(type)
+    );
+    
+    if (!isValidType) {
+      toast({
+        title: "Invalid file type",
+        description: "Please upload a text file (.txt, .csv, .md, .json)",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    // Check file size (max 5MB)
+    const maxSize = 5 * 1024 * 1024; // 5MB
+    if (file.size > maxSize) {
+      toast({
+        title: "File too large",
+        description: "Please upload a file smaller than 5MB",
+        variant: "destructive",
+      });
+      return;
+    }
     
     const reader = new FileReader();
     reader.onload = (e) => {
@@ -229,6 +411,14 @@ const TransformColumnToRow = () => {
     };
     
     reader.readAsText(file);
+  };
+
+  // Update the handleFileUpload function to use the handleFileContent function
+  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      handleFileContent(file);
+    }
   };
   
   const downloadOutput = () => {
@@ -448,13 +638,346 @@ const TransformColumnToRow = () => {
     // Preview will update via useEffect
   };
   
+  // Add useEffect to update live preview
+  useEffect(() => {
+    if (liveModeEnabled && inputText) {
+      generateLivePreview();
+    } else if (!inputText) {
+      setLivePreview('');
+    }
+  }, [inputText, delimiter, customDelimiter, cleaningOptions, customRegexPattern, customRegexReplacement, liveModeEnabled]);
+
+  // Function to generate live preview
+  const generateLivePreview = () => {
+    if (!inputText.trim()) {
+      setLivePreview('');
+      return;
+    }
+    
+    try {
+      if (transformDirection === 'columnToRow') {
+        // Existing column to row live preview
+        let lines = inputText.split('\n');
+        
+        if (cleaningOptions.trimWhitespace) {
+          lines = lines.map(line => line.trim());
+        }
+        
+        if (cleaningOptions.removeEmptyLines) {
+          lines = lines.filter(line => line.trim() !== '');
+        }
+        
+        if (cleaningOptions.toLowerCase) {
+          lines = lines.map(line => line.toLowerCase());
+        }
+        
+        if (cleaningOptions.toUpperCase) {
+          lines = lines.map(line => line.toUpperCase());
+        }
+        
+        if (cleaningOptions.removeSpecialChars) {
+          lines = lines.map(line => line.replace(/[^\w\s]/gi, ''));
+        }
+        
+        if (cleaningOptions.replaceMultipleSpaces) {
+          lines = lines.map(line => line.replace(/\s+/g, ' '));
+        }
+        
+        if (cleaningOptions.removeLeadingNumbers) {
+          lines = lines.map(line => line.replace(/^\d+\s*/, ''));
+        }
+        
+        if (cleaningOptions.removeTrailingNumbers) {
+          lines = lines.map(line => line.replace(/\s*\d+$/, ''));
+        }
+        
+        if (cleaningOptions.useCustomRegex && customRegexPattern) {
+          try {
+            const regex = new RegExp(customRegexPattern, 'g');
+            lines = lines.map(line => line.replace(regex, customRegexReplacement || ''));
+          } catch (error) {
+            // Skip regex if invalid
+          }
+        }
+        
+        if (cleaningOptions.removeDuplicates) {
+          lines = [...new Set(lines)];
+        }
+        
+        // Generate the preview with a maximum of 100 characters
+        const actualDelimiter = delimiter === 'custom' ? customDelimiter : delimiter;
+        const previewText = lines.join(actualDelimiter);
+        
+        // Truncate preview if too long
+        const maxPreviewLength = 100;
+        setLivePreview(
+          previewText.length > maxPreviewLength 
+            ? `${previewText.substring(0, maxPreviewLength)}...` 
+            : previewText
+        );
+      } else {
+        // Row to column live preview
+        const actualDelimiter = delimiter === 'custom' ? customDelimiter : delimiter;
+        let delimiterForSplit = actualDelimiter;
+        if (actualDelimiter === '\\t') delimiterForSplit = '\t';
+        
+        // Split by delimiter
+        let items: string[];
+        
+        if (['|', '.', '*', '+', '?', '^', '$', '\\'].some(c => actualDelimiter.includes(c))) {
+          items = inputText.split(new RegExp(delimiterForSplit.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'));
+        } else {
+          items = inputText.split(delimiterForSplit);
+        }
+        
+        // Apply cleaning options
+        if (cleaningOptions.trimWhitespace) {
+          items = items.map(item => item.trim());
+        }
+        
+        if (cleaningOptions.removeEmptyLines) {
+          items = items.filter(item => item.trim() !== '');
+        }
+        
+        if (cleaningOptions.toLowerCase) {
+          items = items.map(item => item.toLowerCase());
+        }
+        
+        if (cleaningOptions.toUpperCase) {
+          items = items.map(item => item.toUpperCase());
+        }
+        
+        if (cleaningOptions.removeSpecialChars) {
+          items = items.map(item => item.replace(/[^\w\s]/gi, ''));
+        }
+        
+        if (cleaningOptions.replaceMultipleSpaces) {
+          items = items.map(item => item.replace(/\s+/g, ' '));
+        }
+        
+        if (cleaningOptions.removeLeadingNumbers) {
+          items = items.map(item => item.replace(/^\d+\s*/, ''));
+        }
+        
+        if (cleaningOptions.removeTrailingNumbers) {
+          items = items.map(item => item.replace(/\s*\d+$/, ''));
+        }
+        
+        if (cleaningOptions.useCustomRegex && customRegexPattern) {
+          try {
+            const regex = new RegExp(customRegexPattern, 'g');
+            items = items.map(item => item.replace(regex, customRegexReplacement || ''));
+          } catch (error) {
+            // Skip regex if invalid
+          }
+        }
+        
+        if (cleaningOptions.removeDuplicates) {
+          items = [...new Set(items)];
+        }
+        
+        // Show first few items in preview
+        const maxPreviewItems = 3;
+        const previewItems = items.slice(0, maxPreviewItems);
+        let previewText = previewItems.join('\n');
+        
+        if (items.length > maxPreviewItems) {
+          previewText += `\n... (${items.length - maxPreviewItems} more)`;
+        }
+        
+        // Truncate if still too long
+        const maxPreviewLength = 100;
+        setLivePreview(
+          previewText.length > maxPreviewLength 
+            ? `${previewText.substring(0, maxPreviewLength)}...` 
+            : previewText
+        );
+      }
+    } catch (error) {
+      setLivePreview('Error generating preview');
+    }
+  };
+  
+  // Add keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Only process keyboard shortcuts if Ctrl/Cmd key is pressed
+      if (!(e.ctrlKey || e.metaKey)) return;
+      
+      // Check for various keyboard shortcuts
+      switch (e.key) {
+        case 'Enter':
+          // Ctrl+Enter to transform data
+          if (inputText.trim()) {
+            e.preventDefault();
+            transformData();
+          }
+          break;
+        case 'c':
+          // Ctrl+Shift+C to copy output (not interfere with regular Ctrl+C)
+          if (e.shiftKey && outputText) {
+            e.preventDefault();
+            copyToClipboard();
+          }
+          break;
+        case 'l':
+          // Ctrl+L to toggle live preview
+          e.preventDefault();
+          setLiveModeEnabled(prev => !prev);
+          break;
+        case 'd':
+          // Ctrl+D to clear all
+          e.preventDefault();
+          clearAll();
+          break;
+        case 's':
+          // Ctrl+S to load sample data
+          if (!isSampleLoaded) {
+            e.preventDefault();
+            loadSampleData();
+          }
+          break;
+      }
+    };
+    
+    // Add event listener for keyboard shortcuts
+    window.addEventListener('keydown', handleKeyDown);
+    
+    // Clean up the event listener on component unmount
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [inputText, outputText, isSampleLoaded]);
+  
+  // Load saved configurations from localStorage on mount
+  useEffect(() => {
+    const configs = localStorage.getItem('transformConfigs');
+    if (configs) {
+      try {
+        const parsedConfigs = JSON.parse(configs) as SavedConfig[];
+        setSavedConfigs(parsedConfigs);
+      } catch (e) {
+        console.error('Failed to parse saved configurations', e);
+      }
+    }
+  }, []);
+
+  // Function to save current configuration
+  const saveCurrentConfig = () => {
+    if (!configName.trim()) {
+      toast({
+        title: "Config name required",
+        description: "Please enter a name for your configuration",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    const newConfig: SavedConfig = {
+      id: Date.now().toString(),
+      name: configName.trim(),
+      delimiter,
+      customDelimiter,
+      cleaningOptions: { ...cleaningOptions },
+      customRegexPattern,
+      customRegexReplacement,
+      timestamp: Date.now()
+    };
+    
+    const updatedConfigs = [...savedConfigs, newConfig];
+    setSavedConfigs(updatedConfigs);
+    localStorage.setItem('transformConfigs', JSON.stringify(updatedConfigs));
+    
+    setConfigName('');
+    setShowSaveConfigModal(false);
+    
+    toast({
+      description: `Configuration "${newConfig.name}" saved successfully`,
+    });
+  };
+
+  // Function to load a saved configuration
+  const loadConfig = (config: SavedConfig) => {
+    setDelimiter(config.delimiter);
+    setCustomDelimiter(config.customDelimiter);
+    setCleaningOptions({ ...config.cleaningOptions });
+    setCustomRegexPattern(config.customRegexPattern);
+    setCustomRegexReplacement(config.customRegexReplacement);
+    
+    setShowLoadConfigModal(false);
+    
+    toast({
+      description: `Configuration "${config.name}" loaded successfully`,
+    });
+  };
+
+  // Function to delete a saved configuration
+  const deleteConfig = (id: string, name: string) => {
+    const updatedConfigs = savedConfigs.filter(config => config.id !== id);
+    setSavedConfigs(updatedConfigs);
+    localStorage.setItem('transformConfigs', JSON.stringify(updatedConfigs));
+    
+    toast({
+      description: `Configuration "${name}" deleted`,
+    });
+  };
+  
   return (
     <div className="space-y-6">
       <Card>
         <CardHeader className="bg-gradient-to-r from-purple-50/50 to-pink-50/50 border-b border-purple-100/50">
-          <CardTitle className="text-lg font-semibold text-purple-800">Column to Row Transformer</CardTitle>
+          <CardTitle className="text-lg font-semibold text-purple-800">
+            Data Format Transformer
+          </CardTitle>
         </CardHeader>
-        <CardContent className="pt-6">
+
+        {/* Add direction selection toggle */}
+        <div className="px-6 pt-6 pb-2">
+          <div className="bg-purple-50/70 rounded-lg p-1 flex">
+            <button
+              onClick={() => setTransformDirection('columnToRow')}
+              className={`flex-1 py-2 rounded-md text-sm font-medium transition-colors ${
+                transformDirection === 'columnToRow'
+                  ? 'bg-white shadow-sm text-purple-700'
+                  : 'text-purple-600 hover:bg-white/60'
+              }`}
+            >
+              <span className="flex items-center justify-center">
+                <svg className="h-4 w-4 mr-2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="3" y="3" width="18" height="18" rx="2" />
+                  <path d="M9 3v18" />
+                  <path d="M3 9h6" />
+                  <path d="M3 15h6" />
+                  <path d="M15 12h2" />
+                  <path d="M18 9l3 3-3 3" />
+                </svg>
+                Column → Row
+              </span>
+            </button>
+            <button
+              onClick={() => setTransformDirection('rowToColumn')}
+              className={`flex-1 py-2 rounded-md text-sm font-medium transition-colors ${
+                transformDirection === 'rowToColumn'
+                  ? 'bg-white shadow-sm text-purple-700'
+                  : 'text-purple-600 hover:bg-white/60'
+              }`}
+            >
+              <span className="flex items-center justify-center">
+                <svg className="h-4 w-4 mr-2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="3" y="3" width="18" height="18" rx="2" />
+                  <path d="M9 3v18" />
+                  <path d="M3 9h6" />
+                  <path d="M3 15h6" />
+                  <path d="M15 12h2" />
+                  <path d="M18 15l3-3-3-3" />
+                </svg>
+                Row → Column
+              </span>
+            </button>
+          </div>
+        </div>
+
+        <CardContent className="pt-2">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Input Section */}
             <div className="space-y-4">
@@ -511,7 +1034,11 @@ const TransformColumnToRow = () => {
                 <TabsContent value="paste" className="mt-2">
                   <Textarea
                     ref={textareaRef}
-                    placeholder="Paste your column data here (one item per line)..."
+                    placeholder={
+                      transformDirection === 'columnToRow'
+                        ? "Paste your column data here (one item per line)..."
+                        : "Paste your delimited data here (items separated by delimiter)..."
+                    }
                     className="min-h-[200px] font-mono text-sm border-purple-200"
                     value={inputText}
                     onChange={(e) => setInputText(e.target.value)}
@@ -519,26 +1046,48 @@ const TransformColumnToRow = () => {
                 </TabsContent>
                 
                 <TabsContent value="upload" className="mt-2">
-                  <div className="border-2 border-dashed border-purple-200 rounded-md p-6 text-center bg-purple-50/50">
+                  <div 
+                    className={`
+                      border-2 border-dashed rounded-md p-6 text-center
+                      ${isDragging 
+                        ? 'border-purple-400 bg-purple-100/70' 
+                        : 'border-purple-200 bg-purple-50/50'
+                      }
+                      transition-colors duration-200
+                    `}
+                    onDragEnter={handleDragEnter}
+                    onDragLeave={handleDragLeave}
+                    onDragOver={handleDragOver}
+                    onDrop={handleDrop}
+                  >
                     <input 
                       type="file" 
                       ref={fileInputRef}
                       onChange={handleFileUpload}
-                      accept=".txt,.csv,.md,.json"
+                      accept=".txt,.csv,.md,.json,text/plain,text/csv"
                       className="hidden" 
                     />
                     <div className="flex flex-col items-center justify-center space-y-2">
-                      <div className="bg-purple-100 rounded-full p-3">
-                        <FileUp className="h-6 w-6 text-purple-600" />
+                      <div className={`rounded-full p-3 ${isDragging ? 'bg-purple-200' : 'bg-purple-100'}`}>
+                        <FileUp className={`h-6 w-6 ${isDragging ? 'text-purple-700' : 'text-purple-600'}`} />
                       </div>
-                      <h4 className="font-medium text-purple-800">Upload a Text File</h4>
+                      <h4 className="font-medium text-purple-800">
+                        {isDragging ? 'Drop File Here' : 'Upload a Text File'}
+                      </h4>
                       <p className="text-xs text-purple-600 max-w-xs">
-                        Upload .txt, .csv, or any text file with one item per line
+                        {isDragging 
+                          ? 'Release to upload your file' 
+                          : 'Drag & drop your file here or click the button below'
+                        }
                       </p>
                       <Button
                         variant="outline"
                         onClick={() => fileInputRef.current?.click()}
-                        className="mt-2 border-purple-300 hover:bg-purple-100 text-purple-700"
+                        className={`mt-2 ${
+                          isDragging 
+                            ? 'border-purple-400 bg-purple-200 hover:bg-purple-300 text-purple-800' 
+                            : 'border-purple-300 hover:bg-purple-100 text-purple-700'
+                        }`}
                       >
                         Choose File
                       </Button>
@@ -550,7 +1099,9 @@ const TransformColumnToRow = () => {
               <Alert className="bg-purple-50 border-purple-100">
                 <Info className="h-4 w-4 text-purple-600" />
                 <AlertDescription className="text-purple-700 text-sm">
-                  Enter data with one item per line. The transformer will combine all lines into a single row.
+                  {transformDirection === 'columnToRow'
+                    ? "Enter data with one item per line. The transformer will combine all lines into a single row."
+                    : "Enter data with items separated by delimiter. The transformer will split items into separate lines."}
                 </AlertDescription>
               </Alert>
             </div>
@@ -886,14 +1437,181 @@ const TransformColumnToRow = () => {
                 </div>
               </div>
               
+              {/* Add this after the data cleaning options section but before the transform button */}
+              <div className="mt-4 border-t border-purple-100 pt-3">
+                <div className="flex justify-between items-center mb-2">
+                  <h3 className="text-base font-medium flex items-center">
+                    <svg className="h-4 w-4 mr-1.5 text-purple-600" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                    </svg>
+                    Live Preview
+                  </h3>
+                  <div className="flex items-center">
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input 
+                        type="checkbox" 
+                        className="sr-only peer"
+                        checked={liveModeEnabled}
+                        onChange={() => setLiveModeEnabled(!liveModeEnabled)}
+                      />
+                      <div className="w-9 h-5 bg-gray-200 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-purple-600"></div>
+                      <span className="ml-2 text-xs font-medium text-gray-500">
+                        {liveModeEnabled ? 'Enabled' : 'Disabled'}
+                      </span>
+                    </label>
+                  </div>
+                </div>
+                
+                {liveModeEnabled && (
+                  <div className="relative">
+                    <div className="p-2 border rounded-md bg-gray-50 border-purple-100 overflow-hidden h-10 flex items-center">
+                      {livePreview ? (
+                        <div className="font-mono text-xs text-purple-700 truncate">
+                          {livePreview}
+                        </div>
+                      ) : (
+                        <div className="text-xs text-gray-400 italic">
+                          Live preview will appear here as you type...
+                        </div>
+                      )}
+                    </div>
+                    <div className="absolute top-0 right-0 bottom-0 flex items-center pr-2">
+                      <div className="text-[10px] px-1.5 py-0.5 rounded bg-purple-100 text-purple-700">
+                        Preview
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+              
+              {/* Add a section for save/load configuration */}
+              <div className="mt-4 border-t border-purple-100 pt-3">
+                <div className="flex justify-between items-center mb-2">
+                  <h3 className="text-base font-medium flex items-center">
+                    <svg className="h-4 w-4 mr-1.5 text-purple-600" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+                      <polyline points="17 21 17 13 7 13 7 21"></polyline>
+                      <polyline points="7 3 7 8 15 8"></polyline>
+                    </svg>
+                    Configurations
+                  </h3>
+                  <div className="flex gap-2">
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => setShowSaveConfigModal(true)}
+                      className="h-8 text-xs border-purple-200 hover:bg-purple-50 text-purple-700"
+                    >
+                      Save Config
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => setShowLoadConfigModal(true)}
+                      className="h-8 text-xs border-purple-200 hover:bg-purple-50 text-purple-700"
+                      disabled={savedConfigs.length === 0}
+                    >
+                      Load Config
+                    </Button>
+                  </div>
+                </div>
+                
+                {/* Save Configuration Modal */}
+                {showSaveConfigModal && (
+                  <div className="fixed inset-0 bg-black/30 z-50 flex items-center justify-center">
+                    <div className="bg-white rounded-lg shadow-lg p-4 max-w-md w-full mx-4">
+                      <h4 className="text-lg font-medium mb-3">Save Configuration</h4>
+                      <div className="mb-4">
+                        <Label htmlFor="configName" className="block mb-2 text-sm">Configuration Name</Label>
+                        <Input
+                          id="configName"
+                          placeholder="e.g., My CSV Cleaning Setup"
+                          value={configName}
+                          onChange={(e) => setConfigName(e.target.value)}
+                          className="border-purple-200"
+                        />
+                      </div>
+                      <div className="mb-4 text-xs text-gray-500">
+                        This will save your current delimiter and all cleaning options.
+                      </div>
+                      <div className="flex justify-end gap-2">
+                        <Button 
+                          variant="outline" 
+                          onClick={() => setShowSaveConfigModal(false)}
+                        >
+                          Cancel
+                        </Button>
+                        <Button 
+                          onClick={saveCurrentConfig}
+                          className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white"
+                        >
+                          Save
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                
+                {/* Load Configuration Modal */}
+                {showLoadConfigModal && (
+                  <div className="fixed inset-0 bg-black/30 z-50 flex items-center justify-center">
+                    <div className="bg-white rounded-lg shadow-lg p-4 max-w-md w-full mx-4">
+                      <h4 className="text-lg font-medium mb-3">Load Configuration</h4>
+                      {savedConfigs.length > 0 ? (
+                        <div className="max-h-60 overflow-auto mb-4">
+                          <div className="space-y-2">
+                            {savedConfigs.map(config => (
+                              <div 
+                                key={config.id} 
+                                className="p-3 border border-purple-100 rounded-md hover:bg-purple-50 transition-colors cursor-pointer flex justify-between items-center"
+                                onClick={() => loadConfig(config)}
+                              >
+                                <div>
+                                  <div className="font-medium">{config.name}</div>
+                                  <div className="text-xs text-gray-500">
+                                    {new Date(config.timestamp).toLocaleString()} • 
+                                    Delimiter: {config.delimiter === 'custom' ? config.customDelimiter : config.delimiter}
+                                  </div>
+                                </div>
+                                <button 
+                                  className="text-red-500 hover:text-red-700"
+                                  onClick={(e) => {
+                                    e.stopPropagation(); // Prevent loadConfig from being called
+                                    deleteConfig(config.id, config.name);
+                                  }}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="py-6 text-center text-gray-500">
+                          No saved configurations found.
+                        </div>
+                      )}
+                      <div className="flex justify-end">
+                        <Button 
+                          variant="outline" 
+                          onClick={() => setShowLoadConfigModal(false)}
+                        >
+                          Close
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+              
               {/* Transform Button - render conditionally based on existing code */}
               <div className="pt-2">
                 <Button 
                   onClick={transformData} 
                   className="w-full bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white"
-                  disabled={!inputText.trim()}
+                  disabled={!inputText.trim() || (delimiter === 'custom' && !customDelimiter)}
                 >
-                  Transform with Cleaning
+                  {transformDirection === 'columnToRow' ? 'Transform to Row' : 'Transform to Column'}
                 </Button>
               </div>
               
@@ -957,7 +1675,9 @@ const TransformColumnToRow = () => {
                 {isTransformed && (
                   <div className="mt-2 text-xs text-purple-600 flex items-center">
                     <CheckCircle className="h-3.5 w-3.5 mr-1.5" />
-                    Successfully transformed {totalItems} items into a single row
+                    {transformDirection === 'columnToRow'
+                      ? `Successfully transformed ${totalItems} items into a single row`
+                      : `Successfully transformed row into ${totalItems} lines`}
                   </div>
                 )}
               </div>
@@ -967,11 +1687,15 @@ const TransformColumnToRow = () => {
         <CardFooter className="bg-purple-50/50 border-t border-purple-100/50 flex justify-between">
           <div className="text-xs text-purple-700">
             <Info className="h-3.5 w-3.5 inline-block mr-1 text-purple-600" />
-            This tool converts column data into a single row with your chosen delimiter
+            {transformDirection === 'columnToRow'
+              ? "This tool converts column data into a single row with your chosen delimiter"
+              : "This tool converts row data into columns by splitting at your chosen delimiter"}
           </div>
           {isTransformed && totalItems > 0 && (
             <div className="text-xs font-medium text-purple-700">
-              {totalItems} items → 1 row
+              {transformDirection === 'columnToRow'
+                ? `${totalItems} items → 1 row`
+                : `1 row → ${totalItems} items`}
             </div>
           )}
         </CardFooter>
@@ -1032,10 +1756,37 @@ const TransformColumnToRow = () => {
               </AlertDescription>
             </Alert>
           </div>
+          
+          {/* Add a keyboard shortcuts help section to the "How to Use" card */}
+          <div className="mt-4">
+            <h4 className="text-sm font-medium text-purple-700 mb-2">Keyboard Shortcuts</h4>
+            <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-sm">
+              <div className="flex justify-between items-center">
+                <span>Transform data</span>
+                <kbd className="px-2 py-0.5 bg-purple-100 rounded text-purple-800 font-mono text-xs">Ctrl+Enter</kbd>
+              </div>
+              <div className="flex justify-between items-center">
+                <span>Copy output</span>
+                <kbd className="px-2 py-0.5 bg-purple-100 rounded text-purple-800 font-mono text-xs">Ctrl+Shift+C</kbd>
+              </div>
+              <div className="flex justify-between items-center">
+                <span>Toggle live preview</span>
+                <kbd className="px-2 py-0.5 bg-purple-100 rounded text-purple-800 font-mono text-xs">Ctrl+L</kbd>
+              </div>
+              <div className="flex justify-between items-center">
+                <span>Clear all data</span>
+                <kbd className="px-2 py-0.5 bg-purple-100 rounded text-purple-800 font-mono text-xs">Ctrl+D</kbd>
+              </div>
+              <div className="flex justify-between items-center">
+                <span>Load sample data</span>
+                <kbd className="px-2 py-0.5 bg-purple-100 rounded text-purple-800 font-mono text-xs">Ctrl+S</kbd>
+              </div>
+            </div>
+          </div>
         </CardContent>
       </Card>
     </div>
   );
 };
 
-export default TransformColumnToRow; 
+export default TransformBidirectional; 
