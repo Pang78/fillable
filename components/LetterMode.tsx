@@ -956,7 +956,7 @@ const CSVImportDialog: React.FC<{
 };
 
 // Create a simple backend proxy service for Letters.gov.sg API
-const API_PROXY_URL = '/api/letters'; // This should be implemented on your backend
+const API_PROXY_URL = '/api/letters'; // Endpoint for the API proxy
 
 const LetterMode: React.FC = () => {
   const [letterDetails, setLetterDetails] = useState<BulkLetterDetails>({
@@ -1269,6 +1269,7 @@ const LetterMode: React.FC = () => {
   }, [templateFields]);
 
   const validatePayload = useCallback(() => {
+    console.log('validatePayload called', { letterDetails, isNotificationEnabled });
     const { apiKey, templateId, lettersParams, notificationMethod, recipients } = letterDetails;
     
     // Check for required fields
@@ -1278,6 +1279,7 @@ const LetterMode: React.FC = () => {
         description: 'Please enter your API key',
         variant: 'destructive',
       });
+      console.log('validatePayload failed: Missing API Key');
       return false;
     }
 
@@ -1287,6 +1289,7 @@ const LetterMode: React.FC = () => {
         description: 'Please enter a template ID',
         variant: 'destructive',
       });
+      console.log('validatePayload failed: Missing Template ID');
       return false;
     }
 
@@ -1296,6 +1299,7 @@ const LetterMode: React.FC = () => {
         description: 'Please add at least one set of letter parameters',
         variant: 'destructive',
       });
+      console.log('validatePayload failed: No Letter Parameters');
       return false;
     }
 
@@ -1306,6 +1310,7 @@ const LetterMode: React.FC = () => {
         description: 'Please select a notification method (SMS or EMAIL)',
         variant: 'destructive',
       });
+      console.log('validatePayload failed: Notification Method Required');
       return false;
     }
 
@@ -1316,6 +1321,7 @@ const LetterMode: React.FC = () => {
         description: `Please enter ${notificationMethod === 'SMS' ? 'phone numbers' : 'email addresses'} for notifications`,
         variant: 'destructive',
       });
+      console.log('validatePayload failed: Recipients Required');
       return false;
     }
 
@@ -1328,6 +1334,7 @@ const LetterMode: React.FC = () => {
             description: `The field "${field.name}" is required but missing or empty in one or more letters`,
             variant: 'destructive',
           });
+          console.log('validatePayload failed: Missing Required Field', { field, params });
           return false;
         }
       }
@@ -1342,6 +1349,7 @@ const LetterMode: React.FC = () => {
           description: 'The number of recipients must match the number of letters',
           variant: 'destructive',
         });
+        console.log('validatePayload failed: Recipient Count Mismatch');
         return false;
       }
 
@@ -1359,6 +1367,7 @@ const LetterMode: React.FC = () => {
             description: 'Phone numbers should be in local SG format (8/9XXXXXXX) or international format (+XXXXXXXXX)',
             variant: 'destructive',
           });
+          console.log('validatePayload failed: Invalid Phone Numbers', invalidPhones);
           return false;
         }
       }
@@ -1373,33 +1382,41 @@ const LetterMode: React.FC = () => {
             description: 'Please provide valid email addresses',
             variant: 'destructive',
           });
+          console.log('validatePayload failed: Invalid Email Addresses', invalidEmails);
           return false;
         }
       }
     }
 
+    console.log('validatePayload passed');
     return true;
   }, [letterDetails, isNotificationEnabled, templateFields]);
 
   const generateBulkLetters = async () => {
-    if (!validatePayload()) return;
-    
-    setIsSending(true);
-    setApiError(null);
-
-    const { apiKey, templateId, lettersParams } = letterDetails;
-
-    const payload: any = {
-      templateId,
-      lettersParams,
-    };
-
-    if (isNotificationEnabled) {
-      payload.notificationMethod = letterDetails.notificationMethod;
-      payload.recipients = letterDetails.recipients;
-    }
-
+    console.log('generateBulkLetters called');
     try {
+      if (!validatePayload()) {
+        console.log('validatePayload failed, exiting generateBulkLetters');
+        return;
+      }
+      
+      setIsSending(true);
+      setApiError(null);
+  
+      const { apiKey, templateId, lettersParams } = letterDetails;
+  
+      const payload: any = {
+        templateId,
+        lettersParams,
+      };
+  
+      if (isNotificationEnabled) {
+        payload.notificationMethod = letterDetails.notificationMethod;
+        payload.recipients = letterDetails.recipients;
+      }
+  
+      console.log('Sending payload:', JSON.stringify(payload, null, 2));
+  
       // Using proxy endpoint to avoid exposing API key in frontend
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
@@ -1415,10 +1432,15 @@ const LetterMode: React.FC = () => {
       });
       
       clearTimeout(timeoutId);
-
+  
       if (!response.ok) {
         const errorData = await response.json();
         console.log("API error details:", errorData);
+        
+        // Check for rate limit errors
+        if (response.status === 429) {
+          throw new Error("Rate limit exceeded. Please wait a moment before trying again.");
+        }
         
         // Handle specific error messages from the API
         if (errorData.errors && Array.isArray(errorData.errors)) {
@@ -1431,31 +1453,43 @@ const LetterMode: React.FC = () => {
         
         throw new Error(errorData.message || `Request failed with status ${response.status}`);
       }
-
+  
       const { batchId } = await response.json();
-
+      console.log('Success response:', { batchId });
+  
       toast({
-        title: lettersParams.length === 1 ? 'Letter Successfully Sent' : 'Letters Successfully Sent',
-        description: `Batch ID: ${batchId}. ${lettersParams.length} ${lettersParams.length === 1 ? 'letter' : 'letters'} generated and sent successfully.`,
+        title: lettersParams.length === 1 ? 'Letter Successfully Generated' : 'Letters Successfully Generated',
+        description: `Batch ID: ${batchId}. ${lettersParams.length} ${lettersParams.length === 1 ? 'letter' : 'letters'} generated successfully.`,
         variant: 'default',
         className: 'bg-green-50 border-green-200 text-green-800',
+        duration: 5000, // Show success message for 5 seconds
       });
     } catch (error) {
       console.error('Error generating bulk letters:', error);
       
       let errorMessage = 'Failed to generate letters';
+      let errorTitle = 'Error';
+      
       if (error instanceof Error) {
         errorMessage = error.message;
+        
         if (error.name === 'AbortError') {
           errorMessage = 'Request timed out. Please try again.';
+        }
+        
+        // Check for common error patterns in the message
+        if (errorMessage.toLowerCase().includes('rate limit')) {
+          errorTitle = 'Rate Limit Exceeded';
+          errorMessage = 'You have reached the API rate limit. Please wait a moment before trying again.';
         }
       }
       
       setApiError(errorMessage);
       toast({
-        title: 'Error',
+        title: errorTitle,
         description: errorMessage,
         variant: 'destructive',
+        duration: 7000, // Show error messages longer
       });
     } finally {
       setIsSending(false);
@@ -2192,7 +2226,26 @@ const LetterMode: React.FC = () => {
                   )}
 
                   <Button 
-                    onClick={generateBulkLetters} 
+                    type="button"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      console.log('Generate button clicked');
+                      
+                      // Add a small timeout to allow the UI to update
+                      setTimeout(() => {
+                        try {
+                          generateBulkLetters();
+                        } catch (error) {
+                          console.error('Error in generateBulkLetters:', error);
+                          toast({
+                            title: 'Error',
+                            description: 'An unexpected error occurred. Please try again.',
+                            variant: 'destructive',
+                          });
+                          setIsSending(false);
+                        }
+                      }, 100);
+                    }}
                     className="w-full relative overflow-hidden group bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white shadow-lg hover:shadow-xl transition-all duration-300 py-6 text-lg font-semibold" 
                     disabled={isLoading || isSending || letterDetails.lettersParams.length === 0}
                   >

@@ -23,6 +23,8 @@ export default async function handler(
       return res.status(400).json({ message: 'API key is required' });
     }
 
+    console.log('Proxying request to LetterSG API');
+
     // Forward the request to the LetterSG API with correct URL
     const response = await fetch('https://letters.gov.sg/api/v1/letters/bulks', {
       method: 'POST',
@@ -33,14 +35,28 @@ export default async function handler(
       body: JSON.stringify(req.body),
     });
 
+    // Handle specific status codes
+    if (response.status === 429) {
+      console.log('Rate limit exceeded');
+      return res.status(429).json({ 
+        message: 'Rate limit exceeded. Please wait a moment before trying again.' 
+      });
+    }
+
     const data = await response.json();
+    console.log('LetterSG API response status:', response.status);
 
     // Return the API response with the same status code
     return res.status(response.status).json(data);
   } catch (error) {
     console.error('Error in bulk letters API proxy:', error);
-    return res.status(500).json({ 
-      message: 'An error occurred while processing your request' 
-    });
+    
+    // Provide more specific error message if possible
+    let errorMessage = 'An error occurred while processing your request';
+    if (error instanceof Error) {
+      errorMessage = error.message;
+    }
+    
+    return res.status(500).json({ message: errorMessage });
   }
 }
