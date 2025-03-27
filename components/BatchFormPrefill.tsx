@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
 import Papa from 'papaparse';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -352,6 +352,9 @@ const BatchFormPrefill = () => {
   const [urlValidated, setUrlValidated] = useState(false);
   const [showAllFields, setShowAllFields] = useState(false);
   const [showValueDetails, setShowValueDetails] = useState<string | null>(null);
+  const [showExportDialog, setShowExportDialog] = useState(false);
+  const [exportFilename, setExportFilename] = useState('');
+  const exportFileInputRef = useRef<HTMLInputElement>(null);
 
   // Add a function to add toast notifications
   const addToast = useCallback((message: string, type: 'success' | 'error' | 'info' = 'info') => {
@@ -619,6 +622,25 @@ const BatchFormPrefill = () => {
   const exportLinks = useCallback(() => {
     if (generatedLinks.length === 0) return;
     
+    // Generate a default filename with date
+    const now = new Date();
+    const dateStr = `${now.getFullYear()}-${(now.getMonth() + 1).toString().padStart(2, '0')}-${now.getDate().toString().padStart(2, '0')}`;
+    setExportFilename(`batch-links-${dateStr}.csv`);
+    
+    // Show the export dialog
+    setShowExportDialog(true);
+    
+    // Focus the filename input after dialog appears
+    setTimeout(() => {
+      if (exportFileInputRef.current) {
+        exportFileInputRef.current.focus();
+        exportFileInputRef.current.select();
+      }
+    }, 100);
+  }, [generatedLinks]);
+
+  // New function to perform the actual export with the custom filename
+  const performExport = useCallback((filename: string) => {
     const headers: string[] = [];
     if (exportConfig.labelField !== 'none') {
       headers.push('Label');
@@ -656,12 +678,12 @@ const BatchFormPrefill = () => {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.setAttribute('download', 'prefilled-links.csv');
+    link.setAttribute('download', filename.endsWith('.csv') ? filename : `${filename}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
-    showSuccess('Links exported successfully!');
+    showSuccess(`Links exported successfully as "${link.download}"`);
   }, [generatedLinks, exportConfig, fields, showSuccess]);
 
   // Update the renderCsvPreview function to have a better layout
@@ -1510,6 +1532,62 @@ const BatchFormPrefill = () => {
             </Button>
           </DialogFooter>
         </ImprovedDialogContent>
+      </Dialog>
+      
+      {/* Add the export filename dialog */}
+      <Dialog open={showExportDialog} onOpenChange={setShowExportDialog}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Export Links</DialogTitle>
+            <DialogDescription>
+              Enter a filename for your exported CSV file.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <label htmlFor="export-filename" className="text-sm font-medium">
+                Filename
+              </label>
+              <div className="flex gap-2 items-center">
+                <Input
+                  id="export-filename"
+                  ref={exportFileInputRef}
+                  value={exportFilename}
+                  onChange={(e) => setExportFilename(e.target.value)}
+                  placeholder="batch-links.csv"
+                  className="flex-1"
+                />
+                <span className="text-xs text-muted-foreground whitespace-nowrap">
+                  {!exportFilename.endsWith('.csv') && '.csv'}
+                </span>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                The file will be saved as a CSV file regardless of extension.
+              </p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowExportDialog(false)}>
+              Cancel
+            </Button>
+            <Button 
+              onClick={() => {
+                if (exportFilename.trim()) {
+                  setShowExportDialog(false);
+                  performExport(exportFilename.trim());
+                } else {
+                  // Use a default name if none provided
+                  const defaultName = `batch-links-${new Date().toISOString().split('T')[0]}.csv`;
+                  setShowExportDialog(false);
+                  performExport(defaultName);
+                }
+              }}
+              disabled={exportFilename.trim() === ''}
+            >
+              Export
+            </Button>
+          </DialogFooter>
+        </DialogContent>
       </Dialog>
     </div>
   );

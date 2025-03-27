@@ -20,7 +20,8 @@ import {
   DialogHeader, 
   DialogTitle, 
   DialogDescription,
-  DialogTrigger 
+  DialogTrigger,
+  DialogFooter
 } from "@/components/ui/dialog";
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -296,6 +297,10 @@ const FormPrefillGuide = () => {
   const [isUrlNameHighlighted, setIsUrlNameHighlighted] = useState(false);
   const [selectedUrlIndex, setSelectedUrlIndex] = useState<number | null>(null);
   const nameUrlInputRef = useRef<HTMLInputElement>(null);
+  // Add new state variables for export file naming
+  const [showExportDialog, setShowExportDialog] = useState(false);
+  const [exportFilename, setExportFilename] = useState('');
+  const exportFileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     setMounted(true);
@@ -401,7 +406,7 @@ const FormPrefillGuide = () => {
     });
   };
 
-  const exportUrls = (format: 'csv' | 'xlsx') => {
+  const exportUrls = () => {
     if (savedUrls.length === 0) {
       toast({
         description: "No URLs to export",
@@ -410,32 +415,107 @@ const FormPrefillGuide = () => {
       return;
     }
 
-    const headers = ['Name', 'URL', 'Created At'];
-    const rows = savedUrls.map(url => [
-      url.name,
-      url.url,
-      new Date(url.createdAt).toLocaleString()
-    ]);
+    // Generate a default filename with date
+    const now = new Date();
+    const dateStr = `${now.getFullYear()}-${(now.getMonth() + 1).toString().padStart(2, '0')}-${now.getDate().toString().padStart(2, '0')}`;
+    setExportFilename(`prefill-urls-${dateStr}.csv`);
+    
+    // Show the export dialog
+    setShowExportDialog(true);
+    
+    // Focus the filename input after dialog appears
+    setTimeout(() => {
+      if (exportFileInputRef.current) {
+        exportFileInputRef.current.focus();
+        exportFileInputRef.current.select();
+      }
+    }, 100);
+  };
 
-    if (format === 'csv') {
-      const csvContent = [
-        headers.join(','),
-        ...rows.map(row => row.map(cell => `"${cell}"`).join(','))
-      ].join('\n');
+  // New function to perform the actual export with the custom filename
+  const performExport = (filename: string) => {
+    // Process savedUrls to extract field information
+    const processedData = savedUrls.map(url => {
+      // Parse the URL to get field values
+      const params = new URLSearchParams(new URL(url.url).search);
+      const fieldParams = Array.from(params.entries());
+      
+      // Create the base row with URL info
+      const row: Record<string, string> = {
+        'URL Name': url.name,
+        'Form URL': url.url,
+        'Created At': new Date(url.createdAt).toLocaleString()
+      };
+      
+      // Add each field's ID, label, and value as separate columns
+      fieldParams.forEach(([fieldId, value], index) => {
+        const field = fields.find(f => f.id === fieldId);
+        const label = field?.label || fieldId;
+        
+        row[`Field${index+1}_ID`] = fieldId;
+        row[`Field${index+1}_Label`] = label;
+        row[`Field${index+1}_Value`] = value;
+      });
+      
+      return row;
+    });
+    
+    // Get all unique column headers across all rows
+    const allHeaders = new Set<string>();
+    processedData.forEach(row => {
+      Object.keys(row).forEach(key => allHeaders.add(key));
+    });
+    
+    // Convert to array and ensure URL info columns come first
+    const orderedHeaders = ['URL Name', 'Form URL', 'Created At'];
+    const fieldHeaders = Array.from(allHeaders).filter(
+      header => !orderedHeaders.includes(header)
+    ).sort((a, b) => {
+      // Sort field headers to keep them in order (Field1_ID, Field1_Label, Field1_Value, Field2_ID, etc.)
+      const aMatch = a.match(/Field(\d+)_(\w+)/);
+      const bMatch = b.match(/Field(\d+)_(\w+)/);
+      
+      if (aMatch && bMatch) {
+        const [, aNum, aType] = aMatch;
+        const [, bNum, bType] = bMatch;
+        
+        // Compare field numbers first
+        if (parseInt(aNum) !== parseInt(bNum)) {
+          return parseInt(aNum) - parseInt(bNum);
+        }
+        
+        // For same field number, maintain ID, Label, Value order
+        const typeOrder = { ID: 1, Label: 2, Value: 3 };
+        return typeOrder[aType as keyof typeof typeOrder] - typeOrder[bType as keyof typeof typeOrder];
+      }
+      
+      return a.localeCompare(b);
+    });
+    
+    const headers = [...orderedHeaders, ...fieldHeaders];
+    
+    // Create CSV data with all columns for each row
+    const rows = processedData.map(row => 
+      headers.map(header => row[header] || '')
+    );
+    
+    const csv = Papa.unparse({
+      fields: headers,
+      data: rows
+    });
 
-      const blob = new Blob([csvContent], { type: 'text/csv' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = 'prefill-urls.csv';
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-    }
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename.endsWith('.csv') ? filename : `${filename}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
 
     toast({
-      description: `URLs exported as ${format.toUpperCase()}`,
+      description: `URLs exported successfully as "${a.download}"`,
     });
   };
 
@@ -1397,17 +1477,17 @@ const FormPrefillGuide = () => {
                           <TooltipTrigger asChild>
                             <Button
                               variant="outline"
-                              onClick={() => exportUrls('csv')}
+                              onClick={() => exportUrls()}
                               disabled={savedUrls.length === 0}
-                              title="Export all saved URLs as a CSV file"
+                              title="Export all saved URLs"
                               className="text-xs h-8"
                             >
                               <Download className="h-3.5 w-3.5 mr-1.5" />
-                              Export CSV
+                              Export URLs
                             </Button>
                           </TooltipTrigger>
                           <TooltipContent>
-                            <p className="text-xs">Export all saved URLs to a CSV file</p>
+                            <p className="text-xs">Export all saved URLs</p>
                           </TooltipContent>
                         </Tooltip>
                       </TooltipProvider>
@@ -1877,6 +1957,62 @@ const FormPrefillGuide = () => {
             </div>
           </DialogContent>
         )}
+      </Dialog>
+      
+      {/* Add the export dialog near the end of the component */}
+      <Dialog open={showExportDialog} onOpenChange={setShowExportDialog}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Export URLs</DialogTitle>
+            <DialogDescription>
+              Enter a filename for your exported CSV file.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <label htmlFor="export-filename" className="text-sm font-medium">
+                Filename
+              </label>
+              <div className="flex gap-2 items-center">
+                <Input
+                  id="export-filename"
+                  ref={exportFileInputRef}
+                  value={exportFilename}
+                  onChange={(e) => setExportFilename(e.target.value)}
+                  placeholder="prefill-urls.csv"
+                  className="flex-1"
+                />
+                <span className="text-sm text-muted-foreground whitespace-nowrap">
+                  {!exportFilename.endsWith('.csv') && '.csv'}
+                </span>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                The file will be saved as a CSV file regardless of extension.
+              </p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowExportDialog(false)}>
+              Cancel
+            </Button>
+            <Button 
+              onClick={() => {
+                if (exportFilename.trim()) {
+                  setShowExportDialog(false);
+                  performExport(exportFilename.trim());
+                } else {
+                  // Use a default name if none provided
+                  const defaultName = `prefill-urls-${new Date().toISOString().split('T')[0]}.csv`;
+                  setShowExportDialog(false);
+                  performExport(defaultName);
+                }
+              }}
+              disabled={exportFilename.trim() === ''}
+            >
+              Export
+            </Button>
+          </DialogFooter>
+        </DialogContent>
       </Dialog>
     </div>
   );
