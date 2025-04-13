@@ -968,7 +968,6 @@ const LetterMode: React.FC = () => {
   });
 
   const [templateFields, setTemplateFields] = useState<TemplateField[]>([]);
-  const [isNotificationEnabled, setIsNotificationEnabled] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isTemplateLoading, setIsTemplateLoading] = useState(false);
   const [isSending, setIsSending] = useState(false);
@@ -1268,8 +1267,9 @@ const LetterMode: React.FC = () => {
     });
   }, [templateFields]);
 
+  // Modify validatePayload to always require notification details
   const validatePayload = useCallback(() => {
-    console.log('validatePayload called', { letterDetails, isNotificationEnabled });
+    console.log('validatePayload called', { letterDetails });
     const { apiKey, templateId, lettersParams, notificationMethod, recipients } = letterDetails;
     
     // Check for required fields
@@ -1303,8 +1303,8 @@ const LetterMode: React.FC = () => {
       return false;
     }
 
-    // Check if notification is enabled but method is not selected
-    if (isNotificationEnabled && !notificationMethod) {
+    // Always check for notification method since it's now required
+    if (!notificationMethod) {
       toast({
         title: 'Notification Method Required',
         description: 'Please select a notification method (SMS or EMAIL)',
@@ -1314,8 +1314,8 @@ const LetterMode: React.FC = () => {
       return false;
     }
 
-    // Check if notification is enabled but recipients are missing
-    if (isNotificationEnabled && (!recipients || recipients.length === 0)) {
+    // Always check for recipients since they're now required
+    if (!recipients || recipients.length === 0) {
       toast({
         title: 'Recipients Required',
         description: `Please enter ${notificationMethod === 'SMS' ? 'phone numbers' : 'email addresses'} for notifications`,
@@ -1341,56 +1341,54 @@ const LetterMode: React.FC = () => {
     }
 
     // Additional validation for notification settings
-    if (isNotificationEnabled && notificationMethod && recipients && recipients.length > 0) {
-      // Check if number of recipients matches number of letters
-      if (recipients.length !== lettersParams.length) {
+    // Check if number of recipients matches number of letters
+    if (recipients.length !== lettersParams.length) {
+      toast({
+        title: 'Recipient Count Mismatch',
+        description: 'The number of recipients must match the number of letters',
+        variant: 'destructive',
+      });
+      console.log('validatePayload failed: Recipient Count Mismatch');
+      return false;
+    }
+
+    // Validate phone numbers if using SMS
+    if (notificationMethod === 'SMS') {
+      // Update phone validation to support international format
+      const invalidPhones = recipients.filter(phone => {
+        // Support both local SG format (8/9XXXXXXX) and international format (+XX...)
+        return !phone.match(/^[89]\d{7}$/) && !phone.match(/^\+\d{6,15}$/);
+      });
+      
+      if (invalidPhones.length > 0) {
         toast({
-          title: 'Recipient Count Mismatch',
-          description: 'The number of recipients must match the number of letters',
+          title: 'Invalid Phone Numbers',
+          description: 'Phone numbers should be in local SG format (8/9XXXXXXX) or international format (+XXXXXXXXX)',
           variant: 'destructive',
         });
-        console.log('validatePayload failed: Recipient Count Mismatch');
+        console.log('validatePayload failed: Invalid Phone Numbers', invalidPhones);
         return false;
       }
+    }
 
-      // Validate phone numbers if using SMS
-      if (notificationMethod === 'SMS') {
-        // Update phone validation to support international format
-        const invalidPhones = recipients.filter(phone => {
-          // Support both local SG format (8/9XXXXXXX) and international format (+XX...)
-          return !phone.match(/^[89]\d{7}$/) && !phone.match(/^\+\d{6,15}$/);
+    // Validate emails if using EMAIL
+    if (notificationMethod === 'EMAIL') {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      const invalidEmails = recipients.filter(email => !emailRegex.test(email));
+      if (invalidEmails.length > 0) {
+        toast({
+          title: 'Invalid Email Addresses',
+          description: 'Please provide valid email addresses',
+          variant: 'destructive',
         });
-        
-        if (invalidPhones.length > 0) {
-          toast({
-            title: 'Invalid Phone Numbers',
-            description: 'Phone numbers should be in local SG format (8/9XXXXXXX) or international format (+XXXXXXXXX)',
-            variant: 'destructive',
-          });
-          console.log('validatePayload failed: Invalid Phone Numbers', invalidPhones);
-          return false;
-        }
-      }
-
-      // Validate emails if using EMAIL
-      if (notificationMethod === 'EMAIL') {
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        const invalidEmails = recipients.filter(email => !emailRegex.test(email));
-        if (invalidEmails.length > 0) {
-          toast({
-            title: 'Invalid Email Addresses',
-            description: 'Please provide valid email addresses',
-            variant: 'destructive',
-          });
-          console.log('validatePayload failed: Invalid Email Addresses', invalidEmails);
-          return false;
-        }
+        console.log('validatePayload failed: Invalid Email Addresses', invalidEmails);
+        return false;
       }
     }
 
     console.log('validatePayload passed');
     return true;
-  }, [letterDetails, isNotificationEnabled, templateFields]);
+  }, [letterDetails, templateFields]);
 
   const generateBulkLetters = async () => {
     console.log('generateBulkLetters called');
@@ -1403,17 +1401,15 @@ const LetterMode: React.FC = () => {
       setIsSending(true);
       setApiError(null);
   
-      const { apiKey, templateId, lettersParams } = letterDetails;
+      const { apiKey, templateId, lettersParams, notificationMethod, recipients } = letterDetails;
   
       const payload: any = {
         templateId,
         lettersParams,
+        // Always include notification details in the payload
+        notificationMethod,
+        recipients,
       };
-  
-      if (isNotificationEnabled) {
-        payload.notificationMethod = letterDetails.notificationMethod;
-        payload.recipients = letterDetails.recipients;
-      }
   
       console.log('Sending payload:', JSON.stringify(payload, null, 2));
   
@@ -1703,11 +1699,10 @@ const LetterMode: React.FC = () => {
       ...prev,
       templateId: null, // Clear Template ID
       lettersParams: [{}], // Reset to one empty set of parameters
-      notificationMethod: undefined, // Clear notification method
+      notificationMethod: undefined, // Reset notification method to undefined, but it will still be required
       recipients: [], // Clear recipients
     }));
     setTemplateFields([]); // Clear template fields
-    setIsNotificationEnabled(false); // Reset notification toggle
     setApiError(null); // Clear any API errors
     
     toast({
@@ -2086,144 +2081,129 @@ const LetterMode: React.FC = () => {
                 {letterParamsForm}
 
                 <div className="space-y-6 mt-8">
-                  <div className="flex items-center space-x-2 bg-blue-50 p-4 rounded-lg">
-                    <Switch
-                      id="notification"
-                      checked={isNotificationEnabled}
-                      onCheckedChange={setIsNotificationEnabled}
-                      disabled={isLoading || isSending}
-                      className="data-[state=checked]:bg-blue-500"
-                    />
-                    <Label htmlFor="notification" className="font-medium text-blue-800">Enable Notifications</Label>
-                    <div className="ml-auto text-blue-600">
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                      </svg>
+                  <div className="bg-blue-50 p-4 rounded-lg">
+                    <h3 className="font-medium text-blue-800 mb-2">Notification Method</h3>
+                    <p className="text-sm text-blue-600 mb-4">
+                      Select how recipients will be notified about their letters
+                    </p>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <Button
+                        variant={letterDetails.notificationMethod === 'SMS' ? 'default' : 'outline'}
+                        onClick={() => updateLetterDetail('notificationMethod', 'SMS')}
+                        disabled={isLoading || isSending}
+                        className={`h-full py-6 ${
+                          letterDetails.notificationMethod === 'SMS' 
+                            ? 'bg-blue-600 hover:bg-blue-700' 
+                            : 'border-blue-200 text-blue-700 hover:bg-blue-50'
+                        }`}
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                        </svg>
+                        SMS Notification
+                      </Button>
+                      
+                      <Button
+                        variant={letterDetails.notificationMethod === 'EMAIL' ? 'default' : 'outline'}
+                        onClick={() => updateLetterDetail('notificationMethod', 'EMAIL')}
+                        disabled={isLoading || isSending}
+                        className={`h-full py-6 ${
+                          letterDetails.notificationMethod === 'EMAIL' 
+                            ? 'bg-blue-600 hover:bg-blue-700' 
+                            : 'border-blue-200 text-blue-700 hover:bg-blue-50'
+                        }`}
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                        </svg>
+                        Email Notification
+                      </Button>
                     </div>
                   </div>
 
-                  {isNotificationEnabled && (
-                    <div className="space-y-6 border border-blue-100 rounded-lg p-6 bg-blue-50/30 animate-fadeIn">
-                      <div className="space-y-2">
-                        <Label htmlFor="notification-method" className="flex items-center text-base font-medium">
-                          <span>Notification Method</span>
-                          <span className="text-red-500 ml-1">*</span>
-                        </Label>
-                        <Select
-                          value={letterDetails.notificationMethod || ''}
-                          onValueChange={(value: 'SMS' | 'EMAIL') => updateLetterDetail('notificationMethod', value)}
-                          disabled={isLoading || isSending}
-                        >
-                          <SelectTrigger id="notification-method" className="py-6">
-                            <SelectValue placeholder="Select notification method" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="SMS" className="flex items-center py-3">
-                              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
-                              </svg>
-                              <span className="text-base">SMS</span>
-                            </SelectItem>
-                            <SelectItem value="EMAIL" className="flex items-center py-3">
-                              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                              </svg>
-                              <span className="text-base">Email</span>
-                            </SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <p className="text-xs text-gray-500 flex items-center">
-                          <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 mr-1 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  <div className="space-y-2">
+                    <Label htmlFor="recipients" className="flex items-center text-base font-medium">
+                      <span>Recipients</span>
+                      <span className="text-red-500 ml-1">*</span>
+                    </Label>
+                    <div className="relative">
+                      <Textarea
+                        id="recipients"
+                        placeholder={
+                          letterDetails.notificationMethod === 'SMS'
+                            ? 'Enter phone numbers (one per line)'
+                            : 'Enter email addresses (one per line)'
+                        }
+                        value={letterDetails.recipients?.join('\n') || ''}
+                        onChange={(e) => {
+                          const recipients = e.target.value.split('\n').filter(Boolean);
+                          updateLetterDetail('recipients', recipients);
+                        }}
+                        className={`min-h-[120px] text-base px-4 py-3 ${(!letterDetails.recipients || letterDetails.recipients.length === 0) ? 'border-red-300 focus:ring-red-500' : ''}`}
+                        disabled={isLoading || isSending}
+                      />
+                      <div className="absolute top-3 right-3">
+                        {letterDetails.notificationMethod === 'SMS' ? (
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
                           </svg>
-                          Required: Choose how recipients will be notified
-                        </p>
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label htmlFor="recipients" className="flex items-center text-base font-medium">
-                          <span>Recipients</span>
-                          <span className="text-red-500 ml-1">*</span>
-                        </Label>
-                        <div className="relative">
-                          <Textarea
-                            id="recipients"
-                            placeholder={
-                              letterDetails.notificationMethod === 'SMS'
-                                ? 'Enter phone numbers (one per line)'
-                                : 'Enter email addresses (one per line)'
-                            }
-                            value={letterDetails.recipients?.join('\n') || ''}
-                            onChange={(e) => {
-                              const recipients = e.target.value.split('\n').filter(Boolean);
-                              updateLetterDetail('recipients', recipients);
-                            }}
-                            className={`min-h-[120px] text-base px-4 py-3 ${isNotificationEnabled && (!letterDetails.recipients || letterDetails.recipients.length === 0) ? 'border-red-300 focus:ring-red-500' : ''}`}
-                            disabled={isLoading || isSending}
-                          />
-                          <div className="absolute top-3 right-3">
-                            {letterDetails.notificationMethod === 'SMS' ? (
-                              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
-                              </svg>
-                            ) : (
-                              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                              </svg>
-                            )}
-                          </div>
-                        </div>
-                        
-                        <RecipientsImportDialog
-                          notificationMethod={letterDetails.notificationMethod}
-                          onImport={(contacts) => updateLetterDetail('recipients', contacts)}
-                          disabled={isLoading || isSending}
-                        />
-                        
-                        <div className="flex flex-wrap justify-between items-start mt-1">
-                          <p className="text-xs text-gray-500 flex items-center">
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 mr-1 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                            </svg>
-                            {letterDetails.notificationMethod === 'SMS'
-                              ? 'Enter one phone number per line in international format (e.g., +6591234567) or local format (e.g., 91234567)'
-                              : 'Enter one email address per line'}
-                          </p>
-                          <div className="text-sm font-medium">
-                            <span className="text-blue-600">{letterDetails.recipients?.length || 0}</span> 
-                            <span className="text-gray-500"> recipient(s) / </span>
-                            <span className="text-blue-600">{letterDetails.lettersParams.length}</span>
-                            <span className="text-gray-500"> letter(s)</span>
-                            {letterDetails.recipients && letterDetails.recipients.length > 0 && 
-                             letterDetails.lettersParams.length > 0 && 
-                             letterDetails.recipients.length !== letterDetails.lettersParams.length && 
-                             <span className="text-red-500 ml-1 flex items-center">
-                               <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                               </svg>
-                               Mismatch! Must be equal
-                             </span>
-                            }
-                          </div>
-                        </div>
-                        {isNotificationEnabled && (!letterDetails.recipients || letterDetails.recipients.length === 0) && (
-                          <p className="text-xs text-red-500 mt-1 flex items-center">
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                            </svg>
-                            Required: You must enter at least one recipient
-                          </p>
+                        ) : (
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                          </svg>
                         )}
                       </div>
-                      
-                      <Alert className="bg-blue-50 text-blue-800 border-blue-200 flex items-start">
-                        <Info className="h-5 w-5 mt-0.5 flex-shrink-0" />
-                        <AlertDescription className="ml-2">
-                          <span className="font-medium">Important:</span> Make sure to select a notification method (SMS or Email) and ensure the number of recipients matches the number of letters. Each recipient will receive a notification for their corresponding letter.
-                        </AlertDescription>
-                      </Alert>
                     </div>
-                  )}
+                    
+                    <RecipientsImportDialog
+                      notificationMethod={letterDetails.notificationMethod}
+                      onImport={(contacts) => updateLetterDetail('recipients', contacts)}
+                      disabled={isLoading || isSending}
+                    />
+                    
+                    <div className="flex flex-wrap justify-between items-start mt-1">
+                      <p className="text-xs text-gray-500 flex items-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 mr-1 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        {letterDetails.notificationMethod === 'SMS'
+                          ? 'Enter one phone number per line in international format (e.g., +6591234567) or local format (e.g., 91234567)'
+                          : 'Enter one email address per line'}
+                      </p>
+                      <div className="text-sm font-medium">
+                        <span className="text-blue-600">{letterDetails.recipients?.length || 0}</span> 
+                        <span className="text-gray-500"> recipient(s) / </span>
+                        <span className="text-blue-600">{letterDetails.lettersParams.length}</span>
+                        <span className="text-gray-500"> letter(s)</span>
+                        {letterDetails.recipients && letterDetails.recipients.length > 0 && 
+                         letterDetails.lettersParams.length > 0 && 
+                         letterDetails.recipients.length !== letterDetails.lettersParams.length && 
+                         <span className="text-red-500 ml-1 flex items-center">
+                           <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                           </svg>
+                           Mismatch! Must be equal
+                         </span>
+                        }
+                      </div>
+                    </div>
+                    {(!letterDetails.recipients || letterDetails.recipients.length === 0) && (
+                      <p className="text-xs text-red-500 mt-1 flex items-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                        </svg>
+                        Required: You must enter at least one recipient
+                      </p>
+                    )}
+                  </div>
+                  
+                  <Alert className="bg-blue-50 text-blue-800 border-blue-200 flex items-start">
+                    <Info className="h-5 w-5 mt-0.5 flex-shrink-0" />
+                    <AlertDescription className="ml-2">
+                      <span className="font-medium">Important:</span> Make sure the number of recipients matches the number of letters. Each recipient will receive a notification for their corresponding letter.
+                    </AlertDescription>
+                  </Alert>
 
                   <Button 
                     type="button"
@@ -2247,20 +2227,18 @@ const LetterMode: React.FC = () => {
                       }, 100);
                     }}
                     className="w-full relative overflow-hidden group bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white shadow-lg hover:shadow-xl transition-all duration-300 py-6 text-lg font-semibold" 
-                    disabled={isLoading || isSending || letterDetails.lettersParams.length === 0}
+                    disabled={isLoading || isSending || letterDetails.lettersParams.length === 0 || !letterDetails.notificationMethod}
                   >
                     <span className="absolute inset-0 bg-white opacity-0 group-hover:opacity-10 transition-opacity"></span>
                     {isSending ? (
                       <>
                         <Loader2 className="animate-spin -ml-1 mr-3 h-6 w-6" />
-                        Generating Letters...
+                        Sending Letters...
                       </>
                     ) : (
                       <>
                         <Send className="mr-3 h-5 w-5" />
-                        Generate {letterDetails.lettersParams.length} Letter{letterDetails.lettersParams.length !== 1 ? 's' : ''}
-                        {isNotificationEnabled && letterDetails.notificationMethod && 
-                          ` with ${letterDetails.notificationMethod === 'SMS' ? 'SMS' : 'Email'} Notifications`}
+                        Send {letterDetails.lettersParams.length} Letter{letterDetails.lettersParams.length !== 1 ? 's' : ''} via {letterDetails.notificationMethod === 'SMS' ? 'SMS' : 'Email'}
                       </>
                     )}
                     <div className="absolute right-4 top-1/2 transform -translate-y-1/2 opacity-0 group-hover:opacity-100 group-hover:translate-x-0 translate-x-2 transition-all duration-300">
@@ -2275,10 +2253,7 @@ const LetterMode: React.FC = () => {
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1.5 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
-                  {isNotificationEnabled 
-                    ? `This will generate ${letterDetails.lettersParams.length} letter(s) and send ${letterDetails.notificationMethod || 'notifications'} to recipients.`
-                    : `This will generate ${letterDetails.lettersParams.length} letter(s) without notifications.`
-                  }
+                  This will generate and send {letterDetails.lettersParams.length} letter(s) via {letterDetails.notificationMethod || '(select notification method)'} to the specified recipients.
                 </p>
               </CardContent>
             </Card>
