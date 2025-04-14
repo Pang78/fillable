@@ -1604,6 +1604,39 @@ const LetterMode: React.FC = () => {
                   </div>
                 </CardHeader>
                 <CardContent className="p-6">
+                  {/* Add recipient mapping indicator */}
+                  <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-lg flex items-center justify-between">
+                    <div className="flex items-center">
+                      <span className="bg-amber-500 text-white font-semibold text-xs w-6 h-6 rounded-full flex items-center justify-center mr-2">{index + 1}</span>
+                      <span className="text-sm font-medium text-amber-800">
+                        This letter will be sent to recipient #{index + 1}
+                      </span>
+                    </div>
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      className="p-1 h-7 text-amber-600 hover:text-amber-800 hover:bg-amber-100"
+                      onClick={() => {
+                        // Scroll to corresponding recipient in the recipients section
+                        const recipientElement = document.getElementById(`recipient-${index}`);
+                        if (recipientElement) {
+                          recipientElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                          // Highlight temporarily
+                          recipientElement.classList.add('highlight-pulse');
+                          setTimeout(() => {
+                            recipientElement.classList.remove('highlight-pulse');
+                          }, 2000);
+                        }
+                      }}
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                      </svg>
+                      View recipient
+                    </Button>
+                  </div>
+                  
                   <div className="grid gap-5">
                     {templateFields.map((field, fieldIndex) => {
                       // Ensure field.name exists and is a string
@@ -1812,6 +1845,18 @@ const LetterMode: React.FC = () => {
 
   return (
     <div className="bg-gradient-to-b from-white to-gray-50">
+      <style jsx global>{`
+        @keyframes highlight-pulse {
+          0% { background-color: rgba(245, 158, 11, 0.1); }
+          50% { background-color: rgba(245, 158, 11, 0.3); }
+          100% { background-color: rgba(245, 158, 11, 0.1); }
+        }
+        
+        .highlight-pulse {
+          animation: highlight-pulse 1s ease-in-out 2;
+        }
+      `}</style>
+
       <div className="container mx-auto py-8 px-4 max-w-5xl">
         <div className="flex flex-col items-center mb-8">
           <h1 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-purple-600 to-blue-600 mb-2">Bulk Letter Generation</h1>
@@ -2127,32 +2172,141 @@ const LetterMode: React.FC = () => {
                       <span>Recipients</span>
                       <span className="text-red-500 ml-1">*</span>
                     </Label>
-                    <div className="relative">
-                      <Textarea
-                        id="recipients"
-                        placeholder={
-                          letterDetails.notificationMethod === 'SMS'
-                            ? 'Enter phone numbers (one per line)'
-                            : 'Enter email addresses (one per line)'
-                        }
-                        value={letterDetails.recipients?.join('\n') || ''}
-                        onChange={(e) => {
-                          const recipients = e.target.value.split('\n').filter(Boolean);
-                          updateLetterDetail('recipients', recipients);
-                        }}
-                        className={`min-h-[120px] text-base px-4 py-3 ${(!letterDetails.recipients || letterDetails.recipients.length === 0) ? 'border-red-300 focus:ring-red-500' : ''}`}
-                        disabled={isLoading || isSending}
-                      />
-                      <div className="absolute top-3 right-3">
-                        {letterDetails.notificationMethod === 'SMS' ? (
-                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
-                          </svg>
-                        ) : (
-                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                          </svg>
+                    
+                    {/* Add explanation of recipient matching */}
+                    <p className="text-sm text-blue-600 bg-blue-50 p-3 rounded-lg border border-blue-100 flex items-center">
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      Each recipient is matched with the corresponding letter. Line 1 → Letter 1, Line 2 → Letter 2, etc.
+                    </p>
+                    
+                    <div className="bg-white border rounded-lg shadow-inner overflow-hidden">
+                      {/* Header to explain recipients correspondence */}
+                      <div className="bg-gray-50 border-b px-4 py-2 flex items-center justify-between">
+                        <span className="font-medium text-gray-700">Recipients List</span>
+                        <span className="text-sm text-gray-500">{letterDetails.recipients?.length || 0} of {letterDetails.lettersParams.length} recipients added</span>
+                      </div>
+                      
+                      {/* Numbered recipients with visual indicators */}
+                      <div className="relative">
+                        {letterDetails.recipients?.map((recipient, index) => (
+                          <div 
+                            key={`recipient-${index}`}
+                            id={`recipient-${index}`}
+                            className="flex items-center border-b last:border-b-0 group transition-colors hover:bg-gray-50"
+                          >
+                            <div className="flex-shrink-0 w-12 flex justify-center py-3 border-r">
+                              <span className="bg-amber-500 text-white font-semibold text-xs w-6 h-6 rounded-full flex items-center justify-center">{index + 1}</span>
+                            </div>
+                            <div className="flex-grow px-4 py-2 relative">
+                              <input
+                                type="text"
+                                value={recipient}
+                                onChange={(e) => {
+                                  const newRecipients = [...(letterDetails.recipients || [])];
+                                  newRecipients[index] = e.target.value;
+                                  updateLetterDetail('recipients', newRecipients);
+                                }}
+                                placeholder={letterDetails.notificationMethod === 'SMS' ? 'Enter phone number' : 'Enter email address'}
+                                className="w-full border-0 focus:ring-0 p-2 bg-transparent"
+                              />
+                              <div className="absolute right-2 top-1/2 transform -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-7 w-7 p-0 rounded-full"
+                                  onClick={() => {
+                                    // Go to the corresponding letter
+                                    goToLetter(index);
+                                    // Show toast notification
+                                    toast({
+                                      description: `Showing Letter #${index + 1}`,
+                                      duration: 2000,
+                                    });
+                                  }}
+                                >
+                                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                                  </svg>
+                                </Button>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                        
+                        {/* Empty state for no recipients */}
+                        {(!letterDetails.recipients || letterDetails.recipients.length === 0) && (
+                          <div className="p-6 text-center text-gray-500">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 mx-auto mb-3 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                            </svg>
+                            <p>No recipients added yet</p>
+                            <p className="text-sm mt-1">Enter each recipient on a new line or use the import button below</p>
+                          </div>
                         )}
+                        
+                        {/* Add empty rows to match letter count */}
+                        {letterDetails.recipients && letterDetails.lettersParams.length > letterDetails.recipients.length && (
+                          <div className="border-t border-dashed border-amber-300 p-3 bg-amber-50">
+                            <div className="flex items-center text-amber-700 text-sm">
+                              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-amber-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                              </svg>
+                              <span className="font-medium">Need {letterDetails.lettersParams.length - letterDetails.recipients.length} more recipient(s)</span>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                      
+                      {/* Controls for managing recipients */}
+                      <div className="border-t px-4 py-2 bg-gray-50 flex justify-between items-center">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            // Add empty recipients to match letter count
+                            if (letterDetails.lettersParams.length > (letterDetails.recipients?.length || 0)) {
+                              const currentRecipients = letterDetails.recipients || [];
+                              const newRecipients = [...currentRecipients];
+                              
+                              // Add empty recipients until we match the letter count
+                              while (newRecipients.length < letterDetails.lettersParams.length) {
+                                newRecipients.push('');
+                              }
+                              
+                              updateLetterDetail('recipients', newRecipients);
+                              
+                              toast({
+                                description: `Added ${letterDetails.lettersParams.length - currentRecipients.length} empty recipient(s)`,
+                                duration: 3000,
+                              });
+                            }
+                          }}
+                          className="text-blue-600 hover:text-blue-800 text-xs"
+                          disabled={letterDetails.lettersParams.length <= (letterDetails.recipients?.length || 0)}
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                          </svg>
+                          Add missing recipients
+                        </Button>
+                        
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            // Clear all recipients
+                            updateLetterDetail('recipients', []);
+                          }}
+                          className="text-red-600 hover:text-red-800 text-xs"
+                          disabled={!letterDetails.recipients || letterDetails.recipients.length === 0}
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                          </svg>
+                          Clear all
+                        </Button>
                       </div>
                     </div>
                     
@@ -2168,8 +2322,8 @@ const LetterMode: React.FC = () => {
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
                         {letterDetails.notificationMethod === 'SMS'
-                          ? 'Enter one phone number per line in international format (e.g., +6591234567) or local format (e.g., 91234567)'
-                          : 'Enter one email address per line'}
+                          ? 'Format: international (+65XXXXXXXX) or local (9XXXXXXX)'
+                          : 'Format: name@example.com'}
                       </p>
                       <div className="text-sm font-medium">
                         <span className="text-blue-600">{letterDetails.recipients?.length || 0}</span> 
