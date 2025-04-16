@@ -27,6 +27,7 @@ import {
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@/components/ui/table';
 import debounce from 'lodash.debounce';
 import RecipientsImportDialog from './RecipientsImportDialog';
+import { Checkbox } from "@/components/ui/checkbox";
 
 interface LetterParams {
   [key: string]: string;
@@ -1517,10 +1518,213 @@ const LetterMode: React.FC = () => {
     }
   }, [letterDetails.lettersParams.length, currentLetterIndex]);
 
+  // Add a new state for letter selection mode
+  const [selectionMode, setSelectionMode] = useState(false);
+  const [selectedLetters, setSelectedLetters] = useState<number[]>([]);
+
+  // Add a selection toggle function
+  const toggleLetterSelection = (index: number) => {
+    setSelectedLetters(prev => {
+      if (prev.includes(index)) {
+        return prev.filter(i => i !== index);
+      } else {
+        return [...prev, index];
+      }
+    });
+  };
+
+  // Add a function to delete selected letters
+  const deleteSelectedLetters = useCallback(() => {
+    if (selectedLetters.length === 0) return;
+    
+    // Sort indices in descending order to avoid index shifting issues when deleting
+    const sortedIndices = [...selectedLetters].sort((a, b) => b - a);
+    
+    // Create a copy of letter params
+    let updatedParams = [...letterDetails.lettersParams];
+    let updatedRecipients = [...(letterDetails.recipients || [])];
+    
+    // Remove the selected letters from the copied arrays
+    sortedIndices.forEach(index => {
+      updatedParams = [...updatedParams.slice(0, index), ...updatedParams.slice(index + 1)];
+      
+      // Also remove corresponding recipients if any
+      if (updatedRecipients.length > index) {
+        updatedRecipients = [...updatedRecipients.slice(0, index), ...updatedRecipients.slice(index + 1)];
+      }
+    });
+    
+    // Update state with the modified arrays
+    setLetterDetails(prev => ({
+      ...prev,
+      lettersParams: updatedParams,
+      recipients: updatedRecipients
+    }));
+    
+    // Clear selection
+    setSelectedLetters([]);
+    
+    // If we deleted the current letter, adjust the current index
+    if (currentLetterIndex >= updatedParams.length && updatedParams.length > 0) {
+      setCurrentLetterIndex(updatedParams.length - 1);
+    }
+    
+    // Show success toast
+    toast({
+      description: `Deleted ${sortedIndices.length} letter${sortedIndices.length > 1 ? 's' : ''}`,
+      duration: 3000,
+    });
+  }, [selectedLetters, letterDetails, currentLetterIndex, setLetterDetails]);
+
+  // Add a select all function
+  const selectAllLetters = useCallback(() => {
+    if (letterDetails.lettersParams.length === selectedLetters.length) {
+      // If all are selected, deselect all
+      setSelectedLetters([]);
+    } else {
+      // Otherwise select all
+      setSelectedLetters(Array.from({ length: letterDetails.lettersParams.length }, (_, i) => i));
+    }
+  }, [letterDetails.lettersParams.length, selectedLetters.length]);
+
+  // Add a function to exit selection mode
+  const exitSelectionMode = useCallback(() => {
+    setSelectionMode(false);
+    setSelectedLetters([]);
+  }, []);
+
   // Modify the letterParamsForm to implement a carousel
   const letterParamsForm = useMemo(() => {
     return (
       <div className="space-y-8">
+        {/* Letter Management Header */}
+        <div className="flex flex-col gap-3">
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="text-xl font-semibold text-purple-800">
+              {selectionMode ? 'Select Letters to Delete' : 'Letter Management'}
+            </h3>
+            
+            <div className="flex items-center gap-2">
+              {selectionMode ? (
+                <>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={selectAllLetters}
+                    className="flex items-center text-blue-600 hover:text-blue-800 hover:bg-blue-50 border-blue-200"
+                  >
+                    {selectedLetters.length === letterDetails.lettersParams.length ? (
+                      <>
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                        Deselect All
+                      </>
+                    ) : (
+                      <>
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                        </svg>
+                        Select All
+                      </>
+                    )}
+                  </Button>
+                  
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    onClick={deleteSelectedLetters}
+                    disabled={selectedLetters.length === 0}
+                    className="flex items-center"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                    Delete ({selectedLetters.length})
+                  </Button>
+                  
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={exitSelectionMode}
+                    className="flex items-center text-gray-600"
+                  >
+                    Cancel
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setSelectionMode(true)}
+                    disabled={letterDetails.lettersParams.length <= 1 || isLoading || isSending}
+                    className="flex items-center text-purple-600 hover:text-purple-800 hover:bg-purple-50 border-purple-200"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h7" />
+                    </svg>
+                    Manage Letters
+                  </Button>
+                  
+                  <Button
+                    variant="outline"
+                    onClick={addLetterParams}
+                    className="flex items-center text-green-600 hover:text-green-800 hover:bg-green-50 border-green-200"
+                    disabled={isLoading || isSending}
+                    size="sm"
+                  >
+                    <Plus className="h-4 w-4 mr-1" />
+                    Add Letter
+                  </Button>
+                </>
+              )}
+            </div>
+          </div>
+          
+          {/* Letter Count Stats */}
+          <div className="flex items-center justify-between bg-gray-50 p-3 rounded-lg border">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-purple-100 rounded-md">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                </svg>
+              </div>
+              <div>
+                <div className="text-sm font-medium text-gray-600">Total Letters</div>
+                <div className="text-2xl font-bold text-purple-700">{letterDetails.lettersParams.length}</div>
+              </div>
+            </div>
+            
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-blue-100 rounded-md">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                </svg>
+              </div>
+              <div>
+                <div className="text-sm font-medium text-gray-600">Recipients</div>
+                <div className="text-2xl font-bold text-blue-700">{letterDetails.recipients?.length || 0}</div>
+              </div>
+            </div>
+            
+            {currentLetterIndex !== null && (
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-amber-100 rounded-md">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                  </svg>
+                </div>
+                <div>
+                  <div className="text-sm font-medium text-gray-600">Current Letter</div>
+                  <div className="text-2xl font-bold text-amber-700">{currentLetterIndex + 1}</div>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+        
         {/* Carousel Navigation and Counter */}
         <div className="flex items-center justify-between mb-4">
           <Button
@@ -1565,42 +1769,50 @@ const LetterMode: React.FC = () => {
                   : 'hidden opacity-0 absolute translate-x-full'
               }`}
             >
-              <Card className="border border-gray-200 shadow-lg hover:shadow-xl transition-all duration-300">
-                <CardHeader className="py-4 px-6 flex flex-row items-center justify-between space-y-0 bg-gradient-to-r from-purple-50 to-indigo-50 border-b">
-                  <CardTitle className="text-lg font-semibold text-purple-800 flex items-center">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                    </svg>
-                    Letter {index + 1}
-                  </CardTitle>
+              <Card className={`border ${selectionMode && selectedLetters.includes(index) ? 'border-blue-400 bg-blue-50' : 'border-gray-200'} shadow-lg hover:shadow-xl transition-all duration-300`}>
+                <CardHeader className={`py-4 px-6 flex flex-row items-center justify-between space-y-0 bg-gradient-to-r ${selectionMode && selectedLetters.includes(index) ? 'from-blue-50 to-blue-100' : 'from-purple-50 to-indigo-50'} border-b`}>
+                  {selectionMode ? (
+                    <div className="flex items-center">
+                      <Checkbox 
+                        checked={selectedLetters.includes(index)} 
+                        onCheckedChange={() => toggleLetterSelection(index)}
+                        className="mr-3 h-5 w-5"
+                      />
+                      <CardTitle className="text-lg font-semibold text-purple-800 flex items-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                        </svg>
+                        Letter {index + 1}
+                      </CardTitle>
+                    </div>
+                  ) : (
+                    <CardTitle className="text-lg font-semibold text-purple-800 flex items-center">
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                      </svg>
+                      Letter {index + 1}
+                    </CardTitle>
+                  )}
                   <div className="flex items-center gap-2">
                     <span className="text-xs text-purple-600 bg-purple-100 px-2 py-1 rounded-full">
                       {Object.keys(params).filter(key => params[key]).length} / {Object.keys(params).length} fields filled
                     </span>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => removeLetterParams(index)}
-                      disabled={letterDetails.lettersParams.length <= 1 || isLoading || isSending}
-                      className="h-8 w-8 rounded-full hover:bg-red-100 hover:text-red-600 transition-colors"
-                    >
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        width="24"
-                        height="24"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        className="h-4 w-4"
-                      >
-                        <path d="M18 6 6 18" />
-                        <path d="m6 6 12 12" />
-                      </svg>
-                      <span className="sr-only">Remove</span>
-                    </Button>
+                    {!selectionMode && (
+                      <div className="flex items-center">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => removeLetterParams(index)}
+                          disabled={letterDetails.lettersParams.length <= 1 || isLoading || isSending}
+                          className="flex items-center text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200"
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                          </svg>
+                          Delete
+                        </Button>
+                      </div>
+                    )}
                   </div>
                 </CardHeader>
                 <CardContent className="p-6">
@@ -1656,7 +1868,7 @@ const LetterMode: React.FC = () => {
                               onChange={(e) => updateLetterParams(index, fieldName, e.target.value)}
                               className={`h-24 resize-none text-base p-4 transition-all duration-200 ${!params[fieldName] && field.required ? 'border-red-200 focus:ring-red-500' : 'focus:ring-purple-500'}`}
                               placeholder={`Enter ${fieldName} value`}
-                              disabled={isLoading || isSending}
+                              disabled={isLoading || isSending || selectionMode}
                             />
                             {!params[fieldName] && field.required && (
                               <div className="absolute right-3 top-3 text-red-500">
@@ -1698,32 +1910,41 @@ const LetterMode: React.FC = () => {
           ))}
         </div>
         
-        {/* Add Letter Button */}
-        <div className="flex justify-center mt-4">
-          <Button
-            variant="outline"
-            onClick={addLetterParams}
-            className="flex items-center px-6 py-5 text-base font-medium bg-purple-50 text-purple-600 hover:bg-purple-100 border-purple-200 hover:border-purple-300 transition-all duration-200 rounded-full shadow-sm hover:shadow"
-            disabled={isLoading || isSending}
-          >
-            <Plus className="mr-2 h-5 w-5" />
-            Add Another Letter
-          </Button>
-        </div>
+        {/* Add Letter Button - only show when not in selection mode */}
+        {!selectionMode && (
+          <div className="flex justify-center mt-6">
+            <Button
+              variant="outline"
+              onClick={addLetterParams}
+              className="flex items-center px-6 py-5 text-base font-medium bg-purple-50 text-purple-600 hover:bg-purple-100 border-purple-200 hover:border-purple-300 transition-all duration-200 rounded-full shadow-sm hover:shadow"
+              disabled={isLoading || isSending}
+            >
+              <Plus className="mr-2 h-5 w-5" />
+              Add Another Letter
+            </Button>
+          </div>
+        )}
       </div>
     );
   }, [
-    letterDetails.lettersParams, 
-    templateFields, 
-    isLoading, 
-    isSending, 
-    addLetterParams, 
-    removeLetterParams, 
-    updateLetterParams, 
-    currentLetterIndex, 
-    goToNextLetter, 
-    goToPrevLetter, 
-    goToLetter
+    letterDetails.lettersParams,
+    letterDetails.recipients,
+    templateFields,
+    isLoading,
+    isSending,
+    addLetterParams,
+    removeLetterParams,
+    updateLetterParams,
+    currentLetterIndex,
+    goToNextLetter,
+    goToPrevLetter,
+    goToLetter,
+    selectionMode,
+    selectedLetters,
+    toggleLetterSelection,
+    deleteSelectedLetters,
+    selectAllLetters,
+    exitSelectionMode
   ]);
 
   // Add handleClearAll function
