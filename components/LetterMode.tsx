@@ -2668,6 +2668,25 @@ return (
                   <div className="absolute inset-y-0 right-0 pr-4 flex items-center">
                   </div>
                 </div>
+                {/* API Key Instructions */}
+                <div className="mt-2 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                  <h4 className="text-sm font-semibold text-blue-800 flex items-center mb-2">
+                    <Info className="h-4 w-4 mr-1.5" />
+                    How to get your API Key
+                  </h4>
+                  <ol className="text-sm text-blue-700 space-y-1.5 ml-5 list-decimal">
+                    <li>Log in to <a href="https://letters.gov.sg" target="_blank" rel="noopener noreferrer" className="underline hover:text-blue-900">LetterSG</a></li>
+                    <li>Click on "API Integration" in the navigation bar</li>
+                    <li>Click on "Generate API key" button</li>
+                    <li>Copy the generated token and paste it here</li>
+                  </ol>
+                  <p className="text-xs text-blue-600 mt-2">
+                    <a href="https://guide.letters.gov.sg/developer-guide/api-documentation" target="_blank" rel="noopener noreferrer" className="flex items-center hover:underline">
+                      <FileText className="h-3 w-3 mr-1" />
+                      View complete API documentation
+                    </a>
+                  </p>
+                </div>
               </div>
               <div className="space-y-3"> {/* Increased spacing */}
                 <Label htmlFor="templateId" className="text-base font-semibold text-gray-700">Template ID</Label> {/* Adjusted styling */}
