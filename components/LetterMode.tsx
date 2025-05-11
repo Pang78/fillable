@@ -1283,6 +1283,11 @@ const LetterMode: React.FC = () => {
       ...prev,
       [key]: value,
     }));
+    
+    // Save API key to localStorage when it's updated
+    if (key === 'apiKey' && typeof value === 'string') {
+      localStorage.setItem('lettersGovSgApiKey', value);
+    }
   }, []);
 
   const updateLetterParams = useCallback((index: number, field: string, value: string) => {
@@ -2655,7 +2660,10 @@ return (
           <CardContent className="p-8"> {/* Increased padding */}
             <div className="grid gap-8 md:grid-cols-2"> {/* Increased gap */}
               <div className="space-y-3"> {/* Increased spacing */}
-                <Label htmlFor="apiKey" className="text-base font-semibold text-gray-700">API Key</Label> {/* Adjusted styling */}
+                <Label htmlFor="apiKey" className="text-base font-semibold text-gray-700 flex items-center">
+                  <span>API Key</span>
+                  <span className="ml-2 inline-flex items-center rounded-md bg-blue-50 px-2 py-1 text-xs font-medium text-blue-700 ring-1 ring-inset ring-blue-700/10">Required</span>
+                </Label>
                 <div className="relative">
                   <Input
                     id="apiKey"
@@ -2665,31 +2673,55 @@ return (
                     disabled={isLoading || isSending}
                     className="pl-10 pr-12 py-6 text-base border-gray-300 hover:bg-gray-50 transition-all duration-200 shadow-sm"
                   />
-                  <div className="absolute inset-y-0 right-0 pr-4 flex items-center">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
+                    </svg>
                   </div>
                 </div>
-                {/* API Key Instructions */}
-                <div className="mt-2 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                  <h4 className="text-sm font-semibold text-blue-800 flex items-center mb-2">
-                    <Info className="h-4 w-4 mr-1.5" />
-                    How to get your API Key
-                  </h4>
-                  <ol className="text-sm text-blue-700 space-y-1.5 ml-5 list-decimal">
-                    <li>Log in to <a href="https://letters.gov.sg" target="_blank" rel="noopener noreferrer" className="underline hover:text-blue-900">LetterSG</a></li>
-                    <li>Click on "API Integration" in the navigation bar</li>
-                    <li>Click on "Generate API key" button</li>
-                    <li>Copy the generated token and paste it here</li>
-                  </ol>
-                  <p className="text-xs text-blue-600 mt-2">
-                    <a href="https://guide.letters.gov.sg/developer-guide/api-documentation" target="_blank" rel="noopener noreferrer" className="flex items-center hover:underline">
-                      <FileText className="h-3 w-3 mr-1" />
-                      View complete API documentation
-                    </a>
-                  </p>
+                {/* Enhanced API Key Instructions */}
+                <div className="mt-4 overflow-hidden rounded-lg border border-blue-200 bg-gradient-to-r from-blue-50 to-indigo-50 shadow-sm">
+                  <div className="border-b border-blue-200 bg-blue-100/50 px-4 py-3">
+                    <h4 className="font-medium text-blue-800 flex items-center">
+                      <Info className="h-4 w-4 mr-2 text-blue-600" />
+                      How to Get Your API Key
+                    </h4>
+                  </div>
+                  <div className="px-4 py-4">
+                    <ol className="space-y-3 ml-5 list-decimal text-sm text-blue-800">
+                      <li className="pl-1">
+                        <span className="font-medium">Log in</span> to <a href="https://letters.gov.sg" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-800 hover:underline font-medium">LetterSG</a>
+                      </li>
+                      <li className="pl-1">
+                        Click on <span className="px-2 py-0.5 bg-white rounded text-blue-700 font-medium border border-blue-200">API Integration</span> in the navigation bar
+                      </li>
+                      <li className="pl-1">
+                        Click on <span className="px-2 py-0.5 bg-white rounded text-green-700 font-medium border border-green-200">Generate API key</span> button
+                      </li>
+                      <li className="pl-1">
+                        Copy the generated token and paste it here
+                      </li>
+                    </ol>
+                    <div className="mt-4 pt-3 border-t border-blue-200 flex items-center justify-between">
+                      <a 
+                        href="https://guide.letters.gov.sg/developer-guide/api-documentation" 
+                        target="_blank" 
+                        rel="noopener noreferrer" 
+                        className="inline-flex items-center text-xs font-medium text-blue-700 hover:text-blue-900 hover:underline"
+                      >
+                        <FileText className="h-3.5 w-3.5 mr-1.5" />
+                        View complete API documentation
+                      </a>
+                      <span className="text-xs text-blue-500">Letters.gov.sg</span>
+                    </div>
+                  </div>
                 </div>
               </div>
               <div className="space-y-3"> {/* Increased spacing */}
-                <Label htmlFor="templateId" className="text-base font-semibold text-gray-700">Template ID</Label> {/* Adjusted styling */}
+                <Label htmlFor="templateId" className="text-base font-semibold text-gray-700 flex items-center">
+                  <span>Template ID</span>
+                  <span className="ml-2 inline-flex items-center rounded-md bg-blue-50 px-2 py-1 text-xs font-medium text-blue-700 ring-1 ring-inset ring-blue-700/10">Required</span>
+                </Label>
                 <div className="flex gap-3"> {/* Increased gap */}
                   <div className="relative flex-1">
                     <Input
