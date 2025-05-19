@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Clipboard, Download, Copy, CheckCircle, AlertTriangle, Trash2, FileUp, Lightbulb, Info } from 'lucide-react';
+import { Clipboard, Download, Copy, CheckCircle, AlertTriangle, Trash2, FileUp, Lightbulb, Info, Code, FileText, Maximize2, Minimize2, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -23,6 +23,9 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { marked, Renderer } from 'marked';
+import { htmlToText } from 'html-to-text';
+import hljs from 'highlight.js';
 
 const SAMPLE_DATA = `John Smith
 Jane Doe
@@ -34,6 +37,197 @@ Robert Garcia
 Jennifer Miller
 William Davis
 Elizabeth Wilson`;
+
+const MARKDOWN_SAMPLE_DATA = `## Main Header
+
+This is some **bold text** and some *italic text*.
+
+- Level 1 Item A
+  - Level 2 Item A.1
+    - Level 3 Item A.1.1
+  - Level 2 Item A.2
+- Level 1 Item B
+  - Level 2 Item B.1
+
+1. Ordered Item 1
+   1. Ordered Sub-Item 1.1
+   2. Ordered Sub-Item 1.2
+2. Ordered Item 2
+
+\`\`\`python
+def hello(name):
+  # This is a comment
+  greeting = f"Hello, {name}!"
+  print(greeting)
+  return greeting
+\`\`\`
+
+\`\`\`javascript
+function greet(user) {
+  console.log(\`Hello, \${user}!\`);
+}
+\`\`\`
+
+| Syntax      | Description |
+| ----------- | ----------- |
+| Header      | Title       |
+| Paragraph   | Text        |
+| Table       | Data        |
+`;
+
+const HIGHLIGHT_JS_CSS_ID = 'highlight-js-styles';
+
+// Configure marked to use highlight.js via a custom renderer
+const renderer = new Renderer();
+renderer.code = ({ text, lang, escaped }: { text: string; lang?: string; escaped?: boolean }) => {
+  const language = lang || 'plaintext'; // Default to plaintext if no lang is provided or lang is empty
+  // Ensure hljs is available (it should be, as it's imported)
+  if (typeof hljs === 'undefined' || !hljs) {
+    console.error('highlight.js (hljs) is not loaded.');
+    // Fallback to simple pre/code tags without highlighting if hljs is missing
+    const escapedText = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    return `<pre><code class="language-${language}">${escapedText}</code></pre>`;
+  }
+
+  if (language && language !== 'plaintext' && hljs.getLanguage(language)) {
+    try {
+      return `<pre><code class="hljs language-${language}">${hljs.highlight(text, { language, ignoreIllegals: true }).value}</code></pre>`;
+    } catch (e) {
+      console.error(`highlight.js error for language ${language}:`, e);
+      // Fallback to auto-highlighting on error with specific language
+      return `<pre><code class="hljs">${hljs.highlightAuto(text).value}</code></pre>`;
+    }
+  }
+  // Fallback for plaintext, unknown languages, or if getLanguage returns falsy
+  return `<pre><code class="hljs">${hljs.highlightAuto(text).value}</code></pre>`;
+};
+
+marked.setOptions({ renderer });
+
+// Utility to clean up HTML for Word/Email with styling options
+function cleanHtmlForWordEmail(html: string, stylingLevel: 'minimal' | 'basic' | 'full' = 'basic'): string {
+  // Remove all class attributes regardless of styling level
+  html = html.replace(/ class="[^"]*"/g, '');
+  
+  // Remove data attributes
+  html = html.replace(/ data-[^=]*="[^"]*"/g, '');
+  
+  // Basic cleanup for all levels
+  html = html.replace(/<\/?span[^>]*>/g, ''); // Remove spans
+  
+  if (stylingLevel === 'minimal') {
+    // For minimal, strip almost all styling, leave just the structure
+    return html;
+  }
+  
+  // Add styles based on the selected level
+  if (stylingLevel === 'basic' || stylingLevel === 'full') {
+    // Basic table styling (cleaner, more minimal)
+    html = html.replace(/<table>/g, '<table style="border-collapse:collapse;width:100%;margin-bottom:10px;">');
+    html = html.replace(/<th>/g, '<th style="border:1px solid #ccc;padding:4px;background-color:#f1f1f1;">');
+    html = html.replace(/<td>/g, '<td style="border:1px solid #ccc;padding:4px;">');
+    
+    // Basic code styling
+    html = html.replace(/<pre>/g, '<pre style="background:#f4f4f4;padding:8px;border-radius:4px;overflow:auto;margin:10px 0;">');
+    html = html.replace(/<code>/g, '<code style="font-family:monospace;">');
+  }
+  
+  if (stylingLevel === 'full') {
+    // Add more elaborate styling for the full option
+    html = html.replace(/<h1>/g, '<h1 style="color:#333;border-bottom:1px solid #eee;padding-bottom:10px;">');
+    html = html.replace(/<h2>/g, '<h2 style="color:#333;border-bottom:1px solid #eee;padding-bottom:5px;">');
+    html = html.replace(/<h3>/g, '<h3 style="color:#333;">');
+    html = html.replace(/<ul>/g, '<ul style="padding-left:20px;">');
+    html = html.replace(/<ol>/g, '<ol style="padding-left:20px;">');
+    html = html.replace(/<li>/g, '<li style="margin-bottom:5px;">');
+    html = html.replace(/<blockquote>/g, '<blockquote style="border-left:4px solid #eee;padding-left:15px;margin-left:0;color:#777;">');
+    html = html.replace(/<hr>/g, '<hr style="border:none;border-top:1px solid #eee;margin:20px 0;">');
+  }
+  
+  return html;
+}
+
+// Improved plain text from HTML function with simpler, more reliable configuration
+function htmlToPlainTextSafe(html: string): string {
+  try {
+    // Using a simpler configuration that's less likely to cause type errors
+    return htmlToText(html, {
+      wordwrap: false,
+      preserveNewlines: true,
+      // Simplified selector configuration focused on the most common HTML elements
+      selectors: [
+        { selector: 'img', format: 'skip' },
+        { selector: 'a', format: 'inline' },
+        { selector: 'h1', format: 'block' },
+        { selector: 'h2', format: 'block' },
+        { selector: 'h3', format: 'block' },
+        { selector: 'h4', format: 'block' },
+        { selector: 'h5', format: 'block' },
+        { selector: 'h6', format: 'block' },
+        { selector: 'p', format: 'block' },
+        { selector: 'br', format: 'block' },
+        { selector: 'hr', format: 'block' },
+        { selector: 'ol', format: 'block' },
+        { selector: 'ul', format: 'block' },
+        { selector: 'li', format: 'inline' }, // Using inline for li to avoid format errors
+        { selector: 'pre', format: 'block' },
+        { selector: 'code', format: 'inline' },
+        { selector: 'table', format: 'block' },
+        { selector: 'th', format: 'inline' },
+        { selector: 'td', format: 'inline' },
+        { selector: 'blockquote', format: 'block' }
+      ]
+    });
+  } catch (error) {
+    console.error('Error converting HTML to plain text:', error);
+    // Fallback to even simpler conversion if anything fails
+    try {
+      // Try with minimal options
+      return htmlToText(html, { wordwrap: false });
+    } catch (err) {
+      // Ultimate fallback: basic HTML tag stripping
+      return html.replace(/<[^>]*>/g, '')
+        .replace(/&nbsp;/g, ' ')
+        .replace(/&amp;/g, '&')
+        .replace(/&lt;/g, '<')
+        .replace(/&gt;/g, '>')
+        .replace(/&quot;/g, '"');
+    }
+  }
+}
+
+// Function to copy HTML content directly to clipboard with formatting preserved
+async function copyHtmlWithFormatting(html: string): Promise<boolean> {
+  try {
+    // Create a hidden div to hold the HTML content
+    const tempDiv = document.createElement('div');
+    tempDiv.innerHTML = html;
+    tempDiv.setAttribute('style', 'position: absolute; left: -9999px; top: 0');
+    document.body.appendChild(tempDiv);
+    
+    // Select the div's content
+    const selection = window.getSelection();
+    if (selection) {
+      const range = document.createRange();
+      range.selectNodeContents(tempDiv);
+      selection.removeAllRanges();
+      selection.addRange(range);
+      
+      // Execute copy command
+      const success = document.execCommand('copy');
+      
+      // Clean up
+      selection.removeAllRanges();
+      document.body.removeChild(tempDiv);
+      
+      return success;
+    }
+    return false;
+  } catch (error) {
+    console.error('Error copying HTML with formatting:', error);
+    return false;
+  }
+}
 
 const TransformBidirectional = () => {
   const [inputText, setInputText] = useState('');
@@ -56,7 +250,8 @@ const TransformBidirectional = () => {
     replaceMultipleSpaces: false,
     removeLeadingNumbers: false,
     removeTrailingNumbers: false,
-    useCustomRegex: false
+    useCustomRegex: false,
+    normalizeWhitespace: false // New option
   });
   
   // Add type definition for SavedConfig after cleaningOptions is defined
@@ -111,13 +306,24 @@ const TransformBidirectional = () => {
   const [showLoadConfigModal, setShowLoadConfigModal] = useState(false);
   
   // Add transformation direction state
-  const [transformDirection, setTransformDirection] = useState<'columnToRow' | 'rowToColumn'>('columnToRow');
+  const [transformDirection, setTransformDirection] = useState<'columnToRow' | 'rowToColumn' | 'markdown'>('columnToRow');
+  const [markdownOutputType, setMarkdownOutputType] = useState<'plainText' | 'richText'>('richText');
+  
+  // Add state for both HTML and plain text outputs in Markdown mode
+  const [markdownHtmlOutput, setMarkdownHtmlOutput] = useState('');
+  const [markdownPlainTextOutput, setMarkdownPlainTextOutput] = useState('');
+  
+  // Add style level state for rich text output
+  const [htmlStyleLevel, setHtmlStyleLevel] = useState<'minimal' | 'basic' | 'full'>('full');
+  
+  // Add state for expanded previews
+  const [expandedPreview, setExpandedPreview] = useState<'none' | 'rich' | 'plain'>('none');
   
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const outputRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
-  const transformData = () => {
+  const transformData = async () => {
     if (!inputText.trim()) {
       toast({
         title: "Error",
@@ -189,15 +395,18 @@ const TransformBidirectional = () => {
       
       // Join with the selected delimiter
       const actualDelimiter = delimiter === 'custom' ? customDelimiter : delimiter;
-      const transformed = lines.join(actualDelimiter);
+      let transformed = lines.join(actualDelimiter);
       
+      // Apply post-transformation whitespace normalization
+      transformed = normalizeOutputWhitespace(transformed);
+
       setOutputText(transformed);
       setIsTransformed(true);
       
       toast({
         description: `Successfully transformed ${lines.length} items into a single row`,
       });
-    } else {
+    } else if (transformDirection === 'rowToColumn') {
       // New row to column transformation
       // Get the delimiter
       const actualDelimiter = delimiter === 'custom' ? customDelimiter : delimiter;
@@ -276,7 +485,10 @@ const TransformBidirectional = () => {
         // Join items with newline to create columns
         const transformed = items.join('\n');
         
-        setOutputText(transformed);
+        // Apply post-transformation whitespace normalization
+        const normalizedTransformed = normalizeOutputWhitespace(transformed);
+
+        setOutputText(normalizedTransformed);
         setIsTransformed(true);
         
         toast({
@@ -286,6 +498,48 @@ const TransformBidirectional = () => {
         toast({
           title: "Transformation Error",
           description: "An error occurred while splitting the input. Please check your delimiter.",
+          variant: "destructive",
+        });
+      }
+    } else if (transformDirection === 'markdown') {
+      // Declare variables outside try/catch so they're in scope throughout the function
+      let transformedMarkdown = '';
+      let htmlOutput = '';
+      let plainTextOutput = '';
+      
+      try {
+        // Generate initial HTML from markdown
+        htmlOutput = await marked.parse(inputText) as string;
+        
+        if (markdownOutputType === 'richText') {
+          // Clean HTML for Word/Email with the selected styling level
+          transformedMarkdown = cleanHtmlForWordEmail(htmlOutput, htmlStyleLevel);
+          setMarkdownHtmlOutput(transformedMarkdown);
+          
+          // Also generate plain text version
+          plainTextOutput = htmlToPlainTextSafe(htmlOutput);
+          setMarkdownPlainTextOutput(plainTextOutput);
+        } else { // plainText
+          // For plain text output, use safer text conversion
+          plainTextOutput = htmlToPlainTextSafe(htmlOutput);
+          setMarkdownPlainTextOutput(plainTextOutput);
+          transformedMarkdown = plainTextOutput;
+        }
+        
+        // Apply whitespace normalization
+        transformedMarkdown = normalizeOutputWhitespace(transformedMarkdown);
+        setOutputText(transformedMarkdown);
+        setIsTransformed(true);
+        setTotalItems(1);
+        
+        toast({
+          description: `Successfully transformed Markdown to ${markdownOutputType === 'richText' ? 'Rich Text' : 'Plain Text'}`,
+        });
+      } catch (error) {
+        console.error("Error transforming markdown:", error);
+        toast({
+          title: "Error",
+          description: "Failed to transform Markdown. Please check your input.",
           variant: "destructive",
         });
       }
@@ -324,8 +578,10 @@ const TransformBidirectional = () => {
   const loadSampleData = () => {
     if (transformDirection === 'columnToRow') {
       setInputText(SAMPLE_DATA);
-    } else {
+    } else if (transformDirection === 'rowToColumn') {
       setInputText("John Smith,Jane Doe,Michael Johnson,Emily Williams,David Brown");
+    } else if (transformDirection === 'markdown') {
+      setInputText(MARKDOWN_SAMPLE_DATA);
     }
     setIsSampleLoaded(true);
     toast({
@@ -526,7 +782,7 @@ const TransformBidirectional = () => {
   };
 
   // Add a function to generate a sample preview
-  const generateSamplePreview = () => {
+  const generateSamplePreview = async () => {
     if (!inputText.trim()) {
       setSamplePreview({
         original: [],
@@ -536,7 +792,33 @@ const TransformBidirectional = () => {
       return;
     }
 
-    // Get up to 3 sample lines from the input
+    if (transformDirection === 'markdown') {
+      // Sample preview for Markdown
+      const mdSample = inputText.substring(0, 200) + (inputText.length > 200 ? '...' : '');
+      let cleanedSample = '';
+      if (markdownOutputType === 'richText') {
+        cleanedSample = await marked.parse(mdSample) as string; // Options set via marked.use()
+      } else {
+        const htmlFromMdSample = await marked.parse(mdSample) as string;
+        cleanedSample = htmlToText(htmlFromMdSample, {
+          wordwrap: false,
+          selectors: [
+            { selector: 'img', format: 'skip' },
+            { selector: 'a', options: { hideLinkHrefIfSameAsText: true, ignoreHref: true } }
+          ]
+        });
+      }
+      cleanedSample = normalizeOutputWhitespace(cleanedSample).substring(0,100) + (cleanedSample.length > 100 ? '...':'');
+
+      setSamplePreview({
+        original: [mdSample.substring(0,100) + (mdSample.length > 100 ? '...':'')], // Show a snippet of original Markdown
+        cleaned: [cleanedSample], // Show a snippet of transformed output
+        showPreview: true
+      });
+      return;
+    }
+
+    // Get up to 3 sample lines from the input for non-markdown modes
     const allLines = inputText.split('\n');
     const sampleLines: string[] = [];
     
@@ -611,7 +893,7 @@ const TransformBidirectional = () => {
       setPreviewStats(prev => ({ ...prev, showPreview: false }));
       setSamplePreview(prev => ({ ...prev, showPreview: false }));
     }
-  }, [inputText, cleaningOptions, customRegexPattern, customRegexReplacement]);
+  }, [inputText, cleaningOptions, customRegexPattern, customRegexReplacement, transformDirection]);
   
   // Modify the toggleCleaningOption function to update preview stats
   const toggleCleaningOption = (option: keyof typeof cleaningOptions) => {
@@ -645,156 +927,130 @@ const TransformBidirectional = () => {
     } else if (!inputText) {
       setLivePreview('');
     }
-  }, [inputText, delimiter, customDelimiter, cleaningOptions, customRegexPattern, customRegexReplacement, liveModeEnabled]);
+  }, [inputText, delimiter, customDelimiter, cleaningOptions, customRegexPattern, customRegexReplacement, liveModeEnabled, transformDirection, markdownOutputType]);
 
   // Function to generate live preview
-  const generateLivePreview = () => {
+  const generateLivePreview = async () => {
     if (!inputText.trim()) {
       setLivePreview('');
       return;
     }
     
+    let processedInput = inputText; 
+    // Note: specific pre-cleaning options from `cleaningOptions` can be applied to `processedInput` here if needed before transformation.
+
     try {
+      let previewText = ''; // Declare previewText at the beginning of the try block
+
       if (transformDirection === 'columnToRow') {
-        // Existing column to row live preview
-        let lines = inputText.split('\n');
+        let lines = processedInput.split('\n');
         
         if (cleaningOptions.trimWhitespace) {
           lines = lines.map(line => line.trim());
         }
-        
         if (cleaningOptions.removeEmptyLines) {
           lines = lines.filter(line => line.trim() !== '');
         }
-        
-        if (cleaningOptions.toLowerCase) {
-          lines = lines.map(line => line.toLowerCase());
-        }
-        
-        if (cleaningOptions.toUpperCase) {
-          lines = lines.map(line => line.toUpperCase());
-        }
-        
-        if (cleaningOptions.removeSpecialChars) {
-          lines = lines.map(line => line.replace(/[^\w\s]/gi, ''));
-        }
-        
-        if (cleaningOptions.replaceMultipleSpaces) {
-          lines = lines.map(line => line.replace(/\s+/g, ' '));
-        }
-        
-        if (cleaningOptions.removeLeadingNumbers) {
-          lines = lines.map(line => line.replace(/^\d+\s*/, ''));
-        }
-        
-        if (cleaningOptions.removeTrailingNumbers) {
-          lines = lines.map(line => line.replace(/\s*\d+$/, ''));
-        }
-        
+        // ... (Apply other relevant pre-markdown cleaning options for columnToRow preview)
+        // For example, case conversion, special chars, multiple spaces, numbers, custom regex
+        if (cleaningOptions.toLowerCase) lines = lines.map(l => l.toLowerCase());
+        if (cleaningOptions.toUpperCase) lines = lines.map(l => l.toUpperCase());
+        if (cleaningOptions.removeSpecialChars) lines = lines.map(l => l.replace(/[^\w\s]/gi, ''));
+        if (cleaningOptions.replaceMultipleSpaces) lines = lines.map(l => l.replace(/\s+/g, ' '));
+        if (cleaningOptions.removeLeadingNumbers) lines = lines.map(l => l.replace(/^\d+\s*/, ''));
+        if (cleaningOptions.removeTrailingNumbers) lines = lines.map(l => l.replace(/\s*\d+$/, ''));
         if (cleaningOptions.useCustomRegex && customRegexPattern) {
           try {
             const regex = new RegExp(customRegexPattern, 'g');
             lines = lines.map(line => line.replace(regex, customRegexReplacement || ''));
-          } catch (error) {
-            // Skip regex if invalid
-          }
+          } catch (e) { /* ignore regex error in preview */ }
         }
-        
-        if (cleaningOptions.removeDuplicates) {
-          lines = [...new Set(lines)];
-        }
-        
-        // Generate the preview with a maximum of 100 characters
+        if (cleaningOptions.removeDuplicates) lines = [...new Set(lines)];
+
+
         const actualDelimiter = delimiter === 'custom' ? customDelimiter : delimiter;
-        const previewText = lines.join(actualDelimiter);
-        
-        // Truncate preview if too long
-        const maxPreviewLength = 100;
-        setLivePreview(
-          previewText.length > maxPreviewLength 
-            ? `${previewText.substring(0, maxPreviewLength)}...` 
-            : previewText
-        );
-      } else {
-        // Row to column live preview
+        previewText = lines.join(actualDelimiter);
+
+      } else if (transformDirection === 'rowToColumn') {
         const actualDelimiter = delimiter === 'custom' ? customDelimiter : delimiter;
         let delimiterForSplit = actualDelimiter;
         if (actualDelimiter === '\\t') delimiterForSplit = '\t';
         
-        // Split by delimiter
         let items: string[];
-        
         if (['|', '.', '*', '+', '?', '^', '$', '\\'].some(c => actualDelimiter.includes(c))) {
-          items = inputText.split(new RegExp(delimiterForSplit.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'));
+          items = processedInput.split(new RegExp(delimiterForSplit.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'));
         } else {
-          items = inputText.split(delimiterForSplit);
+          items = processedInput.split(delimiterForSplit);
         }
         
-        // Apply cleaning options
-        if (cleaningOptions.trimWhitespace) {
-          items = items.map(item => item.trim());
-        }
-        
-        if (cleaningOptions.removeEmptyLines) {
-          items = items.filter(item => item.trim() !== '');
-        }
-        
-        if (cleaningOptions.toLowerCase) {
-          items = items.map(item => item.toLowerCase());
-        }
-        
-        if (cleaningOptions.toUpperCase) {
-          items = items.map(item => item.toUpperCase());
-        }
-        
-        if (cleaningOptions.removeSpecialChars) {
-          items = items.map(item => item.replace(/[^\w\s]/gi, ''));
-        }
-        
-        if (cleaningOptions.replaceMultipleSpaces) {
-          items = items.map(item => item.replace(/\s+/g, ' '));
-        }
-        
-        if (cleaningOptions.removeLeadingNumbers) {
-          items = items.map(item => item.replace(/^\d+\s*/, ''));
-        }
-        
-        if (cleaningOptions.removeTrailingNumbers) {
-          items = items.map(item => item.replace(/\s*\d+$/, ''));
-        }
-        
+        if (cleaningOptions.trimWhitespace) items = items.map(item => item.trim());
+        if (cleaningOptions.removeEmptyLines) items = items.filter(item => item.trim() !== '');
+        // ... (Apply other relevant pre-markdown cleaning options for rowToColumn preview)
+        if (cleaningOptions.toLowerCase) items = items.map(i => i.toLowerCase());
+        if (cleaningOptions.toUpperCase) items = items.map(i => i.toUpperCase());
+        if (cleaningOptions.removeSpecialChars) items = items.map(i => i.replace(/[^\w\s]/gi, ''));
+        if (cleaningOptions.replaceMultipleSpaces) items = items.map(i => i.replace(/\s+/g, ' '));
+        if (cleaningOptions.removeLeadingNumbers) items = items.map(i => i.replace(/^\d+\s*/, ''));
+        if (cleaningOptions.removeTrailingNumbers) items = items.map(i => i.replace(/\s*\d+$/, ''));
         if (cleaningOptions.useCustomRegex && customRegexPattern) {
           try {
             const regex = new RegExp(customRegexPattern, 'g');
             items = items.map(item => item.replace(regex, customRegexReplacement || ''));
-          } catch (error) {
-            // Skip regex if invalid
-          }
+          } catch (e) { /* ignore regex error in preview */ }
         }
-        
-        if (cleaningOptions.removeDuplicates) {
-          items = [...new Set(items)];
-        }
-        
-        // Show first few items in preview
+        if (cleaningOptions.removeDuplicates) items = [...new Set(items)];
+
         const maxPreviewItems = 3;
         const previewItems = items.slice(0, maxPreviewItems);
-        let previewText = previewItems.join('\n');
+        previewText = previewItems.join('\n');
         
         if (items.length > maxPreviewItems) {
           previewText += `\n... (${items.length - maxPreviewItems} more)`;
         }
-        
-        // Truncate if still too long
-        const maxPreviewLength = 100;
-        setLivePreview(
-          previewText.length > maxPreviewLength 
-            ? `${previewText.substring(0, maxPreviewLength)}...` 
-            : previewText
-        );
+
+      } else if (transformDirection === 'markdown') {
+        // For Markdown, pre-cleaning options are generally not applied before parsing.
+        // They are applied via normalizeOutputWhitespace post-transformation if desired.
+        let tempInput = processedInput;
+        // However, if any cleaning option is conceptually before markdown parsing (e.g. global trim of input)
+        // it could be applied to tempInput here.
+        // For now, assuming cleaning options (like regex, case change) are not meant for raw markdown markup.
+
+        let previewMarkdown = '';
+        if (markdownOutputType === 'richText') {
+          previewMarkdown = await marked.parse(tempInput) as string; // Options set via marked.use()
+        } else { // plainText
+          const htmlFromTempInput = await marked.parse(tempInput) as string;
+          previewMarkdown = htmlToText(htmlFromTempInput, {
+            wordwrap: false,
+            selectors: [
+              { selector: 'img', format: 'skip' },
+              { selector: 'a', options: { hideLinkHrefIfSameAsText: true, ignoreHref: true } },
+              { selector: 'table', format: 'block' },
+              { selector: 'tr', format: 'block', options: { itemSuffix: '\n' } },
+              { selector: 'td', format: 'inline', options: { suffix: '\t' } },
+              { selector: 'th', format: 'inline', options: { suffix: '\t' } },
+              // { selector: 'li', format: 'listItem', options: { itemPrefix: '  - ' } } // Testing default
+            ],
+            preserveNewlines: true,
+            // Removed whitespacePreformatted
+          });
+        }
+        previewText = previewMarkdown; 
       }
+
+      // Apply post-transformation whitespace normalization for live preview
+      const normalizedPreview = normalizeOutputWhitespace(previewText);
+
+      const maxPreviewLength = 100;
+      setLivePreview(
+        normalizedPreview.length > maxPreviewLength
+          ? `${normalizedPreview.substring(0, maxPreviewLength)}...`
+          : normalizedPreview
+      );
     } catch (error) {
       setLivePreview('Error generating preview');
+      console.error("Live preview error:", error);
     }
   };
   
@@ -922,6 +1178,214 @@ const TransformBidirectional = () => {
     });
   };
   
+  const normalizeOutputWhitespace = (text: string): string => {
+    if (!cleaningOptions.normalizeWhitespace) return text;
+
+    // Protect content within <pre> tags from whitespace normalization
+    const protectedBlocks: string[] = [];
+    let tempText = text.replace(/<pre[^>]*>([\s\S]*?)<\/pre>/gi, (match, preContent) => {
+      protectedBlocks.push(preContent);
+      return `<PRE_PLACEHOLDER_${protectedBlocks.length - 1}>`;
+    });
+
+    // 1. Replace multiple newlines with a single newline 
+    tempText = tempText.replace(/(\r\n|\n|\r){2,}/g, '\n'); 
+
+    // 2. Trim leading/trailing whitespace from each line (outside <pre>)
+    tempText = tempText.split('\n').map(line => line.trim()).join('\n');
+
+    // 3. Optional: Remove leading spaces from lines that are not part of lists (outside <pre>)
+    if (transformDirection !== 'markdown' || markdownOutputType !== 'richText') {
+        tempText = tempText.split('\n').map(line => {
+            if (line.match(/^(\s*)[-*+>|#]/) || line.startsWith('<PRE_PLACEHOLDER_')) { 
+                return line; 
+            }
+            return line.replace(/^\s+/, '');
+        }).join('\n');
+    }
+    
+    // 4. Final trim of the whole string
+    tempText = tempText.trim();
+
+    // Restore protected <pre> blocks
+    tempText = tempText.replace(/<PRE_PLACEHOLDER_(\d+)>/g, (_match, indexStr) => {
+      const index = parseInt(indexStr, 10);
+      return `<pre>${protectedBlocks[index]}</pre>`; // Assuming no attributes for <pre> for simplicity here
+    });
+
+    return tempText;
+  };
+  
+  // Effect to load highlight.js CSS
+  useEffect(() => {
+    if (!document.getElementById(HIGHLIGHT_JS_CSS_ID)) {
+      const link = document.createElement('link');
+      link.id = HIGHLIGHT_JS_CSS_ID;
+      link.rel = 'stylesheet';
+      link.href = '//cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/default.min.css';
+      document.head.appendChild(link);
+    }
+    // Optional: Cleanup function to remove the stylesheet when the component unmounts
+    // return () => {
+    //   const existingLink = document.getElementById(HIGHLIGHT_JS_CSS_ID);
+    //   if (existingLink) {
+    //     document.head.removeChild(existingLink);
+    //   }
+    // };
+  }, []);
+  
+  // Add copy as HTML and copy as plain text functions
+  const copyHtmlToClipboard = () => {
+    if (!markdownHtmlOutput) return toast({ description: 'Nothing to copy', variant: 'destructive' });
+    navigator.clipboard.writeText(markdownHtmlOutput);
+    toast({ description: 'HTML copied to clipboard' });
+  };
+  const copyPlainTextToClipboard = () => {
+    if (!markdownPlainTextOutput) return toast({ description: 'Nothing to copy', variant: 'destructive' });
+    navigator.clipboard.writeText(markdownPlainTextOutput);
+    toast({ description: 'Plain text copied to clipboard' });
+  };
+  
+  // Add this function after copyPlainTextToClipboard
+  const copyFormattedHtmlToClipboard = async () => {
+    if (!markdownHtmlOutput) {
+      return toast({ description: 'Nothing to copy', variant: 'destructive' });
+    }
+    
+    const success = await copyHtmlWithFormatting(markdownHtmlOutput);
+    
+    if (success) {
+      toast({ description: 'Formatted HTML copied to clipboard (paste with formatting preserved)' });
+    } else {
+      // Fall back to regular HTML copy if the formatted copy fails
+      navigator.clipboard.writeText(markdownHtmlOutput);
+      toast({ description: 'HTML copied to clipboard (as code only)' });
+    }
+  };
+  
+  // Add new export functions below copyFormattedHtmlToClipboard
+  const exportAsHtml = () => {
+    if (!markdownHtmlOutput) {
+      return toast({ description: 'Nothing to export', variant: 'destructive' });
+    }
+    
+    // Create full HTML document
+    const fullHtml = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Exported Markdown</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif; line-height: 1.5; padding: 20px; max-width: 800px; margin: 0 auto; }
+    code { background: #f4f4f4; padding: 2px 4px; border-radius: 3px; font-family: monospace; }
+    pre { background: #f4f4f4; padding: 10px; border-radius: 5px; overflow: auto; }
+    pre code { background: none; padding: 0; }
+    table { border-collapse: collapse; width: 100%; margin: 16px 0; }
+    th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+    th { background-color: #f1f1f1; }
+    img { max-width: 100%; }
+    blockquote { border-left: 4px solid #ddd; margin-left: 0; padding-left: 16px; color: #666; }
+  </style>
+</head>
+<body>
+${markdownHtmlOutput}
+</body>
+</html>`;
+    
+    const blob = new Blob([fullHtml], { type: 'text/html' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `markdown-export-${new Date().toISOString().slice(0, 10)}.html`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    
+    toast({ description: 'Exported as HTML file' });
+  };
+  
+  const exportAsText = () => {
+    if (!markdownPlainTextOutput) {
+      return toast({ description: 'Nothing to export', variant: 'destructive' });
+    }
+    
+    const blob = new Blob([markdownPlainTextOutput], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `markdown-export-${new Date().toISOString().slice(0, 10)}.txt`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    
+    toast({ description: 'Exported as text file' });
+  };
+  
+  const exportAsWordDoc = () => {
+    if (!markdownHtmlOutput) {
+      return toast({ description: 'Nothing to export', variant: 'destructive' });
+    }
+    
+    // Create Word-compatible HTML
+    const wordHtml = `<html xmlns:o="urn:schemas-microsoft-com:office:office" 
+      xmlns:w="urn:schemas-microsoft-com:office:word" 
+      xmlns="http://www.w3.org/TR/REC-html40">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+  <title>Exported Markdown</title>
+  <!--[if gte mso 9]>
+  <xml>
+    <w:WordDocument>
+      <w:View>Print</w:View>
+      <w:Zoom>90</w:Zoom>
+      <w:DoNotOptimizeForBrowser/>
+    </w:WordDocument>
+  </xml>
+  <![endif]-->
+  <style>
+    /* Word-specific styles */
+    body { font-family: 'Calibri', sans-serif; font-size: 11pt; line-height: 1.5; }
+    h1, h2, h3, h4, h5, h6 { font-family: 'Calibri', sans-serif; }
+    table { border-collapse: collapse; width: 100%; }
+    th, td { border: 1pt solid #ccc; padding: 4pt; }
+    th { background-color: #f1f1f1; }
+    code { font-family: 'Courier New', monospace; background-color: #f4f4f4; }
+    pre { background-color: #f4f4f4; padding: 6pt; border: 1pt solid #ccc; }
+  </style>
+</head>
+<body>
+${markdownHtmlOutput}
+</body>
+</html>`;
+    
+    const blob = new Blob([wordHtml], { type: 'application/msword' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `markdown-export-${new Date().toISOString().slice(0, 10)}.doc`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    
+    toast({ description: 'Exported as Word document (.doc)' });
+  };
+  
+  // Add function to handle escape key to exit expanded preview
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && expandedPreview !== 'none') {
+        setExpandedPreview('none');
+      }
+    };
+    
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [expandedPreview]);
+  
   return (
     <div className="space-y-6">
       <Card>
@@ -974,8 +1438,78 @@ const TransformBidirectional = () => {
                 Row → Column
               </span>
             </button>
+            <button
+              onClick={() => setTransformDirection('markdown')}
+              className={`flex-1 py-2 rounded-md text-sm font-medium transition-colors ${
+                transformDirection === 'markdown'
+                  ? 'bg-white shadow-sm text-purple-700'
+                  : 'text-purple-600 hover:bg-white/60'
+              }`}
+            >
+              <span className="flex items-center justify-center">
+                <svg className="h-4 w-4 mr-2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M10 13a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1h-2a1 1 0 0 1-1-1v-2z"/>
+                  <path d="M2 3h6a4 4 0 0 1 4 4v10a2 2 0 0 0-2-2H3a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z"/>
+                  <path d="M16 3h1a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2h-1"/>
+                </svg>
+                Markdown
+              </span>
+            </button>
           </div>
         </div>
+
+        {/* Add output format and styling options for markdown mode */}
+        {transformDirection === 'markdown' && (
+          <div className="px-6 pb-2 pt-2">
+            <div className="bg-purple-50/60 rounded-lg p-3 flex flex-wrap gap-4 items-center justify-between">
+              <div className="flex items-center space-x-3">
+                <Label htmlFor="markdownOutputType" className="text-sm">Output Format:</Label>
+                <Select 
+                  value={markdownOutputType} 
+                  onValueChange={(value: 'plainText' | 'richText') => setMarkdownOutputType(value)}
+                >
+                  <SelectTrigger id="markdownOutputType" className="h-8 w-[140px] border-purple-200">
+                    <SelectValue placeholder="Select format" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="plainText">Plain Text</SelectItem>
+                    <SelectItem value="richText">Rich Text (HTML)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              {markdownOutputType === 'richText' && (
+                <div className="flex items-center space-x-3">
+                  <Label htmlFor="htmlStyleLevel" className="text-sm">Styling Level:</Label>
+                  <Select 
+                    value={htmlStyleLevel} 
+                    onValueChange={(value: 'minimal' | 'basic' | 'full') => setHtmlStyleLevel(value as 'minimal' | 'basic' | 'full')}
+                  >
+                    <SelectTrigger id="htmlStyleLevel" className="h-8 w-[140px] border-purple-200">
+                      <SelectValue placeholder="Select style" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="minimal">Minimal Styling</SelectItem>
+                      <SelectItem value="basic">Basic Styling</SelectItem>
+                      <SelectItem value="full">Full Styling</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+              
+              <div className="w-full text-xs text-purple-600">
+                <Info className="h-3 w-3 inline-block mr-1" />
+                {markdownOutputType === 'plainText' 
+                  ? "Plain Text converts Markdown to clean text for simple emails or plain text fields." 
+                  : htmlStyleLevel === 'minimal' 
+                    ? "Minimal styling: Just the HTML structure without additional styles (most compatible)." 
+                    : htmlStyleLevel === 'basic' 
+                      ? "Basic styling: Essential styles for tables and code blocks (good for most editors)." 
+                      : "Full styling: Comprehensive styles for all elements (best visual appearance)."}
+              </div>
+            </div>
+          </div>
+        )}
 
         <CardContent className="pt-2">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -1037,7 +1571,9 @@ const TransformBidirectional = () => {
                     placeholder={
                       transformDirection === 'columnToRow'
                         ? "Paste your column data here (one item per line)..."
-                        : "Paste your delimited data here (items separated by delimiter)..."
+                        : transformDirection === 'rowToColumn'
+                          ? "Paste your delimited data here (items separated by delimiter)..."
+                          : "Paste your Markdown text here..."
                     }
                     className="min-h-[200px] font-mono text-sm border-purple-200"
                     value={inputText}
@@ -1101,7 +1637,9 @@ const TransformBidirectional = () => {
                 <AlertDescription className="text-purple-700 text-sm">
                   {transformDirection === 'columnToRow'
                     ? "Enter data with one item per line. The transformer will combine all lines into a single row."
-                    : "Enter data with items separated by delimiter. The transformer will split items into separate lines."}
+                    : transformDirection === 'rowToColumn'
+                      ? "Enter data with items separated by delimiter. The transformer will split items into separate lines."
+                      : "Paste your Markdown content. It will be transformed into clean plain or rich text."}
                 </AlertDescription>
               </Alert>
             </div>
@@ -1178,263 +1716,275 @@ const TransformBidirectional = () => {
                 </div>
                 
                 {/* Add Data Cleaning Options */}
-                <div>
-                  <h3 className="text-base font-medium mb-2 flex items-center">
-                    <svg className="h-4 w-4 mr-1.5 text-purple-600" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/>
-                      <path d="M12 18a3 3 0 1 0 0-6 3 3 0 0 0 0 6z"/>
-                    </svg>
-                    Data Cleaning Options
-                  </h3>
-                  
-                  <div className="grid grid-cols-2 gap-x-4 gap-y-2">
-                    <label className="flex items-center space-x-2 text-sm">
-                      <input 
-                        type="checkbox" 
-                        checked={cleaningOptions.trimWhitespace} 
-                        onChange={() => toggleCleaningOption('trimWhitespace')}
-                        className="h-4 w-4 rounded border-purple-300 text-purple-600 focus:ring-purple-500"
-                      />
-                      <span>Trim whitespace</span>
-                    </label>
+                {transformDirection !== 'markdown' && (
+                  <div>
+                    <h3 className="text-base font-medium mb-2 flex items-center">
+                      <svg className="h-4 w-4 mr-1.5 text-purple-600" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/>
+                        <path d="M12 18a3 3 0 1 0 0-6 3 3 0 0 0 0 6z"/>
+                      </svg>
+                      Data Cleaning Options
+                    </h3>
                     
-                    <label className="flex items-center space-x-2 text-sm">
-                      <input 
-                        type="checkbox" 
-                        checked={cleaningOptions.removeEmptyLines} 
-                        onChange={() => toggleCleaningOption('removeEmptyLines')}
-                        className="h-4 w-4 rounded border-purple-300 text-purple-600 focus:ring-purple-500"
-                      />
-                      <span>Remove empty lines</span>
-                    </label>
-                    
-                    <label className="flex items-center space-x-2 text-sm">
-                      <input 
-                        type="checkbox" 
-                        checked={cleaningOptions.removeDuplicates} 
-                        onChange={() => toggleCleaningOption('removeDuplicates')}
-                        className="h-4 w-4 rounded border-purple-300 text-purple-600 focus:ring-purple-500"
-                      />
-                      <span>Remove duplicates</span>
-                    </label>
-                    
-                    <label className="flex items-center space-x-2 text-sm">
-                      <input 
-                        type="checkbox" 
-                        checked={cleaningOptions.removeSpecialChars} 
-                        onChange={() => toggleCleaningOption('removeSpecialChars')}
-                        className="h-4 w-4 rounded border-purple-300 text-purple-600 focus:ring-purple-500"
-                      />
-                      <span>Remove special characters</span>
-                    </label>
-                    
-                    <label className="flex items-center space-x-2 text-sm">
-                      <input 
-                        type="checkbox" 
-                        checked={cleaningOptions.toLowerCase} 
-                        onChange={() => toggleCleaningOption('toLowerCase')}
-                        className="h-4 w-4 rounded border-purple-300 text-purple-600 focus:ring-purple-500"
-                      />
-                      <span>Convert to lowercase</span>
-                    </label>
-                    
-                    <label className="flex items-center space-x-2 text-sm">
-                      <input 
-                        type="checkbox" 
-                        checked={cleaningOptions.toUpperCase} 
-                        onChange={() => toggleCleaningOption('toUpperCase')}
-                        className="h-4 w-4 rounded border-purple-300 text-purple-600 focus:ring-purple-500"
-                      />
-                      <span>Convert to UPPERCASE</span>
-                    </label>
-                    
-                    <label className="flex items-center space-x-2 text-sm">
-                      <input 
-                        type="checkbox" 
-                        checked={cleaningOptions.replaceMultipleSpaces} 
-                        onChange={() => toggleCleaningOption('replaceMultipleSpaces')}
-                        className="h-4 w-4 rounded border-purple-300 text-purple-600 focus:ring-purple-500"
-                      />
-                      <span>Replace multiple spaces</span>
-                    </label>
-                    
-                    <label className="flex items-center space-x-2 text-sm">
-                      <input 
-                        type="checkbox" 
-                        checked={cleaningOptions.removeLeadingNumbers} 
-                        onChange={() => toggleCleaningOption('removeLeadingNumbers')}
-                        className="h-4 w-4 rounded border-purple-300 text-purple-600 focus:ring-purple-500"
-                      />
-                      <span>Remove leading numbers</span>
-                    </label>
-                    
-                    <label className="flex items-center space-x-2 text-sm">
-                      <input 
-                        type="checkbox" 
-                        checked={cleaningOptions.removeTrailingNumbers} 
-                        onChange={() => toggleCleaningOption('removeTrailingNumbers')}
-                        className="h-4 w-4 rounded border-purple-300 text-purple-600 focus:ring-purple-500"
-                      />
-                      <span>Remove trailing numbers</span>
-                    </label>
-                    
-                    <label className="flex items-center space-x-2 text-sm">
-                      <input 
-                        type="checkbox" 
-                        checked={cleaningOptions.useCustomRegex} 
-                        onChange={() => toggleCleaningOption('useCustomRegex')}
-                        className="h-4 w-4 rounded border-purple-300 text-purple-600 focus:ring-purple-500"
-                      />
-                      <span>Use custom regex pattern</span>
-                    </label>
-                  </div>
-                  
-                  {/* Custom regex section */}
-                  {cleaningOptions.useCustomRegex && (
-                    <div className="mt-3 p-3 border border-purple-200 rounded-md bg-purple-50/30">
-                      <h4 className="text-sm font-medium mb-2 text-purple-700">Custom Regex Replacement</h4>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                        <div>
-                          <Label htmlFor="regexPattern" className="text-xs block mb-1">Pattern</Label>
-                          <Input
-                            id="regexPattern"
-                            placeholder="e.g., \d{4}-\d{2}"
-                            value={customRegexPattern}
-                            onChange={(e) => setCustomRegexPattern(e.target.value)}
-                            className="h-8 text-xs border-purple-200 font-mono"
-                          />
-                        </div>
-                        <div>
-                          <Label htmlFor="regexReplacement" className="text-xs block mb-1">Replacement</Label>
-                          <Input
-                            id="regexReplacement"
-                            placeholder="e.g., DATE"
-                            value={customRegexReplacement}
-                            onChange={(e) => setCustomRegexReplacement(e.target.value)}
-                            className="h-8 text-xs border-purple-200 font-mono"
-                          />
-                        </div>
-                      </div>
-                      {customRegexError && (
-                        <div className="mt-2 text-xs text-red-500">
-                          <AlertTriangle className="h-3 w-3 inline-block mr-1" />
-                          {customRegexError}
-                        </div>
-                      )}
-                      <div className="mt-2 text-xs text-purple-600">
-                        <Info className="h-3 w-3 inline-block mr-1" />
-                        Enter a regular expression pattern to find and replace in each line
-                      </div>
+                    <div className="grid grid-cols-2 gap-x-4 gap-y-2">
+                      <label className="flex items-center space-x-2 text-sm">
+                        <input 
+                          type="checkbox" 
+                          checked={cleaningOptions.trimWhitespace} 
+                          onChange={() => toggleCleaningOption('trimWhitespace')}
+                          className="h-4 w-4 rounded border-purple-300 text-purple-600 focus:ring-purple-500"
+                        />
+                        <span>Trim whitespace</span>
+                      </label>
+                      
+                      <label className="flex items-center space-x-2 text-sm">
+                        <input 
+                          type="checkbox" 
+                          checked={cleaningOptions.removeEmptyLines} 
+                          onChange={() => toggleCleaningOption('removeEmptyLines')}
+                          className="h-4 w-4 rounded border-purple-300 text-purple-600 focus:ring-purple-500"
+                        />
+                        <span>Remove empty lines</span>
+                      </label>
+                      
+                      <label className="flex items-center space-x-2 text-sm">
+                        <input 
+                          type="checkbox" 
+                          checked={cleaningOptions.removeDuplicates} 
+                          onChange={() => toggleCleaningOption('removeDuplicates')}
+                          className="h-4 w-4 rounded border-purple-300 text-purple-600 focus:ring-purple-500"
+                        />
+                        <span>Remove duplicates</span>
+                      </label>
+                      
+                      <label className="flex items-center space-x-2 text-sm">
+                        <input 
+                          type="checkbox" 
+                          checked={cleaningOptions.removeSpecialChars} 
+                          onChange={() => toggleCleaningOption('removeSpecialChars')}
+                          className="h-4 w-4 rounded border-purple-300 text-purple-600 focus:ring-purple-500"
+                        />
+                        <span>Remove special characters</span>
+                      </label>
+                      
+                      <label className="flex items-center space-x-2 text-sm">
+                        <input 
+                          type="checkbox" 
+                          checked={cleaningOptions.toLowerCase} 
+                          onChange={() => toggleCleaningOption('toLowerCase')}
+                          className="h-4 w-4 rounded border-purple-300 text-purple-600 focus:ring-purple-500"
+                        />
+                        <span>Convert to lowercase</span>
+                      </label>
+                      
+                      <label className="flex items-center space-x-2 text-sm">
+                        <input 
+                          type="checkbox" 
+                          checked={cleaningOptions.toUpperCase} 
+                          onChange={() => toggleCleaningOption('toUpperCase')}
+                          className="h-4 w-4 rounded border-purple-300 text-purple-600 focus:ring-purple-500"
+                        />
+                        <span>Convert to UPPERCASE</span>
+                      </label>
+                      
+                      <label className="flex items-center space-x-2 text-sm">
+                        <input 
+                          type="checkbox" 
+                          checked={cleaningOptions.replaceMultipleSpaces} 
+                          onChange={() => toggleCleaningOption('replaceMultipleSpaces')}
+                          className="h-4 w-4 rounded border-purple-300 text-purple-600 focus:ring-purple-500"
+                        />
+                        <span>Replace multiple spaces</span>
+                      </label>
+                      
+                      <label className="flex items-center space-x-2 text-sm">
+                        <input 
+                          type="checkbox" 
+                          checked={cleaningOptions.removeLeadingNumbers} 
+                          onChange={() => toggleCleaningOption('removeLeadingNumbers')}
+                          className="h-4 w-4 rounded border-purple-300 text-purple-600 focus:ring-purple-500"
+                        />
+                        <span>Remove leading numbers</span>
+                      </label>
+                      
+                      <label className="flex items-center space-x-2 text-sm">
+                        <input 
+                          type="checkbox" 
+                          checked={cleaningOptions.removeTrailingNumbers} 
+                          onChange={() => toggleCleaningOption('removeTrailingNumbers')}
+                          className="h-4 w-4 rounded border-purple-300 text-purple-600 focus:ring-purple-500"
+                        />
+                        <span>Remove trailing numbers</span>
+                      </label>
+                      
+                      <label className="flex items-center space-x-2 text-sm">
+                        <input 
+                          type="checkbox" 
+                          checked={cleaningOptions.useCustomRegex} 
+                          onChange={() => toggleCleaningOption('useCustomRegex')}
+                          className="h-4 w-4 rounded border-purple-300 text-purple-600 focus:ring-purple-500"
+                        />
+                        <span>Use custom regex pattern</span>
+                      </label>
+
+                      <label className="flex items-center space-x-2 text-sm">
+                        <input 
+                          type="checkbox" 
+                          checked={cleaningOptions.normalizeWhitespace} 
+                          onChange={() => toggleCleaningOption('normalizeWhitespace')}
+                          className="h-4 w-4 rounded border-purple-300 text-purple-600 focus:ring-purple-500"
+                        />
+                        <span>Normalize Whitespace (Post-Transform)</span>
+                      </label>
                     </div>
-                  )}
-                  
-                  {previewStats.showPreview && (
-                    <div className="mt-3 bg-purple-50/70 rounded-md p-3 border border-purple-100 text-xs text-purple-700">
-                      <h4 className="font-medium mb-1 flex items-center">
-                        <CheckCircle className="h-3 w-3 mr-1 text-purple-600" />
-                        Data Cleaning Preview
-                      </h4>
-                      
-                      <div className="grid grid-cols-2 gap-x-3 gap-y-1 mt-2">
-                        <div className="flex justify-between">
-                          <span>Original lines:</span>
-                          <span className="font-semibold">{previewStats.originalLines}</span>
+                    
+                    {/* Custom regex section */}
+                    {cleaningOptions.useCustomRegex && (
+                      <div className="mt-3 p-3 border border-purple-200 rounded-md bg-purple-50/30">
+                        <h4 className="text-sm font-medium mb-2 text-purple-700">Custom Regex Replacement</h4>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                          <div>
+                            <Label htmlFor="regexPattern" className="text-xs block mb-1">Pattern</Label>
+                            <Input
+                              id="regexPattern"
+                              placeholder="e.g., \d{4}-\d{2}"
+                              value={customRegexPattern}
+                              onChange={(e) => setCustomRegexPattern(e.target.value)}
+                              className="h-8 text-xs border-purple-200 font-mono"
+                            />
+                          </div>
+                          <div>
+                            <Label htmlFor="regexReplacement" className="text-xs block mb-1">Replacement</Label>
+                            <Input
+                              id="regexReplacement"
+                              placeholder="e.g., DATE"
+                              value={customRegexReplacement}
+                              onChange={(e) => setCustomRegexReplacement(e.target.value)}
+                              className="h-8 text-xs border-purple-200 font-mono"
+                            />
+                          </div>
                         </div>
-                        
-                        {cleaningOptions.removeEmptyLines && (
-                          <div className="flex justify-between">
-                            <span>After removing empty:</span>
-                            <span className={`font-semibold ${previewStats.afterRemovingEmpty !== previewStats.originalLines ? 'text-purple-600' : ''}`}>
-                              {previewStats.afterRemovingEmpty}
-                              {previewStats.afterRemovingEmpty !== previewStats.originalLines && (
-                                <span className="text-purple-500 ml-1">
-                                  (-{previewStats.originalLines - previewStats.afterRemovingEmpty})
-                                </span>
-                              )}
-                            </span>
+                        {customRegexError && (
+                          <div className="mt-2 text-xs text-red-500">
+                            <AlertTriangle className="h-3 w-3 inline-block mr-1" />
+                            {customRegexError}
                           </div>
                         )}
-                        
-                        {cleaningOptions.removeDuplicates && (
-                          <div className="flex justify-between">
-                            <span>After removing duplicates:</span>
-                            <span className={`font-semibold ${
-                              (cleaningOptions.removeEmptyLines ? 
-                                previewStats.afterRemovingDuplicates !== previewStats.afterRemovingEmpty : 
-                                previewStats.afterRemovingDuplicates !== previewStats.originalLines) ? 'text-purple-600' : ''
-                            }`}>
-                              {previewStats.afterRemovingDuplicates}
-                              {cleaningOptions.removeEmptyLines ? 
-                                (previewStats.afterRemovingDuplicates !== previewStats.afterRemovingEmpty && (
-                                  <span className="text-purple-500 ml-1">
-                                    (-{previewStats.afterRemovingEmpty - previewStats.afterRemovingDuplicates})
-                                  </span>
-                                )) : 
-                                (previewStats.afterRemovingDuplicates !== previewStats.originalLines && (
-                                  <span className="text-purple-500 ml-1">
-                                    (-{previewStats.originalLines - previewStats.afterRemovingDuplicates})
-                                  </span>
-                                ))
-                              }
-                            </span>
-                          </div>
-                        )}
-                        
-                        <div className="flex justify-between col-span-2 border-t border-purple-200 mt-1 pt-1">
-                          <span className="font-medium">Final lines after cleaning:</span>
-                          <span className="font-semibold text-purple-600">{previewStats.afterCleaning}</span>
+                        <div className="mt-2 text-xs text-purple-600">
+                          <Info className="h-3 w-3 inline-block mr-1" />
+                          Enter a regular expression pattern to find and replace in each line
                         </div>
                       </div>
-                      
-                      {/* Add sample line visual preview */}
-                      {samplePreview.showPreview && samplePreview.original.length > 0 && (
-                        <div className="mt-3 pt-2 border-t border-purple-200">
-                          <h4 className="font-medium mb-2 flex items-center">
-                            <svg className="h-3 w-3 mr-1 text-purple-600" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                              <circle cx="12" cy="12" r="10"></circle>
-                              <line x1="12" y1="16" x2="12" y2="12"></line>
-                              <line x1="12" y1="8" x2="12.01" y2="8"></line>
-                            </svg>
-                            Sample Line Preview
-                          </h4>
-                          <div className="space-y-2">
-                            {samplePreview.original.map((originalLine, index) => (
-                              <div key={index} className="grid grid-cols-1 gap-1 bg-white/60 p-2 rounded border border-purple-100">
-                                <div className="flex items-start">
-                                  <span className="bg-purple-100 text-purple-800 rounded-full h-4 w-4 flex items-center justify-center text-[10px] mr-1.5 flex-shrink-0 mt-0.5">B</span>
-                                  <div className="font-mono text-[10px] overflow-hidden overflow-ellipsis whitespace-nowrap text-gray-600">
-                                    {originalLine || <span className="italic text-gray-400">(empty line)</span>}
-                                  </div>
-                                </div>
-                                <div className="flex items-start">
-                                  <span className="bg-purple-500 text-white rounded-full h-4 w-4 flex items-center justify-center text-[10px] mr-1.5 flex-shrink-0 mt-0.5">A</span>
-                                  <div className="font-mono text-[10px] overflow-hidden overflow-ellipsis whitespace-nowrap text-purple-700 font-medium">
-                                    {samplePreview.cleaned[index] || <span className="italic text-purple-300">(empty line)</span>}
-                                  </div>
-                                </div>
-                                {originalLine !== samplePreview.cleaned[index] && (
-                                  <div className="text-[10px] text-purple-600 pl-6">
-                                    <CheckCircle className="h-2.5 w-2.5 inline-block mr-1" />
-                                    Changes detected
-                                  </div>
+                    )}
+                    
+                    {previewStats.showPreview && (
+                      <div className="mt-3 bg-purple-50/70 rounded-md p-3 border border-purple-100 text-xs text-purple-700">
+                        <h4 className="font-medium mb-1 flex items-center">
+                          <CheckCircle className="h-3 w-3 mr-1 text-purple-600" />
+                          Data Cleaning Preview
+                        </h4>
+                        
+                        <div className="grid grid-cols-2 gap-x-3 gap-y-1 mt-2">
+                          <div className="flex justify-between">
+                            <span>Original lines:</span>
+                            <span className="font-semibold">{previewStats.originalLines}</span>
+                          </div>
+                          
+                          {cleaningOptions.removeEmptyLines && (
+                            <div className="flex justify-between">
+                              <span>After removing empty:</span>
+                              <span className={`font-semibold ${previewStats.afterRemovingEmpty !== previewStats.originalLines ? 'text-purple-600' : ''}`}>
+                                {previewStats.afterRemovingEmpty}
+                                {previewStats.afterRemovingEmpty !== previewStats.originalLines && (
+                                  <span className="text-purple-500 ml-1">
+                                    (-{previewStats.originalLines - previewStats.afterRemovingEmpty})
+                                  </span>
                                 )}
-                              </div>
-                            ))}
+                              </span>
+                            </div>
+                          )}
+                          
+                          {cleaningOptions.removeDuplicates && (
+                            <div className="flex justify-between">
+                              <span>After removing duplicates:</span>
+                              <span className={`font-semibold ${
+                                (cleaningOptions.removeEmptyLines ? 
+                                  previewStats.afterRemovingDuplicates !== previewStats.afterRemovingEmpty : 
+                                  previewStats.afterRemovingDuplicates !== previewStats.originalLines) ? 'text-purple-600' : ''
+                              }`}>
+                                {previewStats.afterRemovingDuplicates}
+                                {cleaningOptions.removeEmptyLines ? 
+                                  (previewStats.afterRemovingDuplicates !== previewStats.afterRemovingEmpty && (
+                                    <span className="text-purple-500 ml-1">
+                                      (-{previewStats.afterRemovingEmpty - previewStats.afterRemovingDuplicates})
+                                    </span>
+                                  )) : 
+                                  (previewStats.afterRemovingDuplicates !== previewStats.originalLines && (
+                                    <span className="text-purple-500 ml-1">
+                                      (-{previewStats.originalLines - previewStats.afterRemovingDuplicates})
+                                    </span>
+                                  ))
+                                }
+                              </span>
+                            </div>
+                          )}
+                          
+                          <div className="flex justify-between col-span-2 border-t border-purple-200 mt-1 pt-1">
+                            <span className="font-medium">Final lines after cleaning:</span>
+                            <span className="font-semibold text-purple-600">{previewStats.afterCleaning}</span>
                           </div>
                         </div>
-                      )}
-                    </div>
-                  )}
-                  
-                  <div className="mt-3 bg-purple-50 rounded-md p-2 border border-purple-100">
-                    <div className="flex items-start">
-                      <Info className="h-3.5 w-3.5 text-purple-600 mt-0.5 mr-1.5 flex-shrink-0" />
-                      <span className="text-xs text-purple-700">
-                        Clean your data before transformation to handle whitespace, duplicates, and formatting.
-                      </span>
+                        
+                        {/* Add sample line visual preview */}
+                        {samplePreview.showPreview && samplePreview.original.length > 0 && (
+                          <div className="mt-3 pt-2 border-t border-purple-200">
+                            <h4 className="font-medium mb-2 flex items-center">
+                              <svg className="h-3 w-3 mr-1 text-purple-600" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <circle cx="12" cy="12" r="10"></circle>
+                                <line x1="12" y1="16" x2="12" y2="12"></line>
+                                <line x1="12" y1="8" x2="12.01" y2="8"></line>
+                              </svg>
+                              Sample Line Preview
+                            </h4>
+                            <div className="space-y-2">
+                              {samplePreview.original.map((originalLine, index) => (
+                                <div key={index} className="grid grid-cols-1 gap-1 bg-white/60 p-2 rounded border border-purple-100">
+                                  <div className="flex items-start">
+                                    <span className="bg-purple-100 text-purple-800 rounded-full h-4 w-4 flex items-center justify-center text-[10px] mr-1.5 flex-shrink-0 mt-0.5">B</span>
+                                    <div className="font-mono text-[10px] overflow-hidden overflow-ellipsis whitespace-nowrap text-gray-600">
+                                      {originalLine || <span className="italic text-gray-400">(empty line)</span>}
+                                    </div>
+                                  </div>
+                                  <div className="flex items-start">
+                                    <span className="bg-purple-500 text-white rounded-full h-4 w-4 flex items-center justify-center text-[10px] mr-1.5 flex-shrink-0 mt-0.5">A</span>
+                                    <div className="font-mono text-[10px] overflow-hidden overflow-ellipsis whitespace-nowrap text-purple-700 font-medium">
+                                      {samplePreview.cleaned[index] || <span className="italic text-purple-300">(empty line)</span>}
+                                    </div>
+                                  </div>
+                                  {originalLine !== samplePreview.cleaned[index] && (
+                                    <div className="text-[10px] text-purple-600 pl-6">
+                                      <CheckCircle className="h-2.5 w-2.5 inline-block mr-1" />
+                                      Changes detected
+                                    </div>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                    
+                    <div className="mt-3 bg-purple-50 rounded-md p-2 border border-purple-100">
+                      <div className="flex items-start">
+                        <Info className="h-3.5 w-3.5 text-purple-600 mt-0.5 mr-1.5 flex-shrink-0" />
+                        <span className="text-xs text-purple-700">
+                          Clean your data before transformation to handle whitespace, duplicates, and formatting.
+                        </span>
+                      </div>
                     </div>
                   </div>
-                </div>
+                )}
               </div>
               
               {/* Add this after the data cleaning options section but before the transform button */}
@@ -1609,9 +2159,13 @@ const TransformBidirectional = () => {
                 <Button 
                   onClick={transformData} 
                   className="w-full bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white"
-                  disabled={!inputText.trim() || (delimiter === 'custom' && !customDelimiter)}
+                  disabled={!inputText.trim() || ( (transformDirection === 'columnToRow' || transformDirection === 'rowToColumn') && delimiter === 'custom' && !customDelimiter)}
                 >
-                  {transformDirection === 'columnToRow' ? 'Transform to Row' : 'Transform to Column'}
+                  {transformDirection === 'columnToRow' 
+                    ? 'Transform to Row' 
+                    : transformDirection === 'rowToColumn' 
+                      ? 'Transform to Column' 
+                      : 'Transform Markdown'}
                 </Button>
               </div>
               
@@ -1672,12 +2226,133 @@ const TransformBidirectional = () => {
                   {outputText || "Transformed output will appear here..."}
                 </div>
                 
+                {/* Markdown-specific output options */}
+                {transformDirection === 'markdown' && isTransformed && (
+                  <div className="mt-4">
+                    <div className="flex gap-2 mb-2 flex-wrap">
+                      <Button size="sm" variant="outline" onClick={copyHtmlToClipboard} className="border-purple-200 text-purple-700">
+                        <Code className="h-3.5 w-3.5 mr-1.5" />
+                        Copy as HTML Code
+                      </Button>
+                      <Button size="sm" variant="outline" onClick={copyFormattedHtmlToClipboard} className="border-purple-200 text-purple-700">
+                        <Copy className="h-3.5 w-3.5 mr-1.5" />
+                        Copy with Formatting
+                      </Button>
+                      <Button size="sm" variant="outline" onClick={copyPlainTextToClipboard} className="border-purple-200 text-purple-700">
+                        <FileText className="h-3.5 w-3.5 mr-1.5" />
+                        Copy as Plain Text
+                      </Button>
+                      
+                      <div className="w-[1px] h-5 bg-gray-200 mx-1"></div>
+                      
+                      <Button size="sm" variant="outline" onClick={exportAsHtml} className="border-purple-200 text-purple-700">
+                        <Download className="h-3.5 w-3.5 mr-1.5" />
+                        Export as HTML
+                      </Button>
+                      <Button size="sm" variant="outline" onClick={exportAsText} className="border-purple-200 text-purple-700">
+                        <Download className="h-3.5 w-3.5 mr-1.5" />
+                        Export as Text
+                      </Button>
+                      <Button size="sm" variant="outline" onClick={exportAsWordDoc} className="border-purple-200 text-purple-700">
+                        <FileText className="h-3.5 w-3.5 mr-1.5" />
+                        Export as Word
+                      </Button>
+                    </div>
+                    
+                    {/* Expanded preview overlay */}
+                    {expandedPreview !== 'none' && (
+                      <div className="fixed inset-0 bg-white z-50 p-4 overflow-auto flex flex-col">
+                        <div className="flex justify-between items-center mb-4 sticky top-0 bg-white py-2 border-b">
+                          <h3 className="font-semibold text-lg text-purple-800">
+                            {expandedPreview === 'rich' ? 'Rich Text Preview' : 'Plain Text Preview'}
+                          </h3>
+                          <div className="flex items-center gap-2">
+                            <Button 
+                              size="sm" 
+                              variant="outline" 
+                              onClick={() => setExpandedPreview('none')}
+                              className="border-purple-200 text-purple-700"
+                            >
+                              <Minimize2 className="h-4 w-4 mr-1.5" />
+                              Exit Fullscreen
+                            </Button>
+                            <Button 
+                              size="sm" 
+                              variant="ghost" 
+                              onClick={() => setExpandedPreview('none')}
+                              className="text-gray-500 h-8 w-8 p-0"
+                            >
+                              <X className="h-5 w-5" />
+                            </Button>
+                          </div>
+                        </div>
+                        
+                        <div className="flex-grow overflow-auto p-4 border rounded bg-white">
+                          {expandedPreview === 'rich' ? (
+                            <div dangerouslySetInnerHTML={{__html: markdownHtmlOutput}} />
+                          ) : (
+                            <div className="font-mono whitespace-pre-wrap">{markdownPlainTextOutput}</div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                    
+                    <div className="grid grid-cols-1 gap-6">
+                      <div>
+                        <div className="font-semibold text-xs text-purple-700 mb-1 flex justify-between items-center">
+                          <span>Rich Text Preview (for Word/Email)</span>
+                          <Button 
+                            size="sm" 
+                            variant="ghost" 
+                            onClick={() => setExpandedPreview('rich')}
+                            className="h-7 text-xs text-purple-700"
+                          >
+                            <Maximize2 className="h-3.5 w-3.5 mr-1.5" />
+                            Expand
+                          </Button>
+                        </div>
+                        <div className="p-4 border rounded bg-white border-purple-100 min-h-[400px] relative" style={{overflowX:'auto', maxHeight: '600px', overflowY: 'auto'}}>
+                          <div dangerouslySetInnerHTML={{__html: markdownHtmlOutput}} />
+                        </div>
+                      </div>
+                      <div>
+                        <div className="font-semibold text-xs text-purple-700 mb-1 flex justify-between items-center">
+                          <span>Plain Text Preview</span>
+                          <Button 
+                            size="sm" 
+                            variant="ghost" 
+                            onClick={() => setExpandedPreview('plain')}
+                            className="h-7 text-xs text-purple-700"
+                          >
+                            <Maximize2 className="h-3.5 w-3.5 mr-1.5" />
+                            Expand
+                          </Button>
+                        </div>
+                        <div className="p-4 border rounded bg-white border-purple-100 min-h-[400px] font-mono text-sm whitespace-pre-wrap" style={{overflowX:'auto', maxHeight: '600px', overflowY: 'auto'}}>
+                          {markdownPlainTextOutput}
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div className="mt-2 bg-purple-50 rounded-md p-2 border border-purple-100">
+                      <div className="flex items-start">
+                        <Info className="h-3.5 w-3.5 text-purple-600 mt-0.5 mr-1.5 flex-shrink-0" />
+                        <span className="text-xs text-purple-700">
+                          <strong>Export options:</strong> HTML file for web use, Text file for plain text applications, and Word document for Microsoft Word.
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                
                 {isTransformed && (
                   <div className="mt-2 text-xs text-purple-600 flex items-center">
                     <CheckCircle className="h-3.5 w-3.5 mr-1.5" />
-                    {transformDirection === 'columnToRow'
+                    {(transformDirection as string) === 'columnToRow'
                       ? `Successfully transformed ${totalItems} items into a single row`
-                      : `Successfully transformed row into ${totalItems} lines`}
+                      : (transformDirection as string) === 'rowToColumn'
+                        ? `Successfully transformed row into ${totalItems} lines`
+                        : `Successfully transformed Markdown to ${markdownOutputType === 'richText' ? 'Rich Text' : 'Plain Text'}`}
                   </div>
                 )}
               </div>
@@ -1687,15 +2362,21 @@ const TransformBidirectional = () => {
         <CardFooter className="bg-purple-50/50 border-t border-purple-100/50 flex justify-between">
           <div className="text-xs text-purple-700">
             <Info className="h-3.5 w-3.5 inline-block mr-1 text-purple-600" />
-            {transformDirection === 'columnToRow'
+            {(transformDirection as string) === 'columnToRow'
               ? "This tool converts column data into a single row with your chosen delimiter"
-              : "This tool converts row data into columns by splitting at your chosen delimiter"}
+              : (transformDirection as string) === 'rowToColumn'
+                ? "This tool converts row data into columns by splitting at your chosen delimiter"
+                : markdownOutputType === 'plainText'
+                  ? "This tool converts Markdown to clean plain text, stripping all formatting."
+                  : "This tool converts Markdown to rich text, retaining basic styling for emails/docs."}
           </div>
           {isTransformed && totalItems > 0 && (
             <div className="text-xs font-medium text-purple-700">
-              {transformDirection === 'columnToRow'
+              {(transformDirection as string) === 'columnToRow'
                 ? `${totalItems} items → 1 row`
-                : `1 row → ${totalItems} items`}
+                : (transformDirection as string) === 'rowToColumn'
+                  ? `1 row → ${totalItems} items`
+                  : `` /* Placeholder for Markdown output summary */}
             </div>
           )}
         </CardFooter>
