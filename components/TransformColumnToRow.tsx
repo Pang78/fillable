@@ -2237,30 +2237,30 @@ ${markdownHtmlOutput}
                 {transformDirection === 'markdown' && isTransformed && (
                   <div className="mt-4">
                     <div className="flex gap-2 mb-2 flex-wrap">
-                      <Button size="sm" variant="outline" onClick={copyHtmlToClipboard} className="border-purple-200 text-purple-700">
+                      <Button size="sm" variant="outline" onClick={copyHtmlToClipboard} className="border-purple-200 text-white bg-purple-600 hover:bg-purple-700">
                         <Code className="h-3.5 w-3.5 mr-1.5" />
                         Copy as HTML Code
                       </Button>
-                      <Button size="sm" variant="outline" onClick={copyFormattedHtmlToClipboard} className="border-purple-200 text-purple-700">
+                      <Button size="sm" variant="outline" onClick={copyFormattedHtmlToClipboard} className="border-purple-200 text-white bg-pink-500 hover:bg-pink-600">
                         <Copy className="h-3.5 w-3.5 mr-1.5" />
                         Copy with Formatting
                       </Button>
-                      <Button size="sm" variant="outline" onClick={copyPlainTextToClipboard} className="border-purple-200 text-purple-700">
+                      <Button size="sm" variant="outline" onClick={copyPlainTextToClipboard} className="border-purple-200 text-white bg-purple-500 hover:bg-purple-600">
                         <FileText className="h-3.5 w-3.5 mr-1.5" />
                         Copy as Plain Text
                       </Button>
                       
                       <div className="w-[1px] h-5 bg-gray-200 mx-1"></div>
                       
-                      <Button size="sm" variant="outline" onClick={exportAsHtml} className="border-purple-200 text-purple-700">
+                      <Button size="sm" variant="outline" onClick={exportAsHtml} className="border-purple-200 text-white bg-blue-500 hover:bg-blue-600">
                         <Download className="h-3.5 w-3.5 mr-1.5" />
                         Export as HTML
                       </Button>
-                      <Button size="sm" variant="outline" onClick={exportAsText} className="border-purple-200 text-purple-700">
+                      <Button size="sm" variant="outline" onClick={exportAsText} className="border-purple-200 text-white bg-green-500 hover:bg-green-600">
                         <Download className="h-3.5 w-3.5 mr-1.5" />
                         Export as Text
                       </Button>
-                      <Button size="sm" variant="outline" onClick={exportAsWordDoc} className="border-purple-200 text-purple-700">
+                      <Button size="sm" variant="outline" onClick={exportAsWordDoc} className="border-purple-200 text-white bg-indigo-500 hover:bg-indigo-600">
                         <FileText className="h-3.5 w-3.5 mr-1.5" />
                         Export as Word
                       </Button>
@@ -2274,6 +2274,21 @@ ${markdownHtmlOutput}
                             {expandedPreview === 'rich' ? 'Rich Text Preview' : 'Plain Text Preview'}
                           </h3>
                           <div className="flex items-center gap-2">
+                            <Button 
+                              size="sm" 
+                              variant="outline" 
+                              onClick={() => {
+                                if (expandedPreview === 'rich') {
+                                  copyFormattedHtmlToClipboard();
+                                } else {
+                                  copyPlainTextToClipboard();
+                                }
+                              }}
+                              className="border-purple-200 text-white bg-purple-600 hover:bg-purple-700"
+                            >
+                              <Copy className="h-4 w-4 mr-1.5" />
+                              Copy Content
+                            </Button>
                             <Button 
                               size="sm" 
                               variant="outline" 
@@ -2304,38 +2319,61 @@ ${markdownHtmlOutput}
                       </div>
                     )}
                     
-                    <div className="grid grid-cols-1 gap-6">
+                    {/* Restructure the grid to have previews stacked vertically instead of side by side */}
+                    <div className="flex flex-col gap-6">
                       <div>
                         <div className="font-semibold text-xs text-purple-700 mb-1 flex justify-between items-center">
                           <span>Rich Text Preview (for Word/Email)</span>
-                          <Button 
-                            size="sm" 
-                            variant="ghost" 
-                            onClick={() => setExpandedPreview('rich')}
-                            className="h-7 text-xs text-purple-700"
-                          >
-                            <Maximize2 className="h-3.5 w-3.5 mr-1.5" />
-                            Expand
-                          </Button>
+                          <div className="flex items-center gap-2">
+                            <Button 
+                              size="sm" 
+                              variant="ghost" 
+                              onClick={copyFormattedHtmlToClipboard}
+                              className="h-7 text-xs text-purple-700"
+                            >
+                              <Copy className="h-3.5 w-3.5 mr-1.5" />
+                              Copy
+                            </Button>
+                            <Button 
+                              size="sm" 
+                              variant="ghost" 
+                              onClick={() => setExpandedPreview('rich')}
+                              className="h-7 text-xs text-purple-700"
+                            >
+                              <Maximize2 className="h-3.5 w-3.5 mr-1.5" />
+                              Expand
+                            </Button>
+                          </div>
                         </div>
-                        <div className="p-4 border rounded bg-white border-purple-100 min-h-[400px] relative" style={{overflowX:'auto', maxHeight: '600px', overflowY: 'auto'}}>
+                        <div className="p-4 border rounded bg-white border-purple-100 min-h-[300px] relative overflow-auto" style={{maxHeight: '400px'}}>
                           <div dangerouslySetInnerHTML={{__html: markdownHtmlOutput}} />
                         </div>
                       </div>
                       <div>
                         <div className="font-semibold text-xs text-purple-700 mb-1 flex justify-between items-center">
                           <span>Plain Text Preview</span>
-                          <Button 
-                            size="sm" 
-                            variant="ghost" 
-                            onClick={() => setExpandedPreview('plain')}
-                            className="h-7 text-xs text-purple-700"
-                          >
-                            <Maximize2 className="h-3.5 w-3.5 mr-1.5" />
-                            Expand
-                          </Button>
+                          <div className="flex items-center gap-2">
+                            <Button 
+                              size="sm" 
+                              variant="ghost" 
+                              onClick={copyPlainTextToClipboard}
+                              className="h-7 text-xs text-purple-700"
+                            >
+                              <Copy className="h-3.5 w-3.5 mr-1.5" />
+                              Copy
+                            </Button>
+                            <Button 
+                              size="sm" 
+                              variant="ghost" 
+                              onClick={() => setExpandedPreview('plain')}
+                              className="h-7 text-xs text-purple-700"
+                            >
+                              <Maximize2 className="h-3.5 w-3.5 mr-1.5" />
+                              Expand
+                            </Button>
+                          </div>
                         </div>
-                        <div className="p-4 border rounded bg-white border-purple-100 min-h-[400px] font-mono text-sm whitespace-pre-wrap" style={{overflowX:'auto', maxHeight: '600px', overflowY: 'auto'}}>
+                        <div className="p-4 border rounded bg-white border-purple-100 min-h-[300px] font-mono text-sm whitespace-pre-wrap overflow-auto" style={{maxHeight: '400px'}}>
                           {markdownPlainTextOutput}
                         </div>
                       </div>
