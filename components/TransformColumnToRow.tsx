@@ -1650,72 +1650,75 @@ ${markdownHtmlOutput}
                 <div>
                   <h3 className="text-base font-medium mb-3">Configure Transformation</h3>
                   
-                  <div className="space-y-4">
-                    <div className="grid grid-cols-5 gap-3 items-end">
-                      <div className="col-span-2">
-                        <Label htmlFor="delimiter" className="text-sm mb-1 block">Delimiter</Label>
-                        <Select 
-                          defaultValue="," 
-                          value={delimiter}
-                          onValueChange={(value) => setDelimiter(value)}
-                        >
-                          <SelectTrigger id="delimiter" className="border-purple-200">
-                            <SelectValue placeholder="Select delimiter" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value=",">Comma (,)</SelectItem>
-                            <SelectItem value=";">Semicolon (;)</SelectItem>
-                            <SelectItem value="|">Pipe (|)</SelectItem>
-                            <SelectItem value=" ">Space ( )</SelectItem>
-                            <SelectItem value="\t">Tab (\t)</SelectItem>
-                            <SelectItem value="-">Hyphen (-)</SelectItem>
-                            <SelectItem value="_">Underscore (_)</SelectItem>
-                            <SelectItem value="custom">Custom...</SelectItem>
-                          </SelectContent>
-                        </Select>
+                  {/* Conditionally render Delimiter options only if not in Markdown mode */}
+                  {transformDirection !== 'markdown' && (
+                    <div className="space-y-4">
+                      <div className="grid grid-cols-5 gap-3 items-end">
+                        <div className="col-span-2">
+                          <Label htmlFor="delimiter" className="text-sm mb-1 block">Delimiter</Label>
+                          <Select 
+                            defaultValue="," 
+                            value={delimiter}
+                            onValueChange={(value) => setDelimiter(value)}
+                          >
+                            <SelectTrigger id="delimiter" className="border-purple-200">
+                              <SelectValue placeholder="Select delimiter" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value=",">Comma (,)</SelectItem>
+                              <SelectItem value=";">Semicolon (;)</SelectItem>
+                              <SelectItem value="|">Pipe (|)</SelectItem>
+                              <SelectItem value=" ">Space ( )</SelectItem>
+                              <SelectItem value="\t">Tab (\t)</SelectItem>
+                              <SelectItem value="-">Hyphen (-)</SelectItem>
+                              <SelectItem value="_">Underscore (_)</SelectItem>
+                              <SelectItem value="custom">Custom...</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        
+                        {delimiter === 'custom' && (
+                          <div className="col-span-3">
+                            <Label htmlFor="customDelimiter" className="text-sm mb-1 block">Custom Delimiter</Label>
+                            <Input
+                              id="customDelimiter"
+                              placeholder="Enter custom delimiter"
+                              value={customDelimiter}
+                              onChange={(e) => setCustomDelimiter(e.target.value)}
+                              className="border-purple-200"
+                            />
+                          </div>
+                        )}
+                        
+                        {delimiter !== 'custom' && (
+                          <div className="col-span-3">
+                            <Button 
+                              onClick={transformData} 
+                              className="w-full bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white"
+                              disabled={!inputText.trim()}
+                            >
+                              Transform
+                            </Button>
+                          </div>
+                        )}
+                        
+                        {delimiter === 'custom' && (
+                          <div className="col-span-5 mt-2">
+                            <Button 
+                              onClick={transformData} 
+                              className="w-full bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white"
+                              disabled={!inputText.trim() || !customDelimiter}
+                            >
+                              Transform
+                            </Button>
+                          </div>
+                        )}
                       </div>
-                      
-                      {delimiter === 'custom' && (
-                        <div className="col-span-3">
-                          <Label htmlFor="customDelimiter" className="text-sm mb-1 block">Custom Delimiter</Label>
-                          <Input
-                            id="customDelimiter"
-                            placeholder="Enter custom delimiter"
-                            value={customDelimiter}
-                            onChange={(e) => setCustomDelimiter(e.target.value)}
-                            className="border-purple-200"
-                          />
-                        </div>
-                      )}
-                      
-                      {delimiter !== 'custom' && (
-                        <div className="col-span-3">
-                          <Button 
-                            onClick={transformData} 
-                            className="w-full bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white"
-                            disabled={!inputText.trim()}
-                          >
-                            Transform
-                          </Button>
-                        </div>
-                      )}
-                      
-                      {delimiter === 'custom' && (
-                        <div className="col-span-5 mt-2">
-                          <Button 
-                            onClick={transformData} 
-                            className="w-full bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white"
-                            disabled={!inputText.trim() || !customDelimiter}
-                          >
-                            Transform
-                          </Button>
-                        </div>
-                      )}
                     </div>
-                  </div>
+                  )}
                 </div>
                 
-                {/* Add Data Cleaning Options */}
+                {/* Add Data Cleaning Options - Already conditional based on transformDirection */}
                 {transformDirection !== 'markdown' && (
                   <div>
                     <h3 className="text-base font-medium mb-2 flex items-center">
@@ -1987,174 +1990,178 @@ ${markdownHtmlOutput}
                 )}
               </div>
               
-              {/* Add this after the data cleaning options section but before the transform button */}
-              <div className="mt-4 border-t border-purple-100 pt-3">
-                <div className="flex justify-between items-center mb-2">
-                  <h3 className="text-base font-medium flex items-center">
-                    <svg className="h-4 w-4 mr-1.5 text-purple-600" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
-                    </svg>
-                    Live Preview
-                  </h3>
-                  <div className="flex items-center">
-                    <label className="relative inline-flex items-center cursor-pointer">
-                      <input 
-                        type="checkbox" 
-                        className="sr-only peer"
-                        checked={liveModeEnabled}
-                        onChange={() => setLiveModeEnabled(!liveModeEnabled)}
-                      />
-                      <div className="w-9 h-5 bg-gray-200 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-purple-600"></div>
-                      <span className="ml-2 text-xs font-medium text-gray-500">
-                        {liveModeEnabled ? 'Enabled' : 'Disabled'}
-                      </span>
-                    </label>
-                  </div>
-                </div>
-                
-                {liveModeEnabled && (
-                  <div className="relative">
-                    <div className="p-2 border rounded-md bg-gray-50 border-purple-100 overflow-hidden h-10 flex items-center">
-                      {livePreview ? (
-                        <div className="font-mono text-xs text-purple-700 truncate">
-                          {livePreview}
-                        </div>
-                      ) : (
-                        <div className="text-xs text-gray-400 italic">
-                          Live preview will appear here as you type...
-                        </div>
-                      )}
-                    </div>
-                    <div className="absolute top-0 right-0 bottom-0 flex items-center pr-2">
-                      <div className="text-[10px] px-1.5 py-0.5 rounded bg-purple-100 text-purple-700">
-                        Preview
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-              
-              {/* Add a section for save/load configuration */}
-              <div className="mt-4 border-t border-purple-100 pt-3">
-                <div className="flex justify-between items-center mb-2">
-                  <h3 className="text-base font-medium flex items-center">
-                    <svg className="h-4 w-4 mr-1.5 text-purple-600" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
-                      <polyline points="17 21 17 13 7 13 7 21"></polyline>
-                      <polyline points="7 3 7 8 15 8"></polyline>
-                    </svg>
-                    Configurations
-                  </h3>
-                  <div className="flex gap-2">
-                    <Button 
-                      variant="outline" 
-                      size="sm"
-                      onClick={() => setShowSaveConfigModal(true)}
-                      className="h-8 text-xs border-purple-200 hover:bg-purple-50 text-purple-700"
-                    >
-                      Save Config
-                    </Button>
-                    <Button 
-                      variant="outline" 
-                      size="sm"
-                      onClick={() => setShowLoadConfigModal(true)}
-                      className="h-8 text-xs border-purple-200 hover:bg-purple-50 text-purple-700"
-                      disabled={savedConfigs.length === 0}
-                    >
-                      Load Config
-                    </Button>
-                  </div>
-                </div>
-                
-                {/* Save Configuration Modal */}
-                {showSaveConfigModal && (
-                  <div className="fixed inset-0 bg-black/30 z-50 flex items-center justify-center">
-                    <div className="bg-white rounded-lg shadow-lg p-4 max-w-md w-full mx-4">
-                      <h4 className="text-lg font-medium mb-3">Save Configuration</h4>
-                      <div className="mb-4">
-                        <Label htmlFor="configName" className="block mb-2 text-sm">Configuration Name</Label>
-                        <Input
-                          id="configName"
-                          placeholder="e.g., My CSV Cleaning Setup"
-                          value={configName}
-                          onChange={(e) => setConfigName(e.target.value)}
-                          className="border-purple-200"
+              {/* Conditionally render Live Preview only if not in Markdown mode */}
+              {transformDirection !== 'markdown' && (
+                <div className="mt-4 border-t border-purple-100 pt-3">
+                  <div className="flex justify-between items-center mb-2">
+                    <h3 className="text-base font-medium flex items-center">
+                      <svg className="h-4 w-4 mr-1.5 text-purple-600" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                      </svg>
+                      Live Preview
+                    </h3>
+                    <div className="flex items-center">
+                      <label className="relative inline-flex items-center cursor-pointer">
+                        <input 
+                          type="checkbox" 
+                          className="sr-only peer"
+                          checked={liveModeEnabled}
+                          onChange={() => setLiveModeEnabled(!liveModeEnabled)}
                         />
-                      </div>
-                      <div className="mb-4 text-xs text-gray-500">
-                        This will save your current delimiter and all cleaning options.
-                      </div>
-                      <div className="flex justify-end gap-2">
-                        <Button 
-                          variant="outline" 
-                          onClick={() => setShowSaveConfigModal(false)}
-                        >
-                          Cancel
-                        </Button>
-                        <Button 
-                          onClick={saveCurrentConfig}
-                          className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white"
-                        >
-                          Save
-                        </Button>
-                      </div>
+                        <div className="w-9 h-5 bg-gray-200 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-purple-600"></div>
+                        <span className="ml-2 text-xs font-medium text-gray-500">
+                          {liveModeEnabled ? 'Enabled' : 'Disabled'}
+                        </span>
+                      </label>
                     </div>
                   </div>
-                )}
-                
-                {/* Load Configuration Modal */}
-                {showLoadConfigModal && (
-                  <div className="fixed inset-0 bg-black/30 z-50 flex items-center justify-center">
-                    <div className="bg-white rounded-lg shadow-lg p-4 max-w-md w-full mx-4">
-                      <h4 className="text-lg font-medium mb-3">Load Configuration</h4>
-                      {savedConfigs.length > 0 ? (
-                        <div className="max-h-60 overflow-auto mb-4">
-                          <div className="space-y-2">
-                            {savedConfigs.map(config => (
-                              <div 
-                                key={config.id} 
-                                className="p-3 border border-purple-100 rounded-md hover:bg-purple-50 transition-colors cursor-pointer flex justify-between items-center"
-                                onClick={() => loadConfig(config)}
-                              >
-                                <div>
-                                  <div className="font-medium">{config.name}</div>
-                                  <div className="text-xs text-gray-500">
-                                    {new Date(config.timestamp).toLocaleString()} • 
-                                    Delimiter: {config.delimiter === 'custom' ? config.customDelimiter : config.delimiter}
-                                  </div>
-                                </div>
-                                <button 
-                                  className="text-red-500 hover:text-red-700"
-                                  onClick={(e) => {
-                                    e.stopPropagation(); // Prevent loadConfig from being called
-                                    deleteConfig(config.id, config.name);
-                                  }}
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                </button>
-                              </div>
-                            ))}
+                  
+                  {liveModeEnabled && (
+                    <div className="relative">
+                      <div className="p-2 border rounded-md bg-gray-50 border-purple-100 overflow-hidden h-10 flex items-center">
+                        {livePreview ? (
+                          <div className="font-mono text-xs text-purple-700 truncate">
+                            {livePreview}
                           </div>
+                        ) : (
+                          <div className="text-xs text-gray-400 italic">
+                            Live preview will appear here as you type...
+                          </div>
+                        )}
+                      </div>
+                      <div className="absolute top-0 right-0 bottom-0 flex items-center pr-2">
+                        <div className="text-[10px] px-1.5 py-0.5 rounded bg-purple-100 text-purple-700">
+                          Preview
                         </div>
-                      ) : (
-                        <div className="py-6 text-center text-gray-500">
-                          No saved configurations found.
-                        </div>
-                      )}
-                      <div className="flex justify-end">
-                        <Button 
-                          variant="outline" 
-                          onClick={() => setShowLoadConfigModal(false)}
-                        >
-                          Close
-                        </Button>
                       </div>
                     </div>
-                  </div>
-                )}
-              </div>
+                  )}
+                </div>
+              )}
               
-              {/* Transform Button - render conditionally based on existing code */}
+              {/* Conditionally render Save/Load Configurations only if not in Markdown mode */}
+              {transformDirection !== 'markdown' && (
+                <div className="mt-4 border-t border-purple-100 pt-3">
+                  <div className="flex justify-between items-center mb-2">
+                    <h3 className="text-base font-medium flex items-center">
+                      <svg className="h-4 w-4 mr-1.5 text-purple-600" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+                        <polyline points="17 21 17 13 7 13 7 21"></polyline>
+                        <polyline points="7 3 7 8 15 8"></polyline>
+                      </svg>
+                      Configurations
+                    </h3>
+                    <div className="flex gap-2">
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => setShowSaveConfigModal(true)}
+                        className="h-8 text-xs border-purple-200 hover:bg-purple-50 text-purple-700"
+                      >
+                        Save Config
+                      </Button>
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => setShowLoadConfigModal(true)}
+                        className="h-8 text-xs border-purple-200 hover:bg-purple-50 text-purple-700"
+                        disabled={savedConfigs.length === 0}
+                      >
+                        Load Config
+                      </Button>
+                    </div>
+                  </div>
+                  
+                  {/* Save Configuration Modal */}
+                  {showSaveConfigModal && (
+                    <div className="fixed inset-0 bg-black/30 z-50 flex items-center justify-center">
+                      <div className="bg-white rounded-lg shadow-lg p-4 max-w-md w-full mx-4">
+                        <h4 className="text-lg font-medium mb-3">Save Configuration</h4>
+                        <div className="mb-4">
+                          <Label htmlFor="configName" className="block mb-2 text-sm">Configuration Name</Label>
+                          <Input
+                            id="configName"
+                            placeholder="e.g., My CSV Cleaning Setup"
+                            value={configName}
+                            onChange={(e) => setConfigName(e.target.value)}
+                            className="border-purple-200"
+                          />
+                        </div>
+                        <div className="mb-4 text-xs text-gray-500">
+                          This will save your current delimiter and all cleaning options.
+                        </div>
+                        <div className="flex justify-end gap-2">
+                          <Button 
+                            variant="outline" 
+                            onClick={() => setShowSaveConfigModal(false)}
+                          >
+                            Cancel
+                          </Button>
+                          <Button 
+                            onClick={saveCurrentConfig}
+                            className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white"
+                          >
+                            Save
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* Load Configuration Modal */}
+                  {showLoadConfigModal && (
+                    <div className="fixed inset-0 bg-black/30 z-50 flex items-center justify-center">
+                      <div className="bg-white rounded-lg shadow-lg p-4 max-w-md w-full mx-4">
+                        <h4 className="text-lg font-medium mb-3">Load Configuration</h4>
+                        {savedConfigs.length > 0 ? (
+                          <div className="max-h-60 overflow-auto mb-4">
+                            <div className="space-y-2">
+                              {savedConfigs.map(config => (
+                                <div 
+                                  key={config.id} 
+                                  className="p-3 border border-purple-100 rounded-md hover:bg-purple-50 transition-colors cursor-pointer flex justify-between items-center"
+                                  onClick={() => loadConfig(config)}
+                                >
+                                  <div>
+                                    <div className="font-medium">{config.name}</div>
+                                    <div className="text-xs text-gray-500">
+                                      {new Date(config.timestamp).toLocaleString()} • 
+                                      Delimiter: {config.delimiter === 'custom' ? config.customDelimiter : config.delimiter}
+                                    </div>
+                                  </div>
+                                  <button 
+                                    className="text-red-500 hover:text-red-700"
+                                    onClick={(e) => {
+                                      e.stopPropagation(); // Prevent loadConfig from being called
+                                      deleteConfig(config.id, config.name);
+                                    }}
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </button>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="py-6 text-center text-gray-500">
+                            No saved configurations found.
+                          </div>
+                        )}
+                        <div className="flex justify-end">
+                          <Button 
+                            variant="outline" 
+                            onClick={() => setShowLoadConfigModal(false)}
+                          >
+                            Close
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+              
+              {/* Transform Button - render for all modes */}
               <div className="pt-2">
                 <Button 
                   onClick={transformData} 
