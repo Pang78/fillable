@@ -1374,6 +1374,66 @@ ${markdownHtmlOutput}
     toast({ description: 'Exported as Word document (.doc)' });
   };
   
+  // Add Excel export function
+  const exportAsExcel = () => {
+    if (!markdownHtmlOutput) {
+      return toast({ description: 'Nothing to export', variant: 'destructive' });
+    }
+    
+    // Create Excel-compatible HTML
+    const excelHtml = `<html xmlns:o="urn:schemas-microsoft-com:office:office"
+      xmlns:x="urn:schemas-microsoft-com:office:excel"
+      xmlns="http://www.w3.org/TR/REC-html40">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+  <title>Exported Markdown</title>
+  <!--[if gte mso 9]>
+  <xml>
+    <x:ExcelWorkbook>
+      <x:ExcelWorksheets>
+        <x:ExcelWorksheet>
+          <x:Name>Markdown Export</x:Name>
+          <x:WorksheetOptions>
+            <x:DisplayGridlines/>
+          </x:WorksheetOptions>
+        </x:ExcelWorksheet>
+      </x:ExcelWorksheets>
+    </x:ExcelWorkbook>
+  </xml>
+  <![endif]-->
+  <style>
+    /* Excel-specific styles */
+    body { font-family: 'Calibri', sans-serif; font-size: 11pt; }
+    h1 { font-size: 16pt; font-weight: bold; color: #333; }
+    h2 { font-size: 14pt; font-weight: bold; color: #333; }
+    h3 { font-size: 12pt; font-weight: bold; color: #333; }
+    table { border-collapse: collapse; width: 100%; }
+    th, td { border: 1pt solid #ccc; padding: 4pt; }
+    th { background-color: #f1f1f1; font-weight: bold; }
+    code { font-family: 'Courier New', monospace; background-color: #f4f4f4; }
+    pre { background-color: #f4f4f4; padding: 6pt; border: 1pt solid #ccc; }
+    .xl-cell { mso-number-format: "\@"; } /* Format as text */
+  </style>
+</head>
+<body>
+${markdownHtmlOutput}
+</body>
+</html>`;
+    
+    const blob = new Blob([excelHtml], { type: 'application/vnd.ms-excel' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `markdown-export-${new Date().toISOString().slice(0, 10)}.xls`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    
+    toast({ description: 'Exported as Excel spreadsheet (.xls)' });
+  };
+  
   // Add function to handle escape key to exit expanded preview
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -2264,6 +2324,10 @@ ${markdownHtmlOutput}
                         <FileText className="h-3.5 w-3.5 mr-1.5" />
                         Export as Word
                       </Button>
+                      <Button size="sm" variant="outline" onClick={exportAsExcel} className="border-purple-200 text-white bg-yellow-500 hover:bg-yellow-600">
+                        <FileText className="h-3.5 w-3.5 mr-1.5" />
+                        Export as Excel
+                      </Button>
                     </div>
                     
                     {/* Expanded preview overlay */}
@@ -2383,7 +2447,7 @@ ${markdownHtmlOutput}
                       <div className="flex items-start">
                         <Info className="h-3.5 w-3.5 text-purple-600 mt-0.5 mr-1.5 flex-shrink-0" />
                         <span className="text-xs text-purple-700">
-                          <strong>Export options:</strong> HTML file for web use, Text file for plain text applications, and Word document for Microsoft Word.
+                          <strong>Export options:</strong> HTML file for web use, Text file for plain text applications, Word document for Microsoft Word, and Excel spreadsheet for spreadsheet applications.
                         </span>
                       </div>
                     </div>
