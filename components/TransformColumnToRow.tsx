@@ -533,13 +533,13 @@ const TransformBidirectional = () => {
         setTotalItems(1);
         
         toast({
-          description: `Successfully transformed Markdown to ${markdownOutputType === 'richText' ? 'Rich Text' : 'Plain Text'}`,
+          description: `Successfully transformed LLM Output to ${markdownOutputType === 'richText' ? 'Rich Text' : 'Plain Text'}`,
         });
       } catch (error) {
-        console.error("Error transforming markdown:", error);
+        console.error("Error transforming LLM Output:", error);
         toast({
           title: "Error",
-          description: "Failed to transform Markdown. Please check your input.",
+          description: "Failed to transform LLM Output. Please check your input.",
           variant: "destructive",
         });
       }
@@ -1274,7 +1274,7 @@ const TransformBidirectional = () => {
 <html>
 <head>
   <meta charset="utf-8">
-  <title>Exported Markdown</title>
+  <title>Exported LLM Output</title>
   <style>
     body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif; line-height: 1.5; padding: 20px; max-width: 800px; margin: 0 auto; }
     code { background: #f4f4f4; padding: 2px 4px; border-radius: 3px; font-family: monospace; }
@@ -1296,7 +1296,7 @@ ${markdownHtmlOutput}
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `markdown-export-${new Date().toISOString().slice(0, 10)}.html`;
+    link.download = `llm-output-export-${new Date().toISOString().slice(0, 10)}.html`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -1314,7 +1314,7 @@ ${markdownHtmlOutput}
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `markdown-export-${new Date().toISOString().slice(0, 10)}.txt`;
+    link.download = `llm-output-export-${new Date().toISOString().slice(0, 10)}.txt`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -1335,7 +1335,7 @@ ${markdownHtmlOutput}
 <head>
   <meta charset="utf-8">
   <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
-  <title>Exported Markdown</title>
+  <title>Exported LLM Output</title>
   <!--[if gte mso 9]>
   <xml>
     <w:WordDocument>
@@ -1365,7 +1365,7 @@ ${markdownHtmlOutput}
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `markdown-export-${new Date().toISOString().slice(0, 10)}.doc`;
+    link.download = `llm-output-export-${new Date().toISOString().slice(0, 10)}.doc`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -1387,13 +1387,13 @@ ${markdownHtmlOutput}
 <head>
   <meta charset="utf-8">
   <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
-  <title>Exported Markdown</title>
+  <title>Exported LLM Output</title>
   <!--[if gte mso 9]>
   <xml>
     <x:ExcelWorkbook>
       <x:ExcelWorksheets>
         <x:ExcelWorksheet>
-          <x:Name>Markdown Export</x:Name>
+          <x:Name>LLM Output Export</x:Name>
           <x:WorksheetOptions>
             <x:DisplayGridlines/>
           </x:WorksheetOptions>
@@ -1425,7 +1425,7 @@ ${markdownHtmlOutput}
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `markdown-export-${new Date().toISOString().slice(0, 10)}.xls`;
+    link.download = `llm-output-export-${new Date().toISOString().slice(0, 10)}.xls`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -1512,7 +1512,7 @@ ${markdownHtmlOutput}
                   <path d="M2 3h6a4 4 0 0 1 4 4v10a2 2 0 0 0-2-2H3a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z"/>
                   <path d="M16 3h1a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2h-1"/>
                 </svg>
-                Markdown
+                LLM Output
               </span>
             </button>
           </div>
@@ -1560,7 +1560,7 @@ ${markdownHtmlOutput}
               <div className="w-full text-xs text-purple-600">
                 <Info className="h-3 w-3 inline-block mr-1" />
                 {markdownOutputType === 'plainText' 
-                  ? "Plain Text converts Markdown to clean text for simple emails or plain text fields." 
+                  ? "Plain Text converts LLM Output to clean text for simple emails or plain text fields." 
                   : htmlStyleLevel === 'minimal' 
                     ? "Minimal styling: Just the HTML structure without additional styles (most compatible)." 
                     : htmlStyleLevel === 'basic' 
@@ -1633,7 +1633,7 @@ ${markdownHtmlOutput}
                         ? "Paste your column data here (one item per line)..."
                         : transformDirection === 'rowToColumn'
                           ? "Paste your delimited data here (items separated by delimiter)..."
-                          : "Paste your Markdown text here..."
+                          : "Paste your LLM Output text here..."
                     }
                     className="min-h-[200px] font-mono text-sm border-purple-200"
                     value={inputText}
@@ -1699,7 +1699,7 @@ ${markdownHtmlOutput}
                     ? "Enter data with one item per line. The transformer will combine all lines into a single row."
                     : transformDirection === 'rowToColumn'
                       ? "Enter data with items separated by delimiter. The transformer will split items into separate lines."
-                      : "Paste your Markdown content. It will be transformed into clean plain or rich text."}
+                      : "Paste your LLM Output content. It will be transformed into clean plain or rich text."}
                 </AlertDescription>
               </Alert>
             </div>
@@ -1710,7 +1710,7 @@ ${markdownHtmlOutput}
                 <div>
                   <h3 className="text-base font-medium mb-3">Configure Transformation</h3>
                   
-                  {/* Conditionally render Delimiter options only if not in Markdown mode */}
+                  {/* Conditionally render Delimiter options only if not in LLM Output mode */}
                   {transformDirection !== 'markdown' && (
                     <div className="space-y-4">
                       <div className="grid grid-cols-5 gap-3 items-end">
@@ -2050,7 +2050,7 @@ ${markdownHtmlOutput}
                 )}
               </div>
               
-              {/* Conditionally render Live Preview only if not in Markdown mode */}
+              {/* Conditionally render Live Preview only if not in LLM Output mode */}
               {transformDirection !== 'markdown' && (
                 <div className="mt-4 border-t border-purple-100 pt-3">
                   <div className="flex justify-between items-center mb-2">
@@ -2099,7 +2099,7 @@ ${markdownHtmlOutput}
                 </div>
               )}
               
-              {/* Conditionally render Save/Load Configurations only if not in Markdown mode */}
+              {/* Conditionally render Save/Load Configurations only if not in LLM Output mode */}
               {transformDirection !== 'markdown' && (
                 <div className="mt-4 border-t border-purple-100 pt-3">
                   <div className="flex justify-between items-center mb-2">
@@ -2232,7 +2232,7 @@ ${markdownHtmlOutput}
                     ? 'Transform to Row' 
                     : transformDirection === 'rowToColumn' 
                       ? 'Transform to Column' 
-                      : 'Transform Markdown'}
+                      : 'Transform LLM Output'}
                 </Button>
               </div>
               
@@ -2293,7 +2293,7 @@ ${markdownHtmlOutput}
                   {outputText || "Transformed output will appear here..."}
                 </div>
                 
-                {/* Markdown-specific output options */}
+                {/* LLM Output-specific output options */}
                 {transformDirection === 'markdown' && isTransformed && (
                   <div className="mt-4">
                     <div className="flex gap-2 mb-2 flex-wrap">
@@ -2461,7 +2461,7 @@ ${markdownHtmlOutput}
                       ? `Successfully transformed ${totalItems} items into a single row`
                       : (transformDirection as string) === 'rowToColumn'
                         ? `Successfully transformed row into ${totalItems} lines`
-                        : `Successfully transformed Markdown to ${markdownOutputType === 'richText' ? 'Rich Text' : 'Plain Text'}`}
+                        : `Successfully transformed LLM Output to ${markdownOutputType === 'richText' ? 'Rich Text' : 'Plain Text'}`}
                   </div>
                 )}
               </div>
@@ -2476,8 +2476,8 @@ ${markdownHtmlOutput}
               : (transformDirection as string) === 'rowToColumn'
                 ? "This tool converts row data into columns by splitting at your chosen delimiter"
                 : markdownOutputType === 'plainText'
-                  ? "This tool converts Markdown to clean plain text, stripping all formatting."
-                  : "This tool converts Markdown to rich text, retaining basic styling for emails/docs."}
+                  ? "This tool converts LLM Output to clean plain text, stripping all formatting."
+                  : "This tool converts LLM Output to rich text, retaining basic styling for emails/docs."}
           </div>
           {isTransformed && totalItems > 0 && (
             <div className="text-xs font-medium text-purple-700">
