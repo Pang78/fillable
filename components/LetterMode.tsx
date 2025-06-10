@@ -1741,41 +1741,28 @@ const LetterMode: React.FC = () => {
   const deleteSelectedLetters = useCallback(() => {
     if (selectedLetters.length === 0) return;
     
-    // Sort indices in descending order to avoid index shifting issues when deleting
-    const sortedIndices = [...selectedLetters].sort((a, b) => b - a);
-    
-    // Create a copy of letter params
-    let updatedParams = [...letterDetails.lettersParams];
-    let updatedRecipients = [...(letterDetails.recipients || [])];
-    
-    // Remove the selected letters from the copied arrays
-    sortedIndices.forEach(index => {
-      updatedParams = [...updatedParams.slice(0, index), ...updatedParams.slice(index + 1)];
-      
-      // Also remove corresponding recipients if any
-      if (updatedRecipients.length > index) {
-        updatedRecipients = [...updatedRecipients.slice(0, index), ...updatedRecipients.slice(index + 1)];
-      }
-    });
-    
-    // Update state with the modified arrays
+    // Use a Set for O(1) lookups
+    const toDelete = new Set(selectedLetters);
+    const updatedParams = letterDetails.lettersParams.filter((_, idx) => !toDelete.has(idx));
+    const updatedRecipients = (letterDetails.recipients || []).filter((_, idx) => !toDelete.has(idx));
+
     setLetterDetails(prev => ({
       ...prev,
       lettersParams: updatedParams,
       recipients: updatedRecipients
     }));
-    
-    // Clear selection
+
     setSelectedLetters([]);
-    
-    // If we deleted the current letter, adjust the current index
-    if (currentLetterIndex >= updatedParams.length && updatedParams.length > 0) {
-      setCurrentLetterIndex(updatedParams.length - 1);
+    if (updatedParams.length > 0) { // Check if there are still letters left
+      if (currentLetterIndex >= updatedParams.length) {
+        setCurrentLetterIndex(updatedParams.length - 1);
+      }
+    } else {
+      setCurrentLetterIndex(0); // If all letters deleted, reset to 0
     }
-    
-    // Show success toast
+
     toast({
-      description: `Deleted ${sortedIndices.length} letter${sortedIndices.length > 1 ? 's' : ''}`,
+      description: `Deleted ${selectedLetters.length} letter${selectedLetters.length > 1 ? 's' : ''}`,
       duration: 3000,
     });
   }, [selectedLetters, letterDetails, currentLetterIndex, setLetterDetails]);
@@ -1824,6 +1811,163 @@ const LetterMode: React.FC = () => {
       handleGoToLetter();
     }
   }, [handleGoToLetter]); 
+
+
+
+  // Correct definitions outside useMemo
+  const handleClearAll = useCallback(() => {
+    setLetterDetails((prev) => ({
+      ...prev,
+      templateId: null, // Clear Template ID
+      lettersParams: [{}], // Reset to one empty set of parameters
+      notificationMethod: undefined, // Reset notification method to undefined, but it will still be required
+      recipients: [], // Clear recipients
+    }));
+    setTemplateFields([]); // Clear template fields
+    setApiError(null); // Clear any API errors
+    
+    toast({
+      description: "Form cleared (API key retained).",
+    });
+  }, []);
+
+  // Update fetchTemplates function to match API documentation
+  const fetchTemplates = async () => {
+    if (!letterDetails.apiKey) {
+      toast({
+        title: "API Key Required",
+        description: "Please enter your API key to fetch templates.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsTemplateListLoading(true);
+    setTemplateSearchTerm(''); // Reset search term when fetching new templates
+    
+    try {
+      // Using proxy endpoint to avoid exposing API key in frontend
+      const response = await fetch(`${API_PROXY_URL}/templates`, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          "X-API-Key": letterDetails.apiKey,
+        },
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || `Failed to fetch templates: ${response.status}`);
+      }
+
+      const data = await response.json();
+      
+      // Handle the response format according to the API documentation
+      if (data && Array.isArray(data.templates)) {
+        // Map the templates to the format expected by our component
+        const formattedTemplates = data.templates.map((template: any) => ({
+          id: template.templateId,
+          name: template.name,
+          fields: template.fields
+        }));
+        
+        setTemplates(formattedTemplates);
+        setFilteredTemplates(formattedTemplates); // Initialize filtered templates with all templates
+        
+        if (formattedTemplates.length === 0) {
+          toast({
+            description: "No templates found for this API key.",
+          });
+        } else {
+          toast({
+            description: `Found ${formattedTemplates.length} templates.`,
+          });
+        }
+      } else {
+        // Handle case where response doesn't match expected format
+        console.error("Unexpected API response format:", data);
+        setTemplates([]);
+        setFilteredTemplates([]);
+        toast({
+          title: "Error",
+          description: "Received unexpected data format from the API.",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error("Error fetching templates:", error);
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to fetch templates.",
+        variant: "destructive",
+      });
+      setTemplates([]);
+      setFilteredTemplates([]);
+    } finally {
+      setIsTemplateListLoading(false);
+    }
+  };
+
+  // Add function to handle template search
+  const handleTemplateSearch = useCallback((searchTerm: string) => {
+    setTemplateSearchTerm(searchTerm);
+    
+    if (!searchTerm.trim()) {
+      // If search term is empty, show all templates
+      setFilteredTemplates(templates);
+      return;
+    }
+    
+    // Filter templates based on search term
+    const normalizedSearchTerm = searchTerm.toLowerCase().trim();
+    const filtered = templates.filter(template => 
+      template.name.toLowerCase().includes(normalizedSearchTerm) || 
+      template.id.toString().includes(normalizedSearchTerm) ||
+      (template.fields && template.fields.some(field => 
+        field.toLowerCase().includes(normalizedSearchTerm)
+      ))
+    );
+    
+    setFilteredTemplates(filtered);
+  }, [templates]);
+
+  // Update currentLetterIndex state when the input value changes
+  useEffect(() => {
+    setDirectNavInput((currentLetterIndex + 1).toString());
+  }, [currentLetterIndex]);
+
+  // NEW: Function to show confirmation toast
+  const showConfirmationToast = () => {
+    toast({
+      title: "Confirm Sending",
+      description: (
+        <div className="flex flex-col space-y-2">
+          <p>
+            You are about to send <strong>{letterDetails.lettersParams.length}</strong> letter{letterDetails.lettersParams.length !== 1 ? 's' : ''}
+            with notifications via <strong>{letterDetails.notificationMethod}</strong>.
+          </p>
+          <p className="font-semibold text-yellow-700">
+            <AlertCircle className="inline h-4 w-4 mr-1" /> This action will send letters to live recipients.
+          </p>
+        </div>
+      ),
+      variant: "default", // Use default or a custom variant for emphasis
+      className: "border-yellow-500 bg-yellow-50", // Style as warning
+      duration: 15000, // Give user time to confirm (15 seconds)
+      action: (
+        <ToastAction
+          altText="Confirm & Send"
+          className="bg-green-600 hover:bg-green-700 text-white"
+          onClick={() => {
+            // User confirmed, proceed with sending
+            generateBulkLetters();
+          }}
+        >
+          Confirm & Send
+        </ToastAction>
+      ),
+    });
+  };
 
   // Modify the letterParamsForm to implement a carousel
   const letterParamsForm = useMemo(() => {
@@ -2247,668 +2391,474 @@ const LetterMode: React.FC = () => {
         )}
       </div>
     );
-  }, // <-- This should be the end of the function passed to useMemo
-  [
-    // Add all dependencies used inside the useMemo callback
-    letterDetails.lettersParams,
-    letterDetails.recipients,
-    letterDetails.notificationMethod,
-    templateFields,
-    currentLetterIndex,
-    isLoading,
-    isSending,
-    selectionMode,
-    selectedLetters,
-    directNavInput,
-    handleDirectNavInputChange,
-    handleDirectNavKeyDown,
-    handleGoToLetter,
-    goToPrevLetter,
-    goToNextLetter,
-    goToLetter,
-    updateLetterParams,
-    removeLetterParams,
-    handlePreview,
-    addLetterParams,
-    setSelectionMode,
-    selectAllLetters,
-    deleteSelectedLetters,
-    exitSelectionMode,
-    toggleLetterSelection,
-    updateLetterDetail // Add updateLetterDetail for recipient input
-  ] // <-- This square bracket closes the dependency array
-); // <-- This parenthesis closes the useMemo hook call
+  }, [letterDetails.lettersParams, templateFields, selectionMode, selectedLetters, currentLetterIndex, isLoading, isSending, isPreviewLoading, removeLetterParams, addLetterParams, goToPrevLetter, goToNextLetter, handleDirectNavInputChange, handleDirectNavKeyDown, handleGoToLetter, toggleLetterSelection, selectAllLetters, deleteSelectedLetters, exitSelectionMode, handlePreview]);
 
-// REMOVE incorrect definition below if it exists
-/*
-}, [
-    letterDetails.lettersParams,
-    // ... other incorrect dependencies ...
-    handlePreview // Add preview handler
-  ]);
-*/
+  return (
+    <div className="bg-gradient-to-b from-white to-gray-50">
+      <style jsx global>{`
+        @keyframes highlight-pulse {
+          0% { background-color: rgba(245, 158, 11, 0.1); }
+          50% { background-color: rgba(245, 158, 11, 0.3); }
+          100% { background-color: rgba(245, 158, 11, 0.1); }
+        }
+        
+        .highlight-pulse {
+          animation: highlight-pulse 1s ease-in-out 2;
+        }
+      `}</style>
 
-// Correct definitions outside useMemo
-const handleClearAll = useCallback(() => {
-  setLetterDetails((prev) => ({
-    ...prev,
-    templateId: null, // Clear Template ID
-    lettersParams: [{}], // Reset to one empty set of parameters
-    notificationMethod: undefined, // Reset notification method to undefined, but it will still be required
-    recipients: [], // Clear recipients
-  }));
-  setTemplateFields([]); // Clear template fields
-  setApiError(null); // Clear any API errors
-  
-  toast({
-    description: "Form cleared (API key retained).",
-  });
-}, []);
-
-// Update fetchTemplates function to match API documentation
-const fetchTemplates = async () => {
-  if (!letterDetails.apiKey) {
-    toast({
-      title: "API Key Required",
-      description: "Please enter your API key to fetch templates.",
-      variant: "destructive",
-    });
-    return;
-  }
-
-  setIsTemplateListLoading(true);
-  setTemplateSearchTerm(''); // Reset search term when fetching new templates
-  
-  try {
-    // Using proxy endpoint to avoid exposing API key in frontend
-    const response = await fetch(`${API_PROXY_URL}/templates`, {
-      method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-        "X-API-Key": letterDetails.apiKey,
-      },
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.message || `Failed to fetch templates: ${response.status}`);
-    }
-
-    const data = await response.json();
-    
-    // Handle the response format according to the API documentation
-    if (data && Array.isArray(data.templates)) {
-      // Map the templates to the format expected by our component
-      const formattedTemplates = data.templates.map((template: any) => ({
-        id: template.templateId,
-        name: template.name,
-        fields: template.fields
-      }));
-      
-      setTemplates(formattedTemplates);
-      setFilteredTemplates(formattedTemplates); // Initialize filtered templates with all templates
-      
-      if (formattedTemplates.length === 0) {
-        toast({
-          description: "No templates found for this API key.",
-        });
-      } else {
-        toast({
-          description: `Found ${formattedTemplates.length} templates.`,
-        });
-      }
-    } else {
-      // Handle case where response doesn't match expected format
-      console.error("Unexpected API response format:", data);
-      setTemplates([]);
-      setFilteredTemplates([]);
-      toast({
-        title: "Error",
-        description: "Received unexpected data format from the API.",
-        variant: "destructive",
-      });
-    }
-  } catch (error) {
-    console.error("Error fetching templates:", error);
-    toast({
-      title: "Error",
-      description: error instanceof Error ? error.message : "Failed to fetch templates.",
-      variant: "destructive",
-    });
-    setTemplates([]);
-    setFilteredTemplates([]);
-  } finally {
-    setIsTemplateListLoading(false);
-  }
-};
-
-// Add function to handle template search
-const handleTemplateSearch = useCallback((searchTerm: string) => {
-  setTemplateSearchTerm(searchTerm);
-  
-  if (!searchTerm.trim()) {
-    // If search term is empty, show all templates
-    setFilteredTemplates(templates);
-    return;
-  }
-  
-  // Filter templates based on search term
-  const normalizedSearchTerm = searchTerm.toLowerCase().trim();
-  const filtered = templates.filter(template => 
-    template.name.toLowerCase().includes(normalizedSearchTerm) || 
-    template.id.toString().includes(normalizedSearchTerm) ||
-    (template.fields && template.fields.some(field => 
-      field.toLowerCase().includes(normalizedSearchTerm)
-    ))
-  );
-  
-  setFilteredTemplates(filtered);
-}, [templates]);
-
-// Update currentLetterIndex state when the input value changes
-useEffect(() => {
-  setDirectNavInput((currentLetterIndex + 1).toString());
-}, [currentLetterIndex]);
-
-// NEW: Function to show confirmation toast
-const showConfirmationToast = () => {
-  toast({
-    title: "Confirm Sending",
-    description: (
-      <div className="flex flex-col space-y-2">
-        <p>
-          You are about to send <strong>{letterDetails.lettersParams.length}</strong> letter{letterDetails.lettersParams.length !== 1 ? 's' : ''}
-          with notifications via <strong>{letterDetails.notificationMethod}</strong>.
-        </p>
-        <p className="font-semibold text-yellow-700">
-          <AlertCircle className="inline h-4 w-4 mr-1" /> This action will send letters to live recipients.
-        </p>
-      </div>
-    ),
-    variant: "default", // Use default or a custom variant for emphasis
-    className: "border-yellow-500 bg-yellow-50", // Style as warning
-    duration: 15000, // Give user time to confirm (15 seconds)
-    action: (
-      <ToastAction
-        altText="Confirm & Send"
-        className="bg-green-600 hover:bg-green-700 text-white"
-        onClick={() => {
-          // User confirmed, proceed with sending
-          generateBulkLetters();
-        }}
-      >
-        Confirm & Send
-      </ToastAction>
-    ),
-  });
-};
-
-return (
-  <div className="bg-gradient-to-b from-white to-gray-50">
-    <style jsx global>{`
-      @keyframes highlight-pulse {
-        0% { background-color: rgba(245, 158, 11, 0.1); }
-        50% { background-color: rgba(245, 158, 11, 0.3); }
-        100% { background-color: rgba(245, 158, 11, 0.1); }
-      }
-      
-      .highlight-pulse {
-        animation: highlight-pulse 1s ease-in-out 2;
-      }
-    `}</style>
-
-    {/* Preview Dialog */}
-    <Dialog open={isPreviewDialogOpen} onOpenChange={setIsPreviewDialogOpen}>
-      <DialogContent className="sm:max-w-[80%] lg:max-w-[60%] max-h-[90vh] flex flex-col">
-        <DialogHeader>
-          <DialogTitle className="text-2xl font-bold text-blue-800">Letter Preview</DialogTitle>
-          <DialogDescription>This is how your letter will look based on the current parameters.</DialogDescription>
-        </DialogHeader>
-        <div className="flex-grow overflow-y-auto border rounded-lg my-4 p-2 bg-gray-100">
-          {isPreviewLoading ? (
-            <div className="flex justify-center items-center h-full">
-              <Loader2 className="animate-spin h-12 w-12 text-blue-500" />
-              <span className="ml-4 text-lg text-gray-600">Generating Preview...</span>
-            </div>
-          ) : previewError ? (
-            <Alert variant="destructive" className="m-4">
-              <AlertCircle className="h-5 w-5" />
-              <AlertDescription>{previewError}</AlertDescription>
-            </Alert>
-          ) : previewHtml ? (
-            <iframe
-              srcDoc={previewHtml}
-              title="Letter Preview"
-              className="w-full h-full min-h-[600px] border-0 bg-white shadow-inner"
-              sandbox="allow-same-origin" // Restrict iframe capabilities for security
-            />
-          ) : (
-            <div className="flex justify-center items-center h-full text-gray-500">
-              No preview available.
-            </div>
-          )}
-        </div>
-        <Button variant="outline" onClick={() => setIsPreviewDialogOpen(false)}>Close Preview</Button>
-      </DialogContent>
-    </Dialog>
-
-    <div className="container mx-auto py-12 px-4 max-w-6xl"> {/* Increased max-width */}
-      <div className="flex flex-col items-center mb-10"> {/* Increased bottom margin */}
-        <h1 className="text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-purple-600 to-blue-600 mb-3">Bulk Letter Generation</h1> {/* Larger text */}
-        <p className="text-lg text-gray-600 max-w-2xl text-center">Streamline your letter sending process with CSV imports and API integration.</p> {/* Larger text */}
-      </div>
-      
-      {apiError && (
-        <Alert variant="destructive" className="mb-6 animate-slideDown shadow-md">
-          <AlertDescription className="whitespace-pre-line">{apiError}</AlertDescription>
-        </Alert>
-      )}
-      
-      <div className="space-y-10"> {/* Increased spacing between sections */}
-        {/* Section 1: API Configuration */}
-        <Card className="border-gray-200 shadow-lg overflow-hidden transition-all hover:shadow-xl">
-          <CardHeader className="bg-gradient-to-r from-blue-50 to-indigo-50 px-6 py-5 border-b border-blue-100"> {/* Added border */}
-            <div className="flex justify-between items-center">
-              <div>
-                <h2 className="text-2xl font-semibold text-blue-800 flex items-center">
-                  <span className="mr-3 flex h-8 w-8 items-center justify-center rounded-full bg-blue-600 text-white text-lg font-bold">1</span>
-                  API Configuration
-                </h2>
-                <p className="text-blue-600 text-sm mt-1 ml-11">Connect to Letters.gov.sg API</p>
+      {/* Preview Dialog */}
+      <Dialog open={isPreviewDialogOpen} onOpenChange={setIsPreviewDialogOpen}>
+        <DialogContent className="sm:max-w-[80%] lg:max-w-[60%] max-h-[90vh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle className="text-2xl font-bold text-blue-800">Letter Preview</DialogTitle>
+            <DialogDescription>This is how your letter will look based on the current parameters.</DialogDescription>
+          </DialogHeader>
+          <div className="flex-grow overflow-y-auto border rounded-lg my-4 p-2 bg-gray-100">
+            {isPreviewLoading ? (
+              <div className="flex justify-center items-center h-full">
+                <Loader2 className="animate-spin h-12 w-12 text-blue-500" />
+                <span className="ml-4 text-lg text-gray-600">Generating Preview...</span>
               </div>
-              <div className="flex gap-2">
-                {/* Template Selection Dialog Trigger */}
-                <Dialog open={isTemplateDialogOpen} onOpenChange={setIsTemplateDialogOpen}>
-                  <DialogTrigger asChild>
+            ) : previewError ? (
+              <Alert variant="destructive" className="m-4">
+                <AlertCircle className="h-5 w-5" />
+                <AlertDescription>{previewError}</AlertDescription>
+              </Alert>
+            ) : previewHtml ? (
+              <iframe
+                srcDoc={previewHtml}
+                title="Letter Preview"
+                className="w-full h-full min-h-[600px] border-0 bg-white shadow-inner"
+                sandbox="allow-same-origin" // Restrict iframe capabilities for security
+              />
+            ) : (
+              <div className="flex justify-center items-center h-full text-gray-500">
+                No preview available.
+              </div>
+            )}
+          </div>
+          <Button variant="outline" onClick={() => setIsPreviewDialogOpen(false)}>Close Preview</Button>
+        </DialogContent>
+      </Dialog>
+
+      <div className="container mx-auto py-12 px-4 max-w-6xl"> {/* Increased max-width */}
+        <div className="flex flex-col items-center mb-10"> {/* Increased bottom margin */}
+          <h1 className="text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-purple-600 to-blue-600 mb-3">Bulk Letter Generation</h1> {/* Larger text */}
+          <p className="text-lg text-gray-600 max-w-2xl text-center">Streamline your letter sending process with CSV imports and API integration.</p> {/* Larger text */}
+        </div>
+        
+        {apiError && (
+          <Alert variant="destructive" className="mb-6 animate-slideDown shadow-md">
+            <AlertDescription className="whitespace-pre-line">{apiError}</AlertDescription>
+          </Alert>
+        )}
+        
+        <div className="space-y-10"> {/* Increased spacing between sections */}
+          {/* Section 1: API Configuration */}
+          <Card className="border-gray-200 shadow-lg overflow-hidden transition-all hover:shadow-xl">
+            <CardHeader className="bg-gradient-to-r from-blue-50 to-indigo-50 px-6 py-5 border-b border-blue-100"> {/* Added border */}
+              <div className="flex justify-between items-center">
+                <div>
+                  <h2 className="text-2xl font-semibold text-blue-800 flex items-center">
+                    <span className="mr-3 flex h-8 w-8 items-center justify-center rounded-full bg-blue-600 text-white text-lg font-bold">1</span>
+                    API Configuration
+                  </h2>
+                  <p className="text-blue-600 text-sm mt-1 ml-11">Connect to Letters.gov.sg API</p>
+                </div>
+                <div className="flex gap-2">
+                  {/* Template Selection Dialog Trigger */}
+                  <Dialog open={isTemplateDialogOpen} onOpenChange={setIsTemplateDialogOpen}>
+                    <DialogTrigger asChild>
+                      <Button
+                        variant="outline"
+                        onClick={() => {
+                          fetchTemplates();
+                        }}
+                        disabled={isLoading || isSending || !letterDetails.apiKey}
+                        className="bg-blue-50 text-blue-600 hover:bg-blue-100 border-blue-200 transition-all duration-200 flex items-center shadow-sm"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                        Select Template
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="sm:max-w-[900px] max-h-[90vh] overflow-y-auto">
+                      <DialogHeader>
+                        <DialogTitle className="text-2xl font-bold text-blue-800">Select a Template</DialogTitle>
+                        <DialogDescription className="text-base">Choose a template from the list below or search by name.</DialogDescription>
+                      </DialogHeader>
+                      <div className="space-y-4 py-4">
+                        {isTemplateListLoading ? (
+                          <div className="flex justify-center items-center py-8">
+                            <svg className="animate-spin h-8 w-8 text-primary" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                            <span className="ml-3 text-lg">Loading templates...</span>
+                          </div>
+                        ) : templates.length > 0 ? (
+                          <div className="space-y-4">
+                            <div className="relative">
+                              <Input
+                                type="text"
+                                placeholder="Search templates by name or ID..."
+                                className="pl-10 py-6 text-base"
+                                value={templateSearchTerm}
+                                onChange={(e) => handleTemplateSearch(e.target.value)}
+                              />
+                              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-400 absolute left-3 top-1/2 transform -translate-y-1/2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                              </svg>
+                            </div>
+                            
+                            <div className="max-h-[400px] overflow-y-auto border rounded-md shadow-inner">
+                              {filteredTemplates.length > 0 ? (
+                                filteredTemplates.map((template) => (
+                                  <div 
+                                    key={template.id}
+                                    className="p-4 border-b last:border-b-0 hover:bg-blue-50 cursor-pointer flex justify-between items-center transition-colors duration-200"
+                                    onClick={() => {
+                                      const templateId = template.id;
+                                      
+                                      // Reset state for the new template
+                                      setCurrentLetterIndex(0);
+                                      setTemplateFields([]); // Clear template fields temporarily
+                                      
+                                      // Update the template ID
+                                      setLetterDetails((prev) => ({
+                                        ...prev,
+                                        templateId: templateId,
+                                        lettersParams: [{}], // Reset to empty parameters
+                                      }));
+                                      
+                                      setIsTemplateDialogOpen(false); // Close dialog after selection
+                                      
+                                      // Automatically load the template after selection
+                                      if (templateId) {
+                                        fetchTemplateDetails(templateId);
+                                      }
+                                    }}
+                                  >
+                                    <div>
+                                      <div className="font-semibold text-lg">{template.name}</div>
+                                      <div className="text-sm text-gray-600 mt-1">ID: {template.id}</div>
+                                      {template.fields && template.fields.length > 0 && (
+                                        <div className="text-xs text-gray-500 mt-1 flex items-center">
+                                          <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                          </svg>
+                                          Fields: {template.fields.slice(0, 3).join(", ")}
+                                          {template.fields.length > 3 && ` +${template.fields.length - 3} more`}
+                                        </div>
+                                      )}
+                                    </div>
+                                    <Button 
+                                      variant="default" 
+                                      size="sm"
+                                      className="bg-blue-500 hover:bg-blue-600 transition-colors duration-200"
+                                    >
+                                      Select
+                                    </Button>
+                                  </div>
+                                ))
+                              ) : (
+                                <div className="p-8 text-center">
+                                  <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gray-100 mb-4">
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                    </svg>
+                                  </div>
+                                  <p className="text-lg font-medium text-gray-900">No templates match your search</p>
+                                  <p className="text-sm text-gray-500 mt-2">Try adjusting your search or check that you have access to templates.</p>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="text-center py-12">
+                            <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-gray-100 mb-4">
+                              <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                              </svg>
+                            </div>
+                            <p className="text-xl font-medium text-gray-900">No templates found</p>
+                            <p className="text-base text-gray-500 mt-2 max-w-md mx-auto">
+                              Make sure you've entered the correct API key and that you have access to templates.
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    </DialogContent>
+                  </Dialog>
+                  
+                  <Button
+                    variant="outline"
+                    onClick={handleClearAll}
+                    disabled={isLoading || isSending}
+                    className="border-gray-300 hover:bg-gray-100 transition-all duration-200 flex items-center shadow-sm"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                    Reset
+                  </Button>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="p-8"> {/* Increased padding */}
+              <div className="grid gap-8 md:grid-cols-2"> {/* Increased gap */}
+                <div className="space-y-3"> {/* Increased spacing */}
+                  <Label htmlFor="apiKey" className="text-base font-semibold text-gray-700 flex items-center">
+                    <span>API Key</span>
+                    <span className="ml-2 inline-flex items-center rounded-md bg-blue-50 px-2 py-1 text-xs font-medium text-blue-700 ring-1 ring-inset ring-blue-700/10">Required</span>
+                  </Label>
+                  <div className="relative">
+                    <Input
+                      id="apiKey"
+                      type="password"
+                      value={letterDetails.apiKey}
+                      onChange={(e) => updateLetterDetail('apiKey', e.target.value)}
+                      disabled={isLoading || isSending}
+                      className="pl-10 pr-12 py-6 text-base border-gray-300 hover:bg-gray-50 transition-all duration-200 shadow-sm"
+                    />
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
+                      </svg>
+                    </div>
+                  </div>
+                  {/* Enhanced API Key Instructions */}
+                  <div className="mt-4 overflow-hidden rounded-lg border border-blue-200 bg-gradient-to-r from-blue-50 to-indigo-50 shadow-sm">
+                    <div className="border-b border-blue-200 bg-blue-100/50 px-4 py-3">
+                      <h4 className="font-medium text-blue-800 flex items-center">
+                        <Info className="h-4 w-4 mr-2 text-blue-600" />
+                        How to Get Your API Key
+                      </h4>
+                    </div>
+                    <div className="px-4 py-4">
+                      <ol className="space-y-3 ml-5 list-decimal text-sm text-blue-800">
+                        <li className="pl-1">
+                          <span className="font-medium">Log in</span> to <a href="https://letters.gov.sg" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-800 hover:underline font-medium">LetterSG</a>
+                        </li>
+                        <li className="pl-1">
+                          Click on <span className="px-2 py-0.5 bg-white rounded text-blue-700 font-medium border border-blue-200">API Integration</span> in the navigation bar
+                        </li>
+                        <li className="pl-1">
+                          Click on <span className="px-2 py-0.5 bg-white rounded text-green-700 font-medium border border-green-200">Generate API key</span> button
+                        </li>
+                        <li className="pl-1">
+                          Copy the generated token and paste it here
+                        </li>
+                      </ol>
+                      <div className="mt-4 pt-3 border-t border-blue-200 flex items-center justify-between">
+                        <a 
+                          href="https://guide.letters.gov.sg/developer-guide/api-documentation" 
+                          target="_blank" 
+                          rel="noopener noreferrer" 
+                          className="inline-flex items-center text-xs font-medium text-blue-700 hover:text-blue-900 hover:underline"
+                        >
+                          <FileText className="h-3.5 w-3.5 mr-1.5" />
+                          View complete API documentation
+                        </a>
+                        <span className="text-xs text-blue-500">Letters.gov.sg</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div className="space-y-3"> {/* Increased spacing */}
+                  <Label htmlFor="templateId" className="text-base font-semibold text-gray-700 flex items-center">
+                    <span>Template ID</span>
+                    <span className="ml-2 inline-flex items-center rounded-md bg-blue-50 px-2 py-1 text-xs font-medium text-blue-700 ring-1 ring-inset ring-blue-700/10">Required</span>
+                  </Label>
+                  <div className="flex gap-3"> {/* Increased gap */}
+                    <div className="relative flex-1">
+                      <Input
+                        id="templateId"
+                        type="text"
+                        value={letterDetails.templateId?.toString() || ''}
+                        onChange={(e) => updateLetterDetail('templateId', parseInt(e.target.value) || null)}
+                        disabled={isLoading || isSending}
+                        className={letterDetails.templateId ? "py-6 text-base bg-green-100 text-green-700 hover:bg-green-200 border-green-300 transition-all duration-200 shadow-sm flex-shrink-0" : "py-6 text-base border-gray-300 hover:bg-gray-50 transition-all duration-200 shadow-sm flex-shrink-0"} /* Adjusted styling */
+                      />
+                      {isTemplateLoading && (
+                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center">
+                          <Loader2 className="animate-spin h-6 w-6 text-blue-500" />
+                        </div>
+                      )}
+                    </div>
                     <Button
                       variant="outline"
                       onClick={() => {
-                        fetchTemplates();
+                        if (letterDetails.templateId) {
+                          fetchTemplateDetails(letterDetails.templateId);
+                        }
                       }}
-                      disabled={isLoading || isSending || !letterDetails.apiKey}
+                      disabled={isLoading || isSending || !letterDetails.templateId}
                       className="bg-blue-50 text-blue-600 hover:bg-blue-100 border-blue-200 transition-all duration-200 flex items-center shadow-sm"
                     >
                       <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                         <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                       </svg>
-                      Select Template
+                      Load Template
                     </Button>
-                  </DialogTrigger>
-                  <DialogContent className="sm:max-w-[900px] max-h-[90vh] overflow-y-auto">
-                    <DialogHeader>
-                      <DialogTitle className="text-2xl font-bold text-blue-800">Select a Template</DialogTitle>
-                      <DialogDescription className="text-base">Choose a template from the list below or search by name.</DialogDescription>
-                    </DialogHeader>
-                    <div className="space-y-4 py-4">
-                      {isTemplateListLoading ? (
-                        <div className="flex justify-center items-center py-8">
-                          <svg className="animate-spin h-8 w-8 text-primary" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                          </svg>
-                          <span className="ml-3 text-lg">Loading templates...</span>
-                        </div>
-                      ) : templates.length > 0 ? (
-                        <div className="space-y-4">
-                          <div className="relative">
-                            <Input
-                              type="text"
-                              placeholder="Search templates by name or ID..."
-                              className="pl-10 py-6 text-base"
-                              value={templateSearchTerm}
-                              onChange={(e) => handleTemplateSearch(e.target.value)}
-                            />
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-400 absolute left-3 top-1/2 transform -translate-y-1/2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                            </svg>
-                          </div>
-                          
-                          <div className="max-h-[400px] overflow-y-auto border rounded-md shadow-inner">
-                            {filteredTemplates.length > 0 ? (
-                              filteredTemplates.map((template) => (
-                                <div 
-                                  key={template.id}
-                                  className="p-4 border-b last:border-b-0 hover:bg-blue-50 cursor-pointer flex justify-between items-center transition-colors duration-200"
-                                  onClick={() => {
-                                    const templateId = template.id;
-                                    
-                                    // Reset state for the new template
-                                    setCurrentLetterIndex(0);
-                                    setTemplateFields([]); // Clear template fields temporarily
-                                    
-                                    // Update the template ID
-                                    setLetterDetails((prev) => ({
-                                      ...prev,
-                                      templateId: templateId,
-                                      lettersParams: [{}], // Reset to empty parameters
-                                    }));
-                                    
-                                    setIsTemplateDialogOpen(false); // Close dialog after selection
-                                    
-                                    // Automatically load the template after selection
-                                    if (templateId) {
-                                      fetchTemplateDetails(templateId);
-                                    }
-                                  }}
-                                >
-                                  <div>
-                                    <div className="font-semibold text-lg">{template.name}</div>
-                                    <div className="text-sm text-gray-600 mt-1">ID: {template.id}</div>
-                                    {template.fields && template.fields.length > 0 && (
-                                      <div className="text-xs text-gray-500 mt-1 flex items-center">
-                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                                        </svg>
-                                        Fields: {template.fields.slice(0, 3).join(", ")}
-                                        {template.fields.length > 3 && ` +${template.fields.length - 3} more`}
-                                      </div>
-                                    )}
-                                  </div>
-                                  <Button 
-                                    variant="default" 
-                                    size="sm"
-                                    className="bg-blue-500 hover:bg-blue-600 transition-colors duration-200"
-                                  >
-                                    Select
-                                  </Button>
-                                </div>
-                              ))
-                            ) : (
-                              <div className="p-8 text-center">
-                                <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gray-100 mb-4">
-                                  <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                                  </svg>
-                                </div>
-                                <p className="text-lg font-medium text-gray-900">No templates match your search</p>
-                                <p className="text-sm text-gray-500 mt-2">Try adjusting your search or check that you have access to templates.</p>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      ) : (
-                        <div className="text-center py-12">
-                          <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-gray-100 mb-4">
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                            </svg>
-                          </div>
-                          <p className="text-xl font-medium text-gray-900">No templates found</p>
-                          <p className="text-base text-gray-500 mt-2 max-w-md mx-auto">
-                            Make sure you've entered the correct API key and that you have access to templates.
-                          </p>
-                        </div>
-                      )}
-                    </div>
-                  </DialogContent>
-                </Dialog>
-                
-                <Button
-                  variant="outline"
-                  onClick={handleClearAll}
-                  disabled={isLoading || isSending}
-                  className="border-gray-300 hover:bg-gray-100 transition-all duration-200 flex items-center shadow-sm"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                  </svg>
-                  Reset
-                </Button>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent className="p-8"> {/* Increased padding */}
-            <div className="grid gap-8 md:grid-cols-2"> {/* Increased gap */}
-              <div className="space-y-3"> {/* Increased spacing */}
-                <Label htmlFor="apiKey" className="text-base font-semibold text-gray-700 flex items-center">
-                  <span>API Key</span>
-                  <span className="ml-2 inline-flex items-center rounded-md bg-blue-50 px-2 py-1 text-xs font-medium text-blue-700 ring-1 ring-inset ring-blue-700/10">Required</span>
-                </Label>
-                <div className="relative">
-                  <Input
-                    id="apiKey"
-                    type="password"
-                    value={letterDetails.apiKey}
-                    onChange={(e) => updateLetterDetail('apiKey', e.target.value)}
-                    disabled={isLoading || isSending}
-                    className="pl-10 pr-12 py-6 text-base border-gray-300 hover:bg-gray-50 transition-all duration-200 shadow-sm"
-                  />
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
-                    </svg>
-                  </div>
-                </div>
-                {/* Enhanced API Key Instructions */}
-                <div className="mt-4 overflow-hidden rounded-lg border border-blue-200 bg-gradient-to-r from-blue-50 to-indigo-50 shadow-sm">
-                  <div className="border-b border-blue-200 bg-blue-100/50 px-4 py-3">
-                    <h4 className="font-medium text-blue-800 flex items-center">
-                      <Info className="h-4 w-4 mr-2 text-blue-600" />
-                      How to Get Your API Key
-                    </h4>
-                  </div>
-                  <div className="px-4 py-4">
-                    <ol className="space-y-3 ml-5 list-decimal text-sm text-blue-800">
-                      <li className="pl-1">
-                        <span className="font-medium">Log in</span> to <a href="https://letters.gov.sg" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-800 hover:underline font-medium">LetterSG</a>
-                      </li>
-                      <li className="pl-1">
-                        Click on <span className="px-2 py-0.5 bg-white rounded text-blue-700 font-medium border border-blue-200">API Integration</span> in the navigation bar
-                      </li>
-                      <li className="pl-1">
-                        Click on <span className="px-2 py-0.5 bg-white rounded text-green-700 font-medium border border-green-200">Generate API key</span> button
-                      </li>
-                      <li className="pl-1">
-                        Copy the generated token and paste it here
-                      </li>
-                    </ol>
-                    <div className="mt-4 pt-3 border-t border-blue-200 flex items-center justify-between">
-                      <a 
-                        href="https://guide.letters.gov.sg/developer-guide/api-documentation" 
-                        target="_blank" 
-                        rel="noopener noreferrer" 
-                        className="inline-flex items-center text-xs font-medium text-blue-700 hover:text-blue-900 hover:underline"
-                      >
-                        <FileText className="h-3.5 w-3.5 mr-1.5" />
-                        View complete API documentation
-                      </a>
-                      <span className="text-xs text-blue-500">Letters.gov.sg</span>
-                    </div>
                   </div>
                 </div>
               </div>
-              <div className="space-y-3"> {/* Increased spacing */}
-                <Label htmlFor="templateId" className="text-base font-semibold text-gray-700 flex items-center">
-                  <span>Template ID</span>
-                  <span className="ml-2 inline-flex items-center rounded-md bg-blue-50 px-2 py-1 text-xs font-medium text-blue-700 ring-1 ring-inset ring-blue-700/10">Required</span>
-                </Label>
-                <div className="flex gap-3"> {/* Increased gap */}
-                  <div className="relative flex-1">
-                    <Input
-                      id="templateId"
-                      type="text"
-                      value={letterDetails.templateId?.toString() || ''}
-                      onChange={(e) => updateLetterDetail('templateId', parseInt(e.target.value) || null)}
-                      disabled={isLoading || isSending}
-                      className={letterDetails.templateId ? "py-6 text-base bg-green-100 text-green-700 hover:bg-green-200 border-green-300 transition-all duration-200 shadow-sm flex-shrink-0" : "py-6 text-base border-gray-300 hover:bg-gray-50 transition-all duration-200 shadow-sm flex-shrink-0"} /* Adjusted styling */
-                    />
-                    {isTemplateLoading && (
-                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center">
-                        <Loader2 className="animate-spin h-6 w-6 text-blue-500" />
+              
+              {/* Add CSV Import functionality here */}
+              <div className="mt-8 border-t pt-6 border-gray-200">
+                <div className="flex flex-col gap-4">
+                  <h3 className="text-lg font-semibold text-gray-700">Data Import Options</h3>
+                  <div className="flex flex-wrap gap-3">
+                    {/* CSV Import Dialog for template fields */}
+                    {templateFields.length > 0 && (
+                      <CSVImportDialog 
+                        templateFields={templateFields} 
+                        onImport={handleCSVImport} 
+                      />
+                    )}
+                    
+                    {/* Recipients Import Dialog (if it exists) */}
+                    {templateFields.length > 0 && letterDetails.notificationMethod && (
+                      <div>
+                        <RecipientsImportDialog
+                          notificationMethod={letterDetails.notificationMethod}
+                          onImport={(recipients) => {
+                            updateLetterDetail('recipients', recipients);
+                            toast({
+                              description: `Successfully imported ${recipients.length} recipients`,
+                            });
+                          }}
+                        />
+                        <p className="mt-1 text-xs text-gray-500">
+                          Import {letterDetails.lettersParams.length} {letterDetails.notificationMethod === 'SMS' ? 'phone numbers' : 'email addresses'} (one for each letter)
+                        </p>
                       </div>
                     )}
                   </div>
+                  <p className="text-sm text-gray-500 mt-2">
+                    First select a template above, then use these options to bulk import data for your letters.
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Section 2: Letter Details & Recipients */}
+          {templateFields.length > 0 && (
+            <Card className="border-gray-200 shadow-lg overflow-hidden transition-all hover:shadow-xl">
+              <CardHeader className="bg-gradient-to-r from-purple-50 to-pink-50 px-6 py-5 border-b border-purple-100"> {/* Added border */}
+                <h2 className="text-2xl font-semibold text-purple-800 flex items-center">
+                   <span className="mr-3 flex h-8 w-8 items-center justify-center rounded-full bg-purple-600 text-white text-lg font-bold">2</span>
+                   Letter Details & Recipients
+                 </h2>
+                <p className="text-purple-600 text-sm mt-1 ml-11">Define parameters and recipient for each letter</p>
+              </CardHeader>
+              <CardContent className="p-8"> {/* Increased padding */}
+                {letterParamsForm} {/* This now contains both params and recipient input */}
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Section 3: Notification Method & Send Action */}
+          {templateFields.length > 0 && (
+            <Card className="border-gray-200 shadow-lg overflow-hidden transition-all hover:shadow-xl">
+              <CardHeader className="bg-gradient-to-r from-teal-50 to-cyan-50 px-6 py-5 border-b border-teal-100"> {/* Added border */}
+                 <h2 className="text-2xl font-semibold text-teal-800 flex items-center">
+                   <span className="mr-3 flex h-8 w-8 items-center justify-center rounded-full bg-teal-600 text-white text-lg font-bold">3</span>
+                   Notification & Sending
+                 </h2>
+                 <p className="text-teal-600 text-sm mt-1 ml-11">Choose notification method and send letters</p>
+              </CardHeader>
+              <CardContent className="p-8">
+                {/* Notification Method Selection */}
+                <div className="space-y-8"> {/* Increased spacing */}
+                  {/* Notification Method Selection */}
+                  <div className="bg-blue-50 p-6 rounded-lg border border-blue-100 shadow-sm"> {/* Increased padding */}
+                    <h3 className="font-semibold text-lg text-blue-800 mb-3">Notification Method</h3> {/* Larger text */}
+                    <p className="text-sm text-blue-600 mb-5"> {/* Increased bottom margin */}
+                      Select how recipients will be notified (Required)
+                    </p>
+                    <div className="flex gap-4"> {/* Increased gap */}
+                      <Button
+                        variant={letterDetails.notificationMethod === 'SMS' ? 'default' : 'outline'}
+                        onClick={() => updateLetterDetail('notificationMethod', 'SMS')}
+                        disabled={isLoading || isSending}
+                        className={`h-auto py-5 text-base flex-1 ${
+                          letterDetails.notificationMethod === 'SMS'
+                            ? 'bg-blue-600 hover:bg-blue-700 text-white ring-2 ring-offset-2 ring-blue-500' /* Added ring for selected */
+                            : 'border-blue-300 text-blue-700 hover:bg-blue-100'
+                        }`}
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                        </svg>
+                        SMS
+                      </Button>
+                      <Button
+                        variant={letterDetails.notificationMethod === 'EMAIL' ? 'default' : 'outline'}
+                        onClick={() => updateLetterDetail('notificationMethod', 'EMAIL')}
+                        disabled={isLoading || isSending}
+                        className={`h-auto py-5 text-base flex-1 ${
+                          letterDetails.notificationMethod === 'EMAIL'
+                            ? 'bg-blue-600 hover:bg-blue-700 text-white ring-2 ring-offset-2 ring-blue-500' /* Added ring for selected */
+                            : 'border-blue-300 text-blue-700 hover:bg-blue-100'
+                        }`}
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                        </svg>
+                        Email
+                      </Button>
+                    </div>
+                  </div>
+                  {/* Send Button - Modified onClick */}
                   <Button
-                    variant="outline"
-                    onClick={() => {
-                      if (letterDetails.templateId) {
-                        fetchTemplateDetails(letterDetails.templateId);
+                    type="button"
+                    size="lg" /* Larger button */
+                    onClick={(e) => {
+                      e.preventDefault();
+                      console.log('Generate button clicked');
+                      if (validatePayload()) {
+                        console.log('Validation passed, showing confirmation toast');
+                        // Show confirmation toast instead of sending directly
+                        showConfirmationToast();
+                      } else {
+                        console.log('Validation failed');
                       }
                     }}
-                    disabled={isLoading || isSending || !letterDetails.templateId}
-                    className="bg-blue-50 text-blue-600 hover:bg-blue-100 border-blue-200 transition-all duration-200 flex items-center shadow-sm"
+                    className="w-full relative overflow-hidden group bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white shadow-lg hover:shadow-xl transition-all duration-300 py-5 text-xl font-semibold rounded-lg" /* Adjusted size, padding, text, rounding */
+                    disabled={isLoading || isSending || letterDetails.lettersParams.length === 0 || !letterDetails.notificationMethod || (!letterDetails.recipients || letterDetails.recipients.length !== letterDetails.lettersParams.length)} /* Added mismatch check to disabled */
                   >
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                    </svg>
-                    Load Template
+                    <span className="absolute inset-0 bg-white opacity-0 group-hover:opacity-10 transition-opacity"></span>
+                    {isSending ? (
+                      <>
+                        <Loader2 className="animate-spin -ml-1 mr-3 h-6 w-6" />
+                        Sending Letters...
+                      </>
+                    ) : (
+                      <>
+                        <Send className="mr-3 h-6 w-6" /> {/* Larger icon */}
+                        Send {letterDetails.lettersParams.length} Letter{letterDetails.lettersParams.length !== 1 ? 's' : ''} via {letterDetails.notificationMethod === 'SMS' ? 'SMS' : 'Email'}
+                      </>
+                    )}
+                    <div className="absolute right-5 top-1/2 transform -translate-y-1/2 opacity-0 group-hover:opacity-100 group-hover:translate-x-0 translate-x-2 transition-all duration-300"> {/* Adjusted positioning */}
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" viewBox="0 0 20 20" fill="currentColor"> {/* Larger icon */}
+                        <path fillRule="evenodd" d="M10.293 5.293a1 1 0 011.414 0l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414-1.414L12.586 11H5a1 1 0 110-2h7.586l-2.293-2.293a1 1 0 010-1.414z" clipRule="evenodd" />
+                      </svg>
+                    </div>
                   </Button>
                 </div>
-              </div>
-            </div>
-            
-            {/* Add CSV Import functionality here */}
-            <div className="mt-8 border-t pt-6 border-gray-200">
-              <div className="flex flex-col gap-4">
-                <h3 className="text-lg font-semibold text-gray-700">Data Import Options</h3>
-                <div className="flex flex-wrap gap-3">
-                  {/* CSV Import Dialog for template fields */}
-                  {templateFields.length > 0 && (
-                    <CSVImportDialog 
-                      templateFields={templateFields} 
-                      onImport={handleCSVImport} 
-                    />
-                  )}
-                  
-                  {/* Recipients Import Dialog (if it exists) */}
-                  {templateFields.length > 0 && letterDetails.notificationMethod && (
-                    <div>
-                      <RecipientsImportDialog
-                        notificationMethod={letterDetails.notificationMethod}
-                        onImport={(recipients) => {
-                          updateLetterDetail('recipients', recipients);
-                          toast({
-                            description: `Successfully imported ${recipients.length} recipients`,
-                          });
-                        }}
-                      />
-                      <p className="mt-1 text-xs text-gray-500">
-                        Import {letterDetails.lettersParams.length} {letterDetails.notificationMethod === 'SMS' ? 'phone numbers' : 'email addresses'} (one for each letter)
-                      </p>
-                    </div>
-                  )}
-                </div>
-                <p className="text-sm text-gray-500 mt-2">
-                  First select a template above, then use these options to bulk import data for your letters.
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Section 2: Letter Details & Recipients */}
-        {templateFields.length > 0 && (
-          <Card className="border-gray-200 shadow-lg overflow-hidden transition-all hover:shadow-xl">
-            <CardHeader className="bg-gradient-to-r from-purple-50 to-pink-50 px-6 py-5 border-b border-purple-100"> {/* Added border */}
-              <h2 className="text-2xl font-semibold text-purple-800 flex items-center">
-                 <span className="mr-3 flex h-8 w-8 items-center justify-center rounded-full bg-purple-600 text-white text-lg font-bold">2</span>
-                 Letter Details & Recipients
-               </h2>
-              <p className="text-purple-600 text-sm mt-1 ml-11">Define parameters and recipient for each letter</p>
-            </CardHeader>
-            <CardContent className="p-8"> {/* Increased padding */}
-              {letterParamsForm} {/* This now contains both params and recipient input */}
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Section 3: Notification Method & Send Action */}
-        {templateFields.length > 0 && (
-          <Card className="border-gray-200 shadow-lg overflow-hidden transition-all hover:shadow-xl">
-            <CardHeader className="bg-gradient-to-r from-teal-50 to-cyan-50 px-6 py-5 border-b border-teal-100"> {/* Added border */}
-               <h2 className="text-2xl font-semibold text-teal-800 flex items-center">
-                 <span className="mr-3 flex h-8 w-8 items-center justify-center rounded-full bg-teal-600 text-white text-lg font-bold">3</span>
-                 Notification & Sending
-               </h2>
-               <p className="text-teal-600 text-sm mt-1 ml-11">Choose notification method and send letters</p>
-            </CardHeader>
-            <CardContent className="p-8">
-              {/* Notification Method Selection */}
-              <div className="space-y-8"> {/* Increased spacing */}
-                {/* Notification Method Selection */}
-                <div className="bg-blue-50 p-6 rounded-lg border border-blue-100 shadow-sm"> {/* Increased padding */}
-                  <h3 className="font-semibold text-lg text-blue-800 mb-3">Notification Method</h3> {/* Larger text */}
-                  <p className="text-sm text-blue-600 mb-5"> {/* Increased bottom margin */}
-                    Select how recipients will be notified (Required)
-                  </p>
-                  <div className="flex gap-4"> {/* Increased gap */}
-                    <Button
-                      variant={letterDetails.notificationMethod === 'SMS' ? 'default' : 'outline'}
-                      onClick={() => updateLetterDetail('notificationMethod', 'SMS')}
-                      disabled={isLoading || isSending}
-                      className={`h-auto py-5 text-base flex-1 ${
-                        letterDetails.notificationMethod === 'SMS'
-                          ? 'bg-blue-600 hover:bg-blue-700 text-white ring-2 ring-offset-2 ring-blue-500' /* Added ring for selected */
-                          : 'border-blue-300 text-blue-700 hover:bg-blue-100'
-                      }`}
-                    >
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                      </svg>
-                      SMS
-                    </Button>
-                    <Button
-                      variant={letterDetails.notificationMethod === 'EMAIL' ? 'default' : 'outline'}
-                      onClick={() => updateLetterDetail('notificationMethod', 'EMAIL')}
-                      disabled={isLoading || isSending}
-                      className={`h-auto py-5 text-base flex-1 ${
-                        letterDetails.notificationMethod === 'EMAIL'
-                          ? 'bg-blue-600 hover:bg-blue-700 text-white ring-2 ring-offset-2 ring-blue-500' /* Added ring for selected */
-                          : 'border-blue-300 text-blue-700 hover:bg-blue-100'
-                      }`}
-                    >
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                      </svg>
-                      Email
-                    </Button>
-                  </div>
-                </div>
-                {/* Send Button - Modified onClick */}
-                <Button
-                  type="button"
-                  size="lg" /* Larger button */
-                  onClick={(e) => {
-                    e.preventDefault();
-                    console.log('Generate button clicked');
-                    if (validatePayload()) {
-                      console.log('Validation passed, showing confirmation toast');
-                      // Show confirmation toast instead of sending directly
-                      showConfirmationToast();
-                    } else {
-                      console.log('Validation failed');
-                    }
-                  }}
-                  className="w-full relative overflow-hidden group bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white shadow-lg hover:shadow-xl transition-all duration-300 py-5 text-xl font-semibold rounded-lg" /* Adjusted size, padding, text, rounding */
-                  disabled={isLoading || isSending || letterDetails.lettersParams.length === 0 || !letterDetails.notificationMethod || (!letterDetails.recipients || letterDetails.recipients.length !== letterDetails.lettersParams.length)} /* Added mismatch check to disabled */
-                >
-                  <span className="absolute inset-0 bg-white opacity-0 group-hover:opacity-10 transition-opacity"></span>
-                  {isSending ? (
-                    <>
-                      <Loader2 className="animate-spin -ml-1 mr-3 h-6 w-6" />
-                      Sending Letters...
-                    </>
-                  ) : (
-                    <>
-                      <Send className="mr-3 h-6 w-6" /> {/* Larger icon */}
-                      Send {letterDetails.lettersParams.length} Letter{letterDetails.lettersParams.length !== 1 ? 's' : ''} via {letterDetails.notificationMethod === 'SMS' ? 'SMS' : 'Email'}
-                    </>
-                  )}
-                  <div className="absolute right-5 top-1/2 transform -translate-y-1/2 opacity-0 group-hover:opacity-100 group-hover:translate-x-0 translate-x-2 transition-all duration-300"> {/* Adjusted positioning */}
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" viewBox="0 0 20 20" fill="currentColor"> {/* Larger icon */}
-                      <path fillRule="evenodd" d="M10.293 5.293a1 1 0 011.414 0l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414-1.414L12.586 11H5a1 1 0 110-2h7.586l-2.293-2.293a1 1 0 010-1.414z" clipRule="evenodd" />
-                    </svg>
-                  </div>
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        )}
+              </CardContent>
+            </Card>
+          )}
+        </div>
       </div>
     </div>
-  </div>
-); // End of return statement
+  ); // End of return statement for LetterMode component
 
-}; // <-- Ensure this closing brace for the LetterMode component exists and is correctly placed
+}; // <-- Correct closing brace for the LetterMode component
 
 export default LetterMode;
