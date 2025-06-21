@@ -306,7 +306,7 @@ const TransformBidirectional = () => {
   const [showLoadConfigModal, setShowLoadConfigModal] = useState(false);
   
   // Add transformation direction state
-  const [transformDirection, setTransformDirection] = useState<'columnToRow' | 'rowToColumn' | 'markdown'>('columnToRow');
+  const [transformDirection, setTransformDirection] = useState<'columnToRow' | 'rowToColumn' | 'markdown' | 'nameMatcher'>('markdown');
   const [markdownOutputType, setMarkdownOutputType] = useState<'plainText' | 'richText'>('richText');
   
   // Add state for both HTML and plain text outputs in Markdown mode
@@ -322,6 +322,160 @@ const TransformBidirectional = () => {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const outputRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  // Add a new transformDirection for name matching
+  const [nameMatcherFile1, setNameMatcherFile1] = useState<File|null>(null);
+  const [nameMatcherFile2, setNameMatcherFile2] = useState<File|null>(null);
+  const [nameMatcherData1, setNameMatcherData1] = useState<string[][]>([]);
+  const [nameMatcherData2, setNameMatcherData2] = useState<string[][]>([]);
+  const [nameMatcherColumns1, setNameMatcherColumns1] = useState<string[]>([]);
+  const [nameMatcherColumns2, setNameMatcherColumns2] = useState<string[]>([]);
+  const [nameMatcherSelectedCol1, setNameMatcherSelectedCol1] = useState<string>('');
+  const [nameMatcherSelectedCol2, setNameMatcherSelectedCol2] = useState<string>('');
+  const [nameMatcherResults, setNameMatcherResults] = useState<{name1: string, match: string|null, colOfInterest?: string, score?: number, allMatches?: {match: string, score: number}[]}[]>([]);
+  const [nameMatcherSelectedColOfInterest, setNameMatcherSelectedColOfInterest] = useState<string>('');
+  
+  // Add state for help/info section and user controls
+  const [showNameMatcherHelp, setShowNameMatcherHelp] = useState(true);
+  const [requireSameWordCount, setRequireSameWordCount] = useState(false);
+  const [showAllMatches, setShowAllMatches] = useState(false);
+  const [strictShortNames, setStrictShortNames] = useState(true);
+  
+  // Helper: Parse CSV string to array
+  function parseCSV(csv: string): string[][] {
+    return csv.split(/\r?\n/).map(row => row.split(','));
+  }
+  
+  // Helper: Normalize name (sort words, lower case, trim)
+  function normalizeName(name: string): string {
+    return name
+      .split(/\s+/)
+      .map(w => w.trim().toLowerCase())
+      .filter(Boolean)
+      .sort()
+      .join(' ');
+  }
+  
+  // Handle file upload for Name Matcher
+  const handleNameMatcherFile = (file: File, which: 1|2) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const text = e.target?.result as string;
+      const data = parseCSV(text);
+      if (which === 1) {
+        setNameMatcherFile1(file);
+        setNameMatcherData1(data);
+        setNameMatcherColumns1(data[0] || []);
+        setNameMatcherSelectedCol1('');
+      } else {
+        setNameMatcherFile2(file);
+        setNameMatcherData2(data);
+        setNameMatcherColumns2(data[0] || []);
+        setNameMatcherSelectedCol2('');
+      }
+    };
+    reader.readAsText(file);
+  };
+  
+  // Levenshtein distance for fuzzy matching
+  function levenshtein(a: string, b: string): number {
+    if (a === b) return 0;
+    if (!a.length) return b.length;
+    if (!b.length) return a.length;
+    const matrix = Array.from({ length: a.length + 1 }, () => Array(b.length + 1).fill(0));
+    for (let i = 0; i <= a.length; i++) matrix[i][0] = i;
+    for (let j = 0; j <= b.length; j++) matrix[0][j] = j;
+    for (let i = 1; i <= a.length; i++) {
+      for (let j = 1; j <= b.length; j++) {
+        matrix[i][j] = Math.min(
+          matrix[i - 1][j] + 1,
+          matrix[i][j - 1] + 1,
+          matrix[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1)
+        );
+      }
+    }
+    return matrix[a.length][b.length];
+  }
+
+  // Similarity score (1 = perfect, 0 = no match)
+  function similarityScore(a: string, b: string): number {
+    const maxLen = Math.max(a.length, b.length);
+    if (maxLen === 0) return 1;
+    return 1 - levenshtein(a, b) / maxLen;
+  }
+
+  // Fuzzy match state
+  const [fuzzyThreshold, setFuzzyThreshold] = useState(0.8); // 0.0 - 1.0
+
+  // Download results as CSV
+  function downloadNameMatcherResults() {
+    if (!nameMatcherResults.length) return;
+    const header = [
+      'CSV1 Name',
+      nameMatcherSelectedColOfInterest ? nameMatcherSelectedColOfInterest : '',
+      'Best Match in CSV2',
+      'Similarity Score (%)'
+    ].filter(Boolean);
+    const rows = nameMatcherResults.map(row => [
+      row.name1,
+      nameMatcherSelectedColOfInterest ? (row.colOfInterest || '') : undefined,
+      row.match || '',
+      row.score !== undefined ? Math.round(row.score * 100) : ''
+    ].filter(v => v !== undefined));
+    const csv = [header, ...rows].map(r => r.map(x => `"${(x||'').toString().replace(/"/g,'""')}"`).join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `name-matcher-results-${new Date().toISOString().slice(0,10)}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  }
+
+  // Helper: Get all matches above threshold
+  function getAllMatches(norm1: string, norm2Arr: string[], names2: string[], threshold: number, requireSameWords: boolean, strictShort: boolean): {match: string, score: number}[] {
+    return norm2Arr.map((norm2, j) => {
+      let score = similarityScore(norm1, norm2);
+      // If strict for short names
+      if (strictShort && norm1.split(' ').length === 1 && norm1.length < 5) {
+        score = norm1 === norm2 ? 1 : 0;
+      }
+      // If require same word count
+      if (requireSameWords && norm1.split(' ').length !== norm2.split(' ').length) {
+        score = 0;
+      }
+      return { match: names2[j], score };
+    }).filter(m => m.score >= threshold).sort((a, b) => b.score - a.score);
+  }
+
+  // Enhanced runNameMatcher with all options
+  const runNameMatcher = () => {
+    if (!nameMatcherSelectedCol1 || !nameMatcherSelectedCol2) return;
+    const colIdx1 = nameMatcherColumns1.indexOf(nameMatcherSelectedCol1);
+    const colIdx2 = nameMatcherColumns2.indexOf(nameMatcherSelectedCol2);
+    const colOfInterestIdx = nameMatcherSelectedColOfInterest ? nameMatcherColumns1.indexOf(nameMatcherSelectedColOfInterest) : -1;
+    if (colIdx1 === -1 || colIdx2 === -1) return;
+    const names1 = nameMatcherData1.slice(1).map(row => row[colIdx1] || '');
+    const names2 = nameMatcherData2.slice(1).map(row => row[colIdx2] || '');
+    const norm2 = names2.map(n => normalizeName(n));
+    const results = names1.map((name1, i) => {
+      const norm1 = normalizeName(name1);
+      // All matches above threshold
+      const allMatches = getAllMatches(norm1, norm2, names2, fuzzyThreshold, requireSameWordCount, strictShortNames);
+      // Best match
+      const best = allMatches[0] || { match: null, score: 0 };
+      return {
+        name1,
+        colOfInterest: colOfInterestIdx !== -1 ? nameMatcherData1[i+1]?.[colOfInterestIdx] : undefined,
+        match: best.match,
+        score: best.score,
+        allMatches
+      };
+    });
+    setNameMatcherResults(results);
+  };
   
   const transformData = async () => {
     if (!inputText.trim()) {
@@ -543,6 +697,9 @@ const TransformBidirectional = () => {
           variant: "destructive",
         });
       }
+    } else if (transformDirection === 'nameMatcher') {
+      // Name Matcher logic
+      runNameMatcher();
     }
   };
   
@@ -1446,1135 +1603,1423 @@ ${markdownHtmlOutput}
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [expandedPreview]);
   
+  // Helper: Preview first 5 rows of a column
+  function previewColumn(data: string[][], colIdx: number): string[] {
+    if (colIdx === -1) return [];
+    return data.slice(1, 6).map(row => row[colIdx] || '');
+  }
+  
+  // Helper: Clear all Name Matcher state
+  function clearNameMatcherState() {
+    setNameMatcherFile1(null);
+    setNameMatcherFile2(null);
+    setNameMatcherData1([]);
+    setNameMatcherData2([]);
+    setNameMatcherColumns1([]);
+    setNameMatcherColumns2([]);
+    setNameMatcherSelectedCol1('');
+    setNameMatcherSelectedCol2('');
+    setNameMatcherSelectedColOfInterest('');
+    setNameMatcherResults([]);
+  }
+  
+  // Helper: Type guard for name matcher mode
+  function isNameMatcherMode(val: any): boolean {
+    return val === 'nameMatcher';
+  }
+  
   return (
     <div className="space-y-6">
-      <Card>
-        <CardHeader className="bg-gradient-to-r from-purple-50/50 to-pink-50/50 border-b border-purple-100/50">
-          <CardTitle className="text-lg font-semibold text-purple-800">
-            Data Format Transformer
-          </CardTitle>
-        </CardHeader>
+      {/* Only render the main transformer UI and how-to card if not in Name Matcher mode */}
+      {transformDirection !== 'nameMatcher' && (
+        <>
+          <Card>
+            <CardHeader className="bg-gradient-to-r from-purple-50/50 to-pink-50/50 border-b border-purple-100/50">
+              <CardTitle className="text-lg font-semibold text-purple-800">
+                Data Format Transformer
+              </CardTitle>
+            </CardHeader>
 
-        {/* Add direction selection toggle */}
-        <div className="px-6 pt-6 pb-2">
-          <div className="bg-purple-50/70 rounded-lg p-1 flex">
-            <button
-              onClick={() => setTransformDirection('columnToRow')}
-              className={`flex-1 py-2 rounded-md text-sm font-medium transition-colors ${
-                transformDirection === 'columnToRow'
-                  ? 'bg-white shadow-sm text-purple-700'
-                  : 'text-purple-600 hover:bg-white/60'
-              }`}
-            >
-              <span className="flex items-center justify-center">
-                <svg className="h-4 w-4 mr-2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <rect x="3" y="3" width="18" height="18" rx="2" />
-                  <path d="M9 3v18" />
-                  <path d="M3 9h6" />
-                  <path d="M3 15h6" />
-                  <path d="M15 12h2" />
-                  <path d="M18 9l3 3-3 3" />
-                </svg>
-                Column → Row
-              </span>
-            </button>
-            <button
-              onClick={() => setTransformDirection('rowToColumn')}
-              className={`flex-1 py-2 rounded-md text-sm font-medium transition-colors ${
-                transformDirection === 'rowToColumn'
-                  ? 'bg-white shadow-sm text-purple-700'
-                  : 'text-purple-600 hover:bg-white/60'
-              }`}
-            >
-              <span className="flex items-center justify-center">
-                <svg className="h-4 w-4 mr-2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <rect x="3" y="3" width="18" height="18" rx="2" />
-                  <path d="M9 3v18" />
-                  <path d="M3 9h6" />
-                  <path d="M3 15h6" />
-                  <path d="M15 12h2" />
-                  <path d="M18 15l3-3-3-3" />
-                </svg>
-                Row → Column
-              </span>
-            </button>
-            <button
-              onClick={() => setTransformDirection('markdown')}
-              className={`flex-1 py-2 rounded-md text-sm font-medium transition-colors ${
-                transformDirection === 'markdown'
-                  ? 'bg-white shadow-sm text-purple-700'
-                  : 'text-purple-600 hover:bg-white/60'
-              }`}
-            >
-              <span className="flex items-center justify-center">
-                <svg className="h-4 w-4 mr-2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M10 13a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1h-2a1 1 0 0 1-1-1v-2z"/>
-                  <path d="M2 3h6a4 4 0 0 1 4 4v10a2 2 0 0 0-2-2H3a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z"/>
-                  <path d="M16 3h1a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2h-1"/>
-                </svg>
-                LLM Output
-              </span>
-            </button>
-          </div>
-        </div>
-
-        {/* Add output format and styling options for markdown mode */}
-        {transformDirection === 'markdown' && (
-          <div className="px-6 pb-2 pt-2">
-            <div className="bg-purple-50/60 rounded-lg p-3 flex flex-wrap gap-4 items-center justify-between">
-              <div className="flex items-center space-x-3">
-                <Label htmlFor="markdownOutputType" className="text-sm">Output Format:</Label>
-                <Select 
-                  value={markdownOutputType} 
-                  onValueChange={(value: 'plainText' | 'richText') => setMarkdownOutputType(value)}
+            {/* Add direction selection toggle */}
+            <div className="px-6 pt-6 pb-2">
+              <div className="bg-purple-50/70 rounded-lg p-1 flex">
+                <button
+                  onClick={() => setTransformDirection('columnToRow')}
+                  className={`flex-1 py-2 rounded-md text-sm font-medium transition-colors ${
+                    transformDirection === 'columnToRow'
+                      ? 'bg-white shadow-sm text-purple-700'
+                      : 'text-purple-600 hover:bg-white/60'
+                  }`}
                 >
-                  <SelectTrigger id="markdownOutputType" className="h-8 w-[140px] border-purple-200">
-                    <SelectValue placeholder="Select format" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="plainText">Plain Text</SelectItem>
-                    <SelectItem value="richText">Rich Text (HTML)</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              
-              {markdownOutputType === 'richText' && (
-                <div className="flex items-center space-x-3">
-                  <Label htmlFor="htmlStyleLevel" className="text-sm">Styling Level:</Label>
-                  <Select 
-                    value={htmlStyleLevel} 
-                    onValueChange={(value: 'minimal' | 'basic' | 'full') => setHtmlStyleLevel(value as 'minimal' | 'basic' | 'full')}
-                  >
-                    <SelectTrigger id="htmlStyleLevel" className="h-8 w-[140px] border-purple-200">
-                      <SelectValue placeholder="Select style" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="minimal">Minimal Styling</SelectItem>
-                      <SelectItem value="basic">Basic Styling</SelectItem>
-                      <SelectItem value="full">Full Styling</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
-              
-              <div className="w-full text-xs text-purple-600">
-                <Info className="h-3 w-3 inline-block mr-1" />
-                {markdownOutputType === 'plainText' 
-                  ? "Plain Text converts LLM Output to clean text for simple emails or plain text fields." 
-                  : htmlStyleLevel === 'minimal' 
-                    ? "Minimal styling: Just the HTML structure without additional styles (most compatible)." 
-                    : htmlStyleLevel === 'basic' 
-                      ? "Basic styling: Essential styles for tables and code blocks (good for most editors)." 
-                      : "Full styling: Comprehensive styles for all elements (best visual appearance)."}
+                  <span className="flex items-center justify-center">
+                    <svg className="h-4 w-4 mr-2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <rect x="3" y="3" width="18" height="18" rx="2" />
+                      <path d="M9 3v18" />
+                      <path d="M3 9h6" />
+                      <path d="M3 15h6" />
+                      <path d="M15 12h2" />
+                      <path d="M18 9l3 3-3 3" />
+                    </svg>
+                    Column → Row
+                  </span>
+                </button>
+                <button
+                  onClick={() => setTransformDirection('rowToColumn')}
+                  className={`flex-1 py-2 rounded-md text-sm font-medium transition-colors ${
+                    transformDirection === 'rowToColumn'
+                      ? 'bg-white shadow-sm text-purple-700'
+                      : 'text-purple-600 hover:bg-white/60'
+                  }`}
+                >
+                  <span className="flex items-center justify-center">
+                    <svg className="h-4 w-4 mr-2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <rect x="3" y="3" width="18" height="18" rx="2" />
+                      <path d="M9 3v18" />
+                      <path d="M3 9h6" />
+                      <path d="M3 15h6" />
+                      <path d="M15 12h2" />
+                      <path d="M18 15l3-3-3-3" />
+                    </svg>
+                    Row → Column
+                  </span>
+                </button>
+                <button
+                  onClick={() => setTransformDirection('markdown')}
+                  className={`flex-1 py-2 rounded-md text-sm font-medium transition-colors ${
+                    transformDirection === 'markdown'
+                      ? 'bg-white shadow-sm text-purple-700'
+                      : 'text-purple-600 hover:bg-white/60'
+                  }`}
+                >
+                  <span className="flex items-center justify-center">
+                    <svg className="h-4 w-4 mr-2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M10 13a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1h-2a1 1 0 0 1-1-1v-2z"/>
+                      <path d="M2 3h6a4 4 0 0 1 4 4v10a2 2 0 0 0-2-2H3a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z"/>
+                      <path d="M16 3h1a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2h-1"/>
+                    </svg>
+                    LLM Output
+                  </span>
+                </button>
+                <button
+                  onClick={() => setTransformDirection('nameMatcher')}
+                  className={`flex-1 py-2 rounded-md text-sm font-medium transition-colors ${
+                    isNameMatcherMode(transformDirection)
+                      ? 'bg-white shadow-sm text-purple-700'
+                      : 'text-purple-600 hover:bg-white/60'
+                  }`}
+                >
+                  <span className="flex items-center justify-center">
+                    <svg className="h-4 w-4 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 01.88 7.903A5.5 5.5 0 1112 6.5" /></svg>
+                    Name Matcher
+                  </span>
+                </button>
               </div>
             </div>
-          </div>
-        )}
 
-        <CardContent className="pt-2">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Input Section */}
-            <div className="space-y-4">
-              <div className="flex justify-between items-center">
-                <h3 className="text-base font-medium">Input Data</h3>
-                <div className="flex gap-2">
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
-                          onClick={loadSampleData}
-                          className="h-8 text-xs border-purple-200 hover:bg-purple-50 text-purple-700"
-                          disabled={isSampleLoaded}
-                        >
-                          <Lightbulb className="h-3.5 w-3.5 mr-1.5" />
-                          Load Sample
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p className="text-xs">Load sample data to see how it works</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
+            {/* Add output format and styling options for markdown mode */}
+            {transformDirection === 'markdown' && (
+              <div className="px-6 pb-2 pt-2">
+                <div className="bg-purple-50/60 rounded-lg p-3 flex flex-wrap gap-4 items-center justify-between">
+                  <div className="flex items-center space-x-3">
+                    <Label htmlFor="markdownOutputType" className="text-sm">Output Format:</Label>
+                    <Select 
+                      value={markdownOutputType} 
+                      onValueChange={(value: 'plainText' | 'richText') => setMarkdownOutputType(value)}
+                    >
+                      <SelectTrigger id="markdownOutputType" className="h-8 w-[140px] border-purple-200">
+                        <SelectValue placeholder="Select format" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="plainText">Plain Text</SelectItem>
+                        <SelectItem value="richText">Rich Text (HTML)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                   
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button 
-                          variant="outline" 
-                          size="sm"
-                          onClick={clearAll}
-                          className="h-8 text-xs border-red-200 hover:bg-red-50 text-red-500"
-                        >
-                          <Trash2 className="h-3.5 w-3.5 mr-1.5" />
-                          Clear All
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p className="text-xs">Clear all input and output data</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
+                  {markdownOutputType === 'richText' && (
+                    <div className="flex items-center space-x-3">
+                      <Label htmlFor="htmlStyleLevel" className="text-sm">Styling Level:</Label>
+                      <Select 
+                        value={htmlStyleLevel} 
+                        onValueChange={(value: 'minimal' | 'basic' | 'full') => setHtmlStyleLevel(value as 'minimal' | 'basic' | 'full')}
+                      >
+                        <SelectTrigger id="htmlStyleLevel" className="h-8 w-[140px] border-purple-200">
+                          <SelectValue placeholder="Select style" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="minimal">Minimal Styling</SelectItem>
+                          <SelectItem value="basic">Basic Styling</SelectItem>
+                          <SelectItem value="full">Full Styling</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+                  
+                  <div className="w-full text-xs text-purple-600">
+                    <Info className="h-3 w-3 inline-block mr-1" />
+                    {markdownOutputType === 'plainText' 
+                      ? "Plain Text converts LLM Output to clean text for simple emails or plain text fields." 
+                      : htmlStyleLevel === 'minimal' 
+                        ? "Minimal styling: Just the HTML structure without additional styles (most compatible)." 
+                        : htmlStyleLevel === 'basic' 
+                          ? "Basic styling: Essential styles for tables and code blocks (good for most editors)." 
+                          : "Full styling: Comprehensive styles for all elements (best visual appearance)."}
+                  </div>
                 </div>
               </div>
-              
-              <Tabs value={activeInputTab} onValueChange={setActiveInputTab} className="w-full">
-                <TabsList className="grid w-full grid-cols-2 h-9">
-                  <TabsTrigger value="paste" className="text-xs">Paste Text</TabsTrigger>
-                  <TabsTrigger value="upload" className="text-xs">Upload File</TabsTrigger>
-                </TabsList>
-                
-                <TabsContent value="paste" className="mt-2">
-                  <Textarea
-                    ref={textareaRef}
-                    placeholder={
-                      transformDirection === 'columnToRow'
-                        ? "Paste your column data here (one item per line)..."
-                        : transformDirection === 'rowToColumn'
-                          ? "Paste your delimited data here (items separated by delimiter)..."
-                          : "Paste your LLM Output text here..."
-                    }
-                    className="min-h-[200px] font-mono text-sm border-purple-200"
-                    value={inputText}
-                    onChange={(e) => setInputText(e.target.value)}
-                  />
-                </TabsContent>
-                
-                <TabsContent value="upload" className="mt-2">
-                  <div 
-                    className={`
-                      border-2 border-dashed rounded-md p-6 text-center
-                      ${isDragging 
-                        ? 'border-purple-400 bg-purple-100/70' 
-                        : 'border-purple-200 bg-purple-50/50'
-                      }
-                      transition-colors duration-200
-                    `}
-                    onDragEnter={handleDragEnter}
-                    onDragLeave={handleDragLeave}
-                    onDragOver={handleDragOver}
-                    onDrop={handleDrop}
-                  >
-                    <input 
-                      type="file" 
-                      ref={fileInputRef}
-                      onChange={handleFileUpload}
-                      accept=".txt,.csv,.md,.json,text/plain,text/csv"
-                      className="hidden" 
-                    />
-                    <div className="flex flex-col items-center justify-center space-y-2">
-                      <div className={`rounded-full p-3 ${isDragging ? 'bg-purple-200' : 'bg-purple-100'}`}>
-                        <FileUp className={`h-6 w-6 ${isDragging ? 'text-purple-700' : 'text-purple-600'}`} />
-                      </div>
-                      <h4 className="font-medium text-purple-800">
-                        {isDragging ? 'Drop File Here' : 'Upload a Text File'}
-                      </h4>
-                      <p className="text-xs text-purple-600 max-w-xs">
-                        {isDragging 
-                          ? 'Release to upload your file' 
-                          : 'Drag & drop your file here or click the button below'
+            )}
+
+            <CardContent className="pt-2">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Input Section */}
+                <div className="space-y-4">
+                  <div className="flex justify-between items-center">
+                    <h3 className="text-base font-medium">Input Data</h3>
+                    <div className="flex gap-2">
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button 
+                              variant="outline" 
+                              size="sm" 
+                              onClick={loadSampleData}
+                              className="h-8 text-xs border-purple-200 hover:bg-purple-50 text-purple-700"
+                              disabled={isSampleLoaded}
+                            >
+                              <Lightbulb className="h-3.5 w-3.5 mr-1.5" />
+                              Load Sample
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p className="text-xs">Load sample data to see how it works</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                      
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button 
+                              variant="outline" 
+                              size="sm"
+                              onClick={clearAll}
+                              className="h-8 text-xs border-red-200 hover:bg-red-50 text-red-500"
+                            >
+                              <Trash2 className="h-3.5 w-3.5 mr-1.5" />
+                              Clear All
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p className="text-xs">Clear all input and output data</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    </div>
+                  </div>
+                  
+                  <Tabs value={activeInputTab} onValueChange={setActiveInputTab} className="w-full">
+                    <TabsList className="grid w-full grid-cols-2 h-9">
+                      <TabsTrigger value="paste" className="text-xs">Paste Text</TabsTrigger>
+                      <TabsTrigger value="upload" className="text-xs">Upload File</TabsTrigger>
+                    </TabsList>
+                    
+                    <TabsContent value="paste" className="mt-2">
+                      <Textarea
+                        ref={textareaRef}
+                        placeholder={
+                          transformDirection === 'columnToRow'
+                            ? "Paste your column data here (one item per line)..."
+                            : transformDirection === 'rowToColumn'
+                              ? "Paste your delimited data here (items separated by delimiter)..."
+                              : "Paste your LLM Output text here..."
                         }
-                      </p>
-                      <Button
-                        variant="outline"
-                        onClick={() => fileInputRef.current?.click()}
-                        className={`mt-2 ${
-                          isDragging 
-                            ? 'border-purple-400 bg-purple-200 hover:bg-purple-300 text-purple-800' 
-                            : 'border-purple-300 hover:bg-purple-100 text-purple-700'
-                        }`}
+                        className="min-h-[200px] font-mono text-sm border-purple-200"
+                        value={inputText}
+                        onChange={(e) => setInputText(e.target.value)}
+                      />
+                    </TabsContent>
+                    
+                    <TabsContent value="upload" className="mt-2">
+                      <div 
+                        className={`
+                          border-2 border-dashed rounded-md p-6 text-center
+                          ${isDragging 
+                            ? 'border-purple-400 bg-purple-100/70' 
+                            : 'border-purple-200 bg-purple-50/50'
+                          }
+                          transition-colors duration-200
+                        `}
+                        onDragEnter={handleDragEnter}
+                        onDragLeave={handleDragLeave}
+                        onDragOver={handleDragOver}
+                        onDrop={handleDrop}
                       >
-                        Choose File
-                      </Button>
-                    </div>
-                  </div>
-                </TabsContent>
-              </Tabs>
-              
-              <Alert className="bg-purple-50 border-purple-100">
-                <Info className="h-4 w-4 text-purple-600" />
-                <AlertDescription className="text-purple-700 text-sm">
-                  {transformDirection === 'columnToRow'
-                    ? "Enter data with one item per line. The transformer will combine all lines into a single row."
-                    : transformDirection === 'rowToColumn'
-                      ? "Enter data with items separated by delimiter. The transformer will split items into separate lines."
-                      : "Paste your LLM Output content. It will be transformed into clean plain or rich text."}
-                </AlertDescription>
-              </Alert>
-            </div>
-            
-            {/* Configuration and Output Section */}
-            <div className="space-y-4">
-              <div className="space-y-6">
-                <div>
-                  <h3 className="text-base font-medium mb-3">Configure Transformation</h3>
-                  
-                  {/* Conditionally render Delimiter options only if not in LLM Output mode */}
-                  {transformDirection !== 'markdown' && (
-                    <div className="space-y-4">
-                      <div className="grid grid-cols-5 gap-3 items-end">
-                        <div className="col-span-2">
-                          <Label htmlFor="delimiter" className="text-sm mb-1 block">Delimiter</Label>
-                          <Select 
-                            defaultValue="," 
-                            value={delimiter}
-                            onValueChange={(value) => setDelimiter(value)}
+                        <input 
+                          type="file" 
+                          ref={fileInputRef}
+                          onChange={handleFileUpload}
+                          accept=".txt,.csv,.md,.json,text/plain,text/csv"
+                          className="hidden" 
+                        />
+                        <div className="flex flex-col items-center justify-center space-y-2">
+                          <div className={`rounded-full p-3 ${isDragging ? 'bg-purple-200' : 'bg-purple-100'}`}>
+                            <FileUp className={`h-6 w-6 ${isDragging ? 'text-purple-700' : 'text-purple-600'}`} />
+                          </div>
+                          <h4 className="font-medium text-purple-800">
+                            {isDragging ? 'Drop File Here' : 'Upload a Text File'}
+                          </h4>
+                          <p className="text-xs text-purple-600 max-w-xs">
+                            {isDragging 
+                              ? 'Release to upload your file' 
+                              : 'Drag & drop your file here or click the button below'
+                            }
+                          </p>
+                          <Button
+                            variant="outline"
+                            onClick={() => fileInputRef.current?.click()}
+                            className={`mt-2 ${
+                              isDragging 
+                                ? 'border-purple-400 bg-purple-200 hover:bg-purple-300 text-purple-800' 
+                                : 'border-purple-300 hover:bg-purple-100 text-purple-700'
+                            }`}
                           >
-                            <SelectTrigger id="delimiter" className="border-purple-200">
-                              <SelectValue placeholder="Select delimiter" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value=",">Comma (,)</SelectItem>
-                              <SelectItem value=";">Semicolon (;)</SelectItem>
-                              <SelectItem value="|">Pipe (|)</SelectItem>
-                              <SelectItem value=" ">Space ( )</SelectItem>
-                              <SelectItem value="\t">Tab (\t)</SelectItem>
-                              <SelectItem value="-">Hyphen (-)</SelectItem>
-                              <SelectItem value="_">Underscore (_)</SelectItem>
-                              <SelectItem value="custom">Custom...</SelectItem>
-                            </SelectContent>
-                          </Select>
+                            Choose File
+                          </Button>
                         </div>
-                        
-                        {delimiter === 'custom' && (
-                          <div className="col-span-3">
-                            <Label htmlFor="customDelimiter" className="text-sm mb-1 block">Custom Delimiter</Label>
-                            <Input
-                              id="customDelimiter"
-                              placeholder="Enter custom delimiter"
-                              value={customDelimiter}
-                              onChange={(e) => setCustomDelimiter(e.target.value)}
-                              className="border-purple-200"
-                            />
-                          </div>
-                        )}
-                        
-                        {delimiter !== 'custom' && (
-                          <div className="col-span-3">
-                            <Button 
-                              onClick={transformData} 
-                              className="w-full bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white"
-                              disabled={!inputText.trim()}
-                            >
-                              Transform
-                            </Button>
-                          </div>
-                        )}
-                        
-                        {delimiter === 'custom' && (
-                          <div className="col-span-5 mt-2">
-                            <Button 
-                              onClick={transformData} 
-                              className="w-full bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white"
-                              disabled={!inputText.trim() || !customDelimiter}
-                            >
-                              Transform
-                            </Button>
-                          </div>
-                        )}
                       </div>
-                    </div>
-                  )}
+                    </TabsContent>
+                  </Tabs>
+                  
+                  <Alert className="bg-purple-50 border-purple-100">
+                    <Info className="h-4 w-4 text-purple-600" />
+                    <AlertDescription className="text-purple-700 text-sm">
+                      {transformDirection === 'columnToRow'
+                        ? "Enter data with one item per line. The transformer will combine all lines into a single row."
+                        : transformDirection === 'rowToColumn'
+                          ? "Enter data with items separated by delimiter. The transformer will split items into separate lines."
+                          : "Paste your LLM Output content. It will be transformed into clean plain or rich text."}
+                    </AlertDescription>
+                  </Alert>
                 </div>
                 
-                {/* Add Data Cleaning Options - Already conditional based on transformDirection */}
-                {transformDirection !== 'markdown' && (
-                  <div>
-                    <h3 className="text-base font-medium mb-2 flex items-center">
-                      <svg className="h-4 w-4 mr-1.5 text-purple-600" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/>
-                        <path d="M12 18a3 3 0 1 0 0-6 3 3 0 0 0 0 6z"/>
-                      </svg>
-                      Data Cleaning Options
-                    </h3>
-                    
-                    <div className="grid grid-cols-2 gap-x-4 gap-y-2">
-                      <label className="flex items-center space-x-2 text-sm">
-                        <input 
-                          type="checkbox" 
-                          checked={cleaningOptions.trimWhitespace} 
-                          onChange={() => toggleCleaningOption('trimWhitespace')}
-                          className="h-4 w-4 rounded border-purple-300 text-purple-600 focus:ring-purple-500"
-                        />
-                        <span>Trim whitespace</span>
-                      </label>
+                {/* Configuration and Output Section */}
+                <div className="space-y-4">
+                  <div className="space-y-6">
+                    <div>
+                      <h3 className="text-base font-medium mb-3">Configure Transformation</h3>
                       
-                      <label className="flex items-center space-x-2 text-sm">
-                        <input 
-                          type="checkbox" 
-                          checked={cleaningOptions.removeEmptyLines} 
-                          onChange={() => toggleCleaningOption('removeEmptyLines')}
-                          className="h-4 w-4 rounded border-purple-300 text-purple-600 focus:ring-purple-500"
-                        />
-                        <span>Remove empty lines</span>
-                      </label>
-                      
-                      <label className="flex items-center space-x-2 text-sm">
-                        <input 
-                          type="checkbox" 
-                          checked={cleaningOptions.removeDuplicates} 
-                          onChange={() => toggleCleaningOption('removeDuplicates')}
-                          className="h-4 w-4 rounded border-purple-300 text-purple-600 focus:ring-purple-500"
-                        />
-                        <span>Remove duplicates</span>
-                      </label>
-                      
-                      <label className="flex items-center space-x-2 text-sm">
-                        <input 
-                          type="checkbox" 
-                          checked={cleaningOptions.removeSpecialChars} 
-                          onChange={() => toggleCleaningOption('removeSpecialChars')}
-                          className="h-4 w-4 rounded border-purple-300 text-purple-600 focus:ring-purple-500"
-                        />
-                        <span>Remove special characters</span>
-                      </label>
-                      
-                      <label className="flex items-center space-x-2 text-sm">
-                        <input 
-                          type="checkbox" 
-                          checked={cleaningOptions.toLowerCase} 
-                          onChange={() => toggleCleaningOption('toLowerCase')}
-                          className="h-4 w-4 rounded border-purple-300 text-purple-600 focus:ring-purple-500"
-                        />
-                        <span>Convert to lowercase</span>
-                      </label>
-                      
-                      <label className="flex items-center space-x-2 text-sm">
-                        <input 
-                          type="checkbox" 
-                          checked={cleaningOptions.toUpperCase} 
-                          onChange={() => toggleCleaningOption('toUpperCase')}
-                          className="h-4 w-4 rounded border-purple-300 text-purple-600 focus:ring-purple-500"
-                        />
-                        <span>Convert to UPPERCASE</span>
-                      </label>
-                      
-                      <label className="flex items-center space-x-2 text-sm">
-                        <input 
-                          type="checkbox" 
-                          checked={cleaningOptions.replaceMultipleSpaces} 
-                          onChange={() => toggleCleaningOption('replaceMultipleSpaces')}
-                          className="h-4 w-4 rounded border-purple-300 text-purple-600 focus:ring-purple-500"
-                        />
-                        <span>Replace multiple spaces</span>
-                      </label>
-                      
-                      <label className="flex items-center space-x-2 text-sm">
-                        <input 
-                          type="checkbox" 
-                          checked={cleaningOptions.removeLeadingNumbers} 
-                          onChange={() => toggleCleaningOption('removeLeadingNumbers')}
-                          className="h-4 w-4 rounded border-purple-300 text-purple-600 focus:ring-purple-500"
-                        />
-                        <span>Remove leading numbers</span>
-                      </label>
-                      
-                      <label className="flex items-center space-x-2 text-sm">
-                        <input 
-                          type="checkbox" 
-                          checked={cleaningOptions.removeTrailingNumbers} 
-                          onChange={() => toggleCleaningOption('removeTrailingNumbers')}
-                          className="h-4 w-4 rounded border-purple-300 text-purple-600 focus:ring-purple-500"
-                        />
-                        <span>Remove trailing numbers</span>
-                      </label>
-                      
-                      <label className="flex items-center space-x-2 text-sm">
-                        <input 
-                          type="checkbox" 
-                          checked={cleaningOptions.useCustomRegex} 
-                          onChange={() => toggleCleaningOption('useCustomRegex')}
-                          className="h-4 w-4 rounded border-purple-300 text-purple-600 focus:ring-purple-500"
-                        />
-                        <span>Use custom regex pattern</span>
-                      </label>
-
-                      <label className="flex items-center space-x-2 text-sm">
-                        <input 
-                          type="checkbox" 
-                          checked={cleaningOptions.normalizeWhitespace} 
-                          onChange={() => toggleCleaningOption('normalizeWhitespace')}
-                          className="h-4 w-4 rounded border-purple-300 text-purple-600 focus:ring-purple-500"
-                        />
-                        <span>Normalize Whitespace (Post-Transform)</span>
-                      </label>
-                    </div>
-                    
-                    {/* Custom regex section */}
-                    {cleaningOptions.useCustomRegex && (
-                      <div className="mt-3 p-3 border border-purple-200 rounded-md bg-purple-50/30">
-                        <h4 className="text-sm font-medium mb-2 text-purple-700">Custom Regex Replacement</h4>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                          <div>
-                            <Label htmlFor="regexPattern" className="text-xs block mb-1">Pattern</Label>
-                            <Input
-                              id="regexPattern"
-                              placeholder="e.g., \d{4}-\d{2}"
-                              value={customRegexPattern}
-                              onChange={(e) => setCustomRegexPattern(e.target.value)}
-                              className="h-8 text-xs border-purple-200 font-mono"
-                            />
-                          </div>
-                          <div>
-                            <Label htmlFor="regexReplacement" className="text-xs block mb-1">Replacement</Label>
-                            <Input
-                              id="regexReplacement"
-                              placeholder="e.g., DATE"
-                              value={customRegexReplacement}
-                              onChange={(e) => setCustomRegexReplacement(e.target.value)}
-                              className="h-8 text-xs border-purple-200 font-mono"
-                            />
-                          </div>
-                        </div>
-                        {customRegexError && (
-                          <div className="mt-2 text-xs text-red-500">
-                            <AlertTriangle className="h-3 w-3 inline-block mr-1" />
-                            {customRegexError}
-                          </div>
-                        )}
-                        <div className="mt-2 text-xs text-purple-600">
-                          <Info className="h-3 w-3 inline-block mr-1" />
-                          Enter a regular expression pattern to find and replace in each line
-                        </div>
-                      </div>
-                    )}
-                    
-                    {previewStats.showPreview && (
-                      <div className="mt-3 bg-purple-50/70 rounded-md p-3 border border-purple-100 text-xs text-purple-700">
-                        <h4 className="font-medium mb-1 flex items-center">
-                          <CheckCircle className="h-3 w-3 mr-1 text-purple-600" />
-                          Data Cleaning Preview
-                        </h4>
-                        
-                        <div className="grid grid-cols-2 gap-x-3 gap-y-1 mt-2">
-                          <div className="flex justify-between">
-                            <span>Original lines:</span>
-                            <span className="font-semibold">{previewStats.originalLines}</span>
-                          </div>
-                          
-                          {cleaningOptions.removeEmptyLines && (
-                            <div className="flex justify-between">
-                              <span>After removing empty:</span>
-                              <span className={`font-semibold ${previewStats.afterRemovingEmpty !== previewStats.originalLines ? 'text-purple-600' : ''}`}>
-                                {previewStats.afterRemovingEmpty}
-                                {previewStats.afterRemovingEmpty !== previewStats.originalLines && (
-                                  <span className="text-purple-500 ml-1">
-                                    (-{previewStats.originalLines - previewStats.afterRemovingEmpty})
-                                  </span>
-                                )}
-                              </span>
+                      {/* Conditionally render Delimiter options only if not in LLM Output mode */}
+                      {transformDirection !== 'markdown' && (
+                        <div className="space-y-4">
+                          <div className="grid grid-cols-5 gap-3 items-end">
+                            <div className="col-span-2">
+                              <Label htmlFor="delimiter" className="text-sm mb-1 block">Delimiter</Label>
+                              <Select 
+                                defaultValue="," 
+                                value={delimiter}
+                                onValueChange={(value) => setDelimiter(value)}
+                              >
+                                <SelectTrigger id="delimiter" className="border-purple-200">
+                                  <SelectValue placeholder="Select delimiter" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value=",">Comma (,)</SelectItem>
+                                  <SelectItem value=";">Semicolon (;)</SelectItem>
+                                  <SelectItem value="|">Pipe (|)</SelectItem>
+                                  <SelectItem value=" ">Space ( )</SelectItem>
+                                  <SelectItem value="\t">Tab (\t)</SelectItem>
+                                  <SelectItem value="-">Hyphen (-)</SelectItem>
+                                  <SelectItem value="_">Underscore (_)</SelectItem>
+                                  <SelectItem value="custom">Custom...</SelectItem>
+                                </SelectContent>
+                              </Select>
                             </div>
-                          )}
-                          
-                          {cleaningOptions.removeDuplicates && (
-                            <div className="flex justify-between">
-                              <span>After removing duplicates:</span>
-                              <span className={`font-semibold ${
-                                (cleaningOptions.removeEmptyLines ? 
-                                  previewStats.afterRemovingDuplicates !== previewStats.afterRemovingEmpty : 
-                                  previewStats.afterRemovingDuplicates !== previewStats.originalLines) ? 'text-purple-600' : ''
-                              }`}>
-                                {previewStats.afterRemovingDuplicates}
-                                {cleaningOptions.removeEmptyLines ? 
-                                  (previewStats.afterRemovingDuplicates !== previewStats.afterRemovingEmpty && (
-                                    <span className="text-purple-500 ml-1">
-                                      (-{previewStats.afterRemovingEmpty - previewStats.afterRemovingDuplicates})
-                                    </span>
-                                  )) : 
-                                  (previewStats.afterRemovingDuplicates !== previewStats.originalLines && (
-                                    <span className="text-purple-500 ml-1">
-                                      (-{previewStats.originalLines - previewStats.afterRemovingDuplicates})
-                                    </span>
-                                  ))
-                                }
-                              </span>
-                            </div>
-                          )}
-                          
-                          <div className="flex justify-between col-span-2 border-t border-purple-200 mt-1 pt-1">
-                            <span className="font-medium">Final lines after cleaning:</span>
-                            <span className="font-semibold text-purple-600">{previewStats.afterCleaning}</span>
-                          </div>
-                        </div>
-                        
-                        {/* Add sample line visual preview */}
-                        {samplePreview.showPreview && samplePreview.original.length > 0 && (
-                          <div className="mt-3 pt-2 border-t border-purple-200">
-                            <h4 className="font-medium mb-2 flex items-center">
-                              <svg className="h-3 w-3 mr-1 text-purple-600" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                <circle cx="12" cy="12" r="10"></circle>
-                                <line x1="12" y1="16" x2="12" y2="12"></line>
-                                <line x1="12" y1="8" x2="12.01" y2="8"></line>
-                              </svg>
-                              Sample Line Preview
-                            </h4>
-                            <div className="space-y-2">
-                              {samplePreview.original.map((originalLine, index) => (
-                                <div key={index} className="grid grid-cols-1 gap-1 bg-white/60 p-2 rounded border border-purple-100">
-                                  <div className="flex items-start">
-                                    <span className="bg-purple-100 text-purple-800 rounded-full h-4 w-4 flex items-center justify-center text-[10px] mr-1.5 flex-shrink-0 mt-0.5">B</span>
-                                    <div className="font-mono text-[10px] overflow-hidden overflow-ellipsis whitespace-nowrap text-gray-600">
-                                      {originalLine || <span className="italic text-gray-400">(empty line)</span>}
-                                    </div>
-                                  </div>
-                                  <div className="flex items-start">
-                                    <span className="bg-purple-500 text-white rounded-full h-4 w-4 flex items-center justify-center text-[10px] mr-1.5 flex-shrink-0 mt-0.5">A</span>
-                                    <div className="font-mono text-[10px] overflow-hidden overflow-ellipsis whitespace-nowrap text-purple-700 font-medium">
-                                      {samplePreview.cleaned[index] || <span className="italic text-purple-300">(empty line)</span>}
-                                    </div>
-                                  </div>
-                                  {originalLine !== samplePreview.cleaned[index] && (
-                                    <div className="text-[10px] text-purple-600 pl-6">
-                                      <CheckCircle className="h-2.5 w-2.5 inline-block mr-1" />
-                                      Changes detected
-                                    </div>
-                                  )}
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    )}
-                    
-                    <div className="mt-3 bg-purple-50 rounded-md p-2 border border-purple-100">
-                      <div className="flex items-start">
-                        <Info className="h-3.5 w-3.5 text-purple-600 mt-0.5 mr-1.5 flex-shrink-0" />
-                        <span className="text-xs text-purple-700">
-                          Clean your data before transformation to handle whitespace, duplicates, and formatting.
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-              
-              {/* Conditionally render Live Preview only if not in LLM Output mode */}
-              {transformDirection !== 'markdown' && (
-                <div className="mt-4 border-t border-purple-100 pt-3">
-                  <div className="flex justify-between items-center mb-2">
-                    <h3 className="text-base font-medium flex items-center">
-                      <svg className="h-4 w-4 mr-1.5 text-purple-600" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
-                      </svg>
-                      Live Preview
-                    </h3>
-                    <div className="flex items-center">
-                      <label className="relative inline-flex items-center cursor-pointer">
-                        <input 
-                          type="checkbox" 
-                          className="sr-only peer"
-                          checked={liveModeEnabled}
-                          onChange={() => setLiveModeEnabled(!liveModeEnabled)}
-                        />
-                        <div className="w-9 h-5 bg-gray-200 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-purple-600"></div>
-                        <span className="ml-2 text-xs font-medium text-gray-500">
-                          {liveModeEnabled ? 'Enabled' : 'Disabled'}
-                        </span>
-                      </label>
-                    </div>
-                  </div>
-                  
-                  {liveModeEnabled && (
-                    <div className="relative">
-                      <div className="p-2 border rounded-md bg-gray-50 border-purple-100 overflow-hidden h-10 flex items-center">
-                        {livePreview ? (
-                          <div className="font-mono text-xs text-purple-700 truncate">
-                            {livePreview}
-                          </div>
-                        ) : (
-                          <div className="text-xs text-gray-400 italic">
-                            Live preview will appear here as you type...
-                          </div>
-                        )}
-                      </div>
-                      <div className="absolute top-0 right-0 bottom-0 flex items-center pr-2">
-                        <div className="text-[10px] px-1.5 py-0.5 rounded bg-purple-100 text-purple-700">
-                          Preview
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
-              
-              {/* Conditionally render Save/Load Configurations only if not in LLM Output mode */}
-              {transformDirection !== 'markdown' && (
-                <div className="mt-4 border-t border-purple-100 pt-3">
-                  <div className="flex justify-between items-center mb-2">
-                    <h3 className="text-base font-medium flex items-center">
-                      <svg className="h-4 w-4 mr-1.5 text-purple-600" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
-                        <polyline points="17 21 17 13 7 13 7 21"></polyline>
-                        <polyline points="7 3 7 8 15 8"></polyline>
-                      </svg>
-                      Configurations
-                    </h3>
-                    <div className="flex gap-2">
-                      <Button 
-                        variant="outline" 
-                        size="sm"
-                        onClick={() => setShowSaveConfigModal(true)}
-                        className="h-8 text-xs border-purple-200 hover:bg-purple-50 text-purple-700"
-                      >
-                        Save Config
-                      </Button>
-                      <Button 
-                        variant="outline" 
-                        size="sm"
-                        onClick={() => setShowLoadConfigModal(true)}
-                        className="h-8 text-xs border-purple-200 hover:bg-purple-50 text-purple-700"
-                        disabled={savedConfigs.length === 0}
-                      >
-                        Load Config
-                      </Button>
-                    </div>
-                  </div>
-                  
-                  {/* Save Configuration Modal */}
-                  {showSaveConfigModal && (
-                    <div className="fixed inset-0 bg-black/30 z-50 flex items-center justify-center">
-                      <div className="bg-white rounded-lg shadow-lg p-4 max-w-md w-full mx-4">
-                        <h4 className="text-lg font-medium mb-3">Save Configuration</h4>
-                        <div className="mb-4">
-                          <Label htmlFor="configName" className="block mb-2 text-sm">Configuration Name</Label>
-                          <Input
-                            id="configName"
-                            placeholder="e.g., My CSV Cleaning Setup"
-                            value={configName}
-                            onChange={(e) => setConfigName(e.target.value)}
-                            className="border-purple-200"
-                          />
-                        </div>
-                        <div className="mb-4 text-xs text-gray-500">
-                          This will save your current delimiter and all cleaning options.
-                        </div>
-                        <div className="flex justify-end gap-2">
-                          <Button 
-                            variant="outline" 
-                            onClick={() => setShowSaveConfigModal(false)}
-                          >
-                            Cancel
-                          </Button>
-                          <Button 
-                            onClick={saveCurrentConfig}
-                            className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white"
-                          >
-                            Save
-                          </Button>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                  
-                  {/* Load Configuration Modal */}
-                  {showLoadConfigModal && (
-                    <div className="fixed inset-0 bg-black/30 z-50 flex items-center justify-center">
-                      <div className="bg-white rounded-lg shadow-lg p-4 max-w-md w-full mx-4">
-                        <h4 className="text-lg font-medium mb-3">Load Configuration</h4>
-                        {savedConfigs.length > 0 ? (
-                          <div className="max-h-60 overflow-auto mb-4">
-                            <div className="space-y-2">
-                              {savedConfigs.map(config => (
-                                <div 
-                                  key={config.id} 
-                                  className="p-3 border border-purple-100 rounded-md hover:bg-purple-50 transition-colors cursor-pointer flex justify-between items-center"
-                                  onClick={() => loadConfig(config)}
+                            
+                            {delimiter === 'custom' && (
+                              <div className="col-span-3">
+                                <Label htmlFor="customDelimiter" className="text-sm mb-1 block">Custom Delimiter</Label>
+                                <Input
+                                  id="customDelimiter"
+                                  placeholder="Enter custom delimiter"
+                                  value={customDelimiter}
+                                  onChange={(e) => setCustomDelimiter(e.target.value)}
+                                  className="border-purple-200"
+                                />
+                              </div>
+                            )}
+                            
+                            {delimiter !== 'custom' && (
+                              <div className="col-span-3">
+                                <Button 
+                                  onClick={transformData} 
+                                  className="w-full bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white"
+                                  disabled={!inputText.trim()}
                                 >
-                                  <div>
-                                    <div className="font-medium">{config.name}</div>
-                                    <div className="text-xs text-gray-500">
-                                      {new Date(config.timestamp).toLocaleString()} • 
-                                      Delimiter: {config.delimiter === 'custom' ? config.customDelimiter : config.delimiter}
-                                    </div>
-                                  </div>
-                                  <button 
-                                    className="text-red-500 hover:text-red-700"
-                                    onClick={(e) => {
-                                      e.stopPropagation(); // Prevent loadConfig from being called
-                                      deleteConfig(config.id, config.name);
-                                    }}
-                                  >
-                                    <Trash2 className="h-4 w-4" />
-                                  </button>
-                                </div>
-                              ))}
+                                  Transform
+                                </Button>
+                              </div>
+                            )}
+                            
+                            {delimiter === 'custom' && (
+                              <div className="col-span-5 mt-2">
+                                <Button 
+                                  onClick={transformData} 
+                                  className="w-full bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white"
+                                  disabled={!inputText.trim() || !customDelimiter}
+                                >
+                                  Transform
+                                </Button>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                    
+                    {/* Add Data Cleaning Options - Already conditional based on transformDirection */}
+                    {transformDirection !== 'markdown' && (
+                      <div>
+                        <h3 className="text-base font-medium mb-2 flex items-center">
+                          <svg className="h-4 w-4 mr-1.5 text-purple-600" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/>
+                            <path d="M12 18a3 3 0 1 0 0-6 3 3 0 0 0 0 6z"/>
+                          </svg>
+                          Data Cleaning Options
+                        </h3>
+                        
+                        <div className="grid grid-cols-2 gap-x-4 gap-y-2">
+                          <label className="flex items-center space-x-2 text-sm">
+                            <input 
+                              type="checkbox" 
+                              checked={cleaningOptions.trimWhitespace} 
+                              onChange={() => toggleCleaningOption('trimWhitespace')}
+                              className="h-4 w-4 rounded border-purple-300 text-purple-600 focus:ring-purple-500"
+                            />
+                            <span>Trim whitespace</span>
+                          </label>
+                          
+                          <label className="flex items-center space-x-2 text-sm">
+                            <input 
+                              type="checkbox" 
+                              checked={cleaningOptions.removeEmptyLines} 
+                              onChange={() => toggleCleaningOption('removeEmptyLines')}
+                              className="h-4 w-4 rounded border-purple-300 text-purple-600 focus:ring-purple-500"
+                            />
+                            <span>Remove empty lines</span>
+                          </label>
+                          
+                          <label className="flex items-center space-x-2 text-sm">
+                            <input 
+                              type="checkbox" 
+                              checked={cleaningOptions.removeDuplicates} 
+                              onChange={() => toggleCleaningOption('removeDuplicates')}
+                              className="h-4 w-4 rounded border-purple-300 text-purple-600 focus:ring-purple-500"
+                            />
+                            <span>Remove duplicates</span>
+                          </label>
+                          
+                          <label className="flex items-center space-x-2 text-sm">
+                            <input 
+                              type="checkbox" 
+                              checked={cleaningOptions.removeSpecialChars} 
+                              onChange={() => toggleCleaningOption('removeSpecialChars')}
+                              className="h-4 w-4 rounded border-purple-300 text-purple-600 focus:ring-purple-500"
+                            />
+                            <span>Remove special characters</span>
+                          </label>
+                          
+                          <label className="flex items-center space-x-2 text-sm">
+                            <input 
+                              type="checkbox" 
+                              checked={cleaningOptions.toLowerCase} 
+                              onChange={() => toggleCleaningOption('toLowerCase')}
+                              className="h-4 w-4 rounded border-purple-300 text-purple-600 focus:ring-purple-500"
+                            />
+                            <span>Convert to lowercase</span>
+                          </label>
+                          
+                          <label className="flex items-center space-x-2 text-sm">
+                            <input 
+                              type="checkbox" 
+                              checked={cleaningOptions.toUpperCase} 
+                              onChange={() => toggleCleaningOption('toUpperCase')}
+                              className="h-4 w-4 rounded border-purple-300 text-purple-600 focus:ring-purple-500"
+                            />
+                            <span>Convert to UPPERCASE</span>
+                          </label>
+                          
+                          <label className="flex items-center space-x-2 text-sm">
+                            <input 
+                              type="checkbox" 
+                              checked={cleaningOptions.replaceMultipleSpaces} 
+                              onChange={() => toggleCleaningOption('replaceMultipleSpaces')}
+                              className="h-4 w-4 rounded border-purple-300 text-purple-600 focus:ring-purple-500"
+                            />
+                            <span>Replace multiple spaces</span>
+                          </label>
+                          
+                          <label className="flex items-center space-x-2 text-sm">
+                            <input 
+                              type="checkbox" 
+                              checked={cleaningOptions.removeLeadingNumbers} 
+                              onChange={() => toggleCleaningOption('removeLeadingNumbers')}
+                              className="h-4 w-4 rounded border-purple-300 text-purple-600 focus:ring-purple-500"
+                            />
+                            <span>Remove leading numbers</span>
+                          </label>
+                          
+                          <label className="flex items-center space-x-2 text-sm">
+                            <input 
+                              type="checkbox" 
+                              checked={cleaningOptions.removeTrailingNumbers} 
+                              onChange={() => toggleCleaningOption('removeTrailingNumbers')}
+                              className="h-4 w-4 rounded border-purple-300 text-purple-600 focus:ring-purple-500"
+                            />
+                            <span>Remove trailing numbers</span>
+                          </label>
+                          
+                          <label className="flex items-center space-x-2 text-sm">
+                            <input 
+                              type="checkbox" 
+                              checked={cleaningOptions.useCustomRegex} 
+                              onChange={() => toggleCleaningOption('useCustomRegex')}
+                              className="h-4 w-4 rounded border-purple-300 text-purple-600 focus:ring-purple-500"
+                            />
+                            <span>Use custom regex pattern</span>
+                          </label>
+
+                          <label className="flex items-center space-x-2 text-sm">
+                            <input 
+                              type="checkbox" 
+                              checked={cleaningOptions.normalizeWhitespace} 
+                              onChange={() => toggleCleaningOption('normalizeWhitespace')}
+                              className="h-4 w-4 rounded border-purple-300 text-purple-600 focus:ring-purple-500"
+                            />
+                            <span>Normalize Whitespace (Post-Transform)</span>
+                          </label>
+                        </div>
+                        
+                        {/* Custom regex section */}
+                        {cleaningOptions.useCustomRegex && (
+                          <div className="mt-3 p-3 border border-purple-200 rounded-md bg-purple-50/30">
+                            <h4 className="text-sm font-medium mb-2 text-purple-700">Custom Regex Replacement</h4>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                              <div>
+                                <Label htmlFor="regexPattern" className="text-xs block mb-1">Pattern</Label>
+                                <Input
+                                  id="regexPattern"
+                                  placeholder="e.g., \d{4}-\d{2}"
+                                  value={customRegexPattern}
+                                  onChange={(e) => setCustomRegexPattern(e.target.value)}
+                                  className="h-8 text-xs border-purple-200 font-mono"
+                                />
+                              </div>
+                              <div>
+                                <Label htmlFor="regexReplacement" className="text-xs block mb-1">Replacement</Label>
+                                <Input
+                                  id="regexReplacement"
+                                  placeholder="e.g., DATE"
+                                  value={customRegexReplacement}
+                                  onChange={(e) => setCustomRegexReplacement(e.target.value)}
+                                  className="h-8 text-xs border-purple-200 font-mono"
+                                />
+                              </div>
+                            </div>
+                            {customRegexError && (
+                              <div className="mt-2 text-xs text-red-500">
+                                <AlertTriangle className="h-3 w-3 inline-block mr-1" />
+                                {customRegexError}
+                              </div>
+                            )}
+                            <div className="mt-2 text-xs text-purple-600">
+                              <Info className="h-3 w-3 inline-block mr-1" />
+                              Enter a regular expression pattern to find and replace in each line
                             </div>
                           </div>
-                        ) : (
-                          <div className="py-6 text-center text-gray-500">
-                            No saved configurations found.
+                        )}
+                        
+                        {previewStats.showPreview && (
+                          <div className="mt-3 bg-purple-50/70 rounded-md p-3 border border-purple-100 text-xs text-purple-700">
+                            <h4 className="font-medium mb-1 flex items-center">
+                              <CheckCircle className="h-3 w-3 mr-1 text-purple-600" />
+                              Data Cleaning Preview
+                            </h4>
+                            
+                            <div className="grid grid-cols-2 gap-x-3 gap-y-1 mt-2">
+                              <div className="flex justify-between">
+                                <span>Original lines:</span>
+                                <span className="font-semibold">{previewStats.originalLines}</span>
+                              </div>
+                              
+                              {cleaningOptions.removeEmptyLines && (
+                                <div className="flex justify-between">
+                                  <span>After removing empty:</span>
+                                  <span className={`font-semibold ${previewStats.afterRemovingEmpty !== previewStats.originalLines ? 'text-purple-600' : ''}`}>
+                                    {previewStats.afterRemovingEmpty}
+                                    {previewStats.afterRemovingEmpty !== previewStats.originalLines && (
+                                      <span className="text-purple-500 ml-1">
+                                        (-{previewStats.originalLines - previewStats.afterRemovingEmpty})
+                                      </span>
+                                    )}
+                                  </span>
+                                </div>
+                              )}
+                              
+                              {cleaningOptions.removeDuplicates && (
+                                <div className="flex justify-between">
+                                  <span>After removing duplicates:</span>
+                                  <span className={`font-semibold ${
+                                    (cleaningOptions.removeEmptyLines ? 
+                                      previewStats.afterRemovingDuplicates !== previewStats.afterRemovingEmpty : 
+                                      previewStats.afterRemovingDuplicates !== previewStats.originalLines) ? 'text-purple-600' : ''
+                                  }`}>
+                                    {previewStats.afterRemovingDuplicates}
+                                    {cleaningOptions.removeEmptyLines ? 
+                                      (previewStats.afterRemovingDuplicates !== previewStats.afterRemovingEmpty && (
+                                        <span className="text-purple-500 ml-1">
+                                          (-{previewStats.afterRemovingEmpty - previewStats.afterRemovingDuplicates})
+                                        </span>
+                                      )) : 
+                                      (previewStats.afterRemovingDuplicates !== previewStats.originalLines && (
+                                        <span className="text-purple-500 ml-1">
+                                          (-{previewStats.originalLines - previewStats.afterRemovingDuplicates})
+                                        </span>
+                                      ))
+                                    }
+                                  </span>
+                                </div>
+                              )}
+                              
+                              <div className="flex justify-between col-span-2 border-t border-purple-200 mt-1 pt-1">
+                                <span className="font-medium">Final lines after cleaning:</span>
+                                <span className="font-semibold text-purple-600">{previewStats.afterCleaning}</span>
+                              </div>
+                            </div>
+                            
+                            {/* Add sample line visual preview */}
+                            {samplePreview.showPreview && samplePreview.original.length > 0 && (
+                              <div className="mt-3 pt-2 border-t border-purple-200">
+                                <h4 className="font-medium mb-2 flex items-center">
+                                  <svg className="h-3 w-3 mr-1 text-purple-600" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                    <circle cx="12" cy="12" r="10"></circle>
+                                    <line x1="12" y1="16" x2="12" y2="12"></line>
+                                    <line x1="12" y1="8" x2="12.01" y2="8"></line>
+                                  </svg>
+                                  Sample Line Preview
+                                </h4>
+                                <div className="space-y-2">
+                                  {samplePreview.original.map((originalLine, index) => (
+                                    <div key={index} className="grid grid-cols-1 gap-1 bg-white/60 p-2 rounded border border-purple-100">
+                                      <div className="flex items-start">
+                                        <span className="bg-purple-100 text-purple-800 rounded-full h-4 w-4 flex items-center justify-center text-[10px] mr-1.5 flex-shrink-0 mt-0.5">B</span>
+                                        <div className="font-mono text-[10px] overflow-hidden overflow-ellipsis whitespace-nowrap text-gray-600">
+                                          {originalLine || <span className="italic text-gray-400">(empty line)</span>}
+                                        </div>
+                                      </div>
+                                      <div className="flex items-start">
+                                        <span className="bg-purple-500 text-white rounded-full h-4 w-4 flex items-center justify-center text-[10px] mr-1.5 flex-shrink-0 mt-0.5">A</span>
+                                        <div className="font-mono text-[10px] overflow-hidden overflow-ellipsis whitespace-nowrap text-purple-700 font-medium">
+                                          {samplePreview.cleaned[index] || <span className="italic text-purple-300">(empty line)</span>}
+                                        </div>
+                                      </div>
+                                      {originalLine !== samplePreview.cleaned[index] && (
+                                        <div className="text-[10px] text-purple-600 pl-6">
+                                          <CheckCircle className="h-2.5 w-2.5 inline-block mr-1" />
+                                          Changes detected
+                                        </div>
+                                      )}
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
                           </div>
                         )}
-                        <div className="flex justify-end">
+                        
+                        <div className="mt-3 bg-purple-50 rounded-md p-2 border border-purple-100">
+                          <div className="flex items-start">
+                            <Info className="h-3.5 w-3.5 text-purple-600 mt-0.5 mr-1.5 flex-shrink-0" />
+                            <span className="text-xs text-purple-700">
+                              Clean your data before transformation to handle whitespace, duplicates, and formatting.
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                  
+                  {/* Conditionally render Live Preview only if not in LLM Output mode */}
+                  {transformDirection !== 'markdown' && (
+                    <div className="mt-4 border-t border-purple-100 pt-3">
+                      <div className="flex justify-between items-center mb-2">
+                        <h3 className="text-base font-medium flex items-center">
+                          <svg className="h-4 w-4 mr-1.5 text-purple-600" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                          </svg>
+                          Live Preview
+                        </h3>
+                        <div className="flex items-center">
+                          <label className="relative inline-flex items-center cursor-pointer">
+                            <input 
+                              type="checkbox" 
+                              className="sr-only peer"
+                              checked={liveModeEnabled}
+                              onChange={() => setLiveModeEnabled(!liveModeEnabled)}
+                            />
+                            <div className="w-9 h-5 bg-gray-200 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-purple-600"></div>
+                            <span className="ml-2 text-xs font-medium text-gray-500">
+                              {liveModeEnabled ? 'Enabled' : 'Disabled'}
+                            </span>
+                          </label>
+                        </div>
+                      </div>
+                      
+                      {liveModeEnabled && (
+                        <div className="relative">
+                          <div className="p-2 border rounded-md bg-gray-50 border-purple-100 overflow-hidden h-10 flex items-center">
+                            {livePreview ? (
+                              <div className="font-mono text-xs text-purple-700 truncate">
+                                {livePreview}
+                              </div>
+                            ) : (
+                              <div className="text-xs text-gray-400 italic">
+                                Live preview will appear here as you type...
+                              </div>
+                            )}
+                          </div>
+                          <div className="absolute top-0 right-0 bottom-0 flex items-center pr-2">
+                            <div className="text-[10px] px-1.5 py-0.5 rounded bg-purple-100 text-purple-700">
+                              Preview
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  
+                  {/* Conditionally render Save/Load Configurations only if not in LLM Output mode */}
+                  {transformDirection !== 'markdown' && (
+                    <div className="mt-4 border-t border-purple-100 pt-3">
+                      <div className="flex justify-between items-center mb-2">
+                        <h3 className="text-base font-medium flex items-center">
+                          <svg className="h-4 w-4 mr-1.5 text-purple-600" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+                            <polyline points="17 21 17 13 7 13 7 21"></polyline>
+                            <polyline points="7 3 7 8 15 8"></polyline>
+                          </svg>
+                          Configurations
+                        </h3>
+                        <div className="flex gap-2">
                           <Button 
                             variant="outline" 
-                            onClick={() => setShowLoadConfigModal(false)}
+                            size="sm"
+                            onClick={() => setShowSaveConfigModal(true)}
+                            className="h-8 text-xs border-purple-200 hover:bg-purple-50 text-purple-700"
                           >
-                            Close
+                            Save Config
+                          </Button>
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            onClick={() => setShowLoadConfigModal(true)}
+                            className="h-8 text-xs border-purple-200 hover:bg-purple-50 text-purple-700"
+                            disabled={savedConfigs.length === 0}
+                          >
+                            Load Config
                           </Button>
                         </div>
                       </div>
+                      
+                      {/* Save Configuration Modal */}
+                      {showSaveConfigModal && (
+                        <div className="fixed inset-0 bg-black/30 z-50 flex items-center justify-center">
+                          <div className="bg-white rounded-lg shadow-lg p-4 max-w-md w-full mx-4">
+                            <h4 className="text-lg font-medium mb-3">Save Configuration</h4>
+                            <div className="mb-4">
+                              <Label htmlFor="configName" className="block mb-2 text-sm">Configuration Name</Label>
+                              <Input
+                                id="configName"
+                                placeholder="e.g., My CSV Cleaning Setup"
+                                value={configName}
+                                onChange={(e) => setConfigName(e.target.value)}
+                                className="border-purple-200"
+                              />
+                            </div>
+                            <div className="mb-4 text-xs text-gray-500">
+                              This will save your current delimiter and all cleaning options.
+                            </div>
+                            <div className="flex justify-end gap-2">
+                              <Button 
+                                variant="outline" 
+                                onClick={() => setShowSaveConfigModal(false)}
+                              >
+                                Cancel
+                              </Button>
+                              <Button 
+                                onClick={saveCurrentConfig}
+                                className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white"
+                              >
+                                Save
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                      
+                      {/* Load Configuration Modal */}
+                      {showLoadConfigModal && (
+                        <div className="fixed inset-0 bg-black/30 z-50 flex items-center justify-center">
+                          <div className="bg-white rounded-lg shadow-lg p-4 max-w-md w-full mx-4">
+                            <h4 className="text-lg font-medium mb-3">Load Configuration</h4>
+                            {savedConfigs.length > 0 ? (
+                              <div className="max-h-60 overflow-auto mb-4">
+                                <div className="space-y-2">
+                                  {savedConfigs.map(config => (
+                                    <div 
+                                      key={config.id} 
+                                      className="p-3 border border-purple-100 rounded-md hover:bg-purple-50 transition-colors cursor-pointer flex justify-between items-center"
+                                      onClick={() => loadConfig(config)}
+                                    >
+                                      <div>
+                                        <div className="font-medium">{config.name}</div>
+                                        <div className="text-xs text-gray-500">
+                                          {new Date(config.timestamp).toLocaleString()} • 
+                                          Delimiter: {config.delimiter === 'custom' ? config.customDelimiter : config.delimiter}
+                                        </div>
+                                      </div>
+                                      <button 
+                                        className="text-red-500 hover:text-red-700"
+                                        onClick={(e) => {
+                                          e.stopPropagation(); // Prevent loadConfig from being called
+                                          deleteConfig(config.id, config.name);
+                                        }}
+                                      >
+                                        <Trash2 className="h-4 w-4" />
+                                      </button>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            ) : (
+                              <div className="py-6 text-center text-gray-500">
+                                No saved configurations found.
+                              </div>
+                            )}
+                            <div className="flex justify-end">
+                              <Button 
+                                variant="outline" 
+                                onClick={() => setShowLoadConfigModal(false)}
+                              >
+                                Close
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   )}
-                </div>
-              )}
-              
-              {/* Transform Button - render for all modes */}
-              <div className="pt-2">
-                <Button 
-                  onClick={transformData} 
-                  className="w-full bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white"
-                  disabled={!inputText.trim() || ( (transformDirection === 'columnToRow' || transformDirection === 'rowToColumn') && delimiter === 'custom' && !customDelimiter)}
-                >
-                  {transformDirection === 'columnToRow' 
-                    ? 'Transform to Row' 
-                    : transformDirection === 'rowToColumn' 
-                      ? 'Transform to Column' 
-                      : 'Transform LLM Output'}
-                </Button>
-              </div>
-              
-              <div>
-                <div className="flex justify-between items-center mb-2">
-                  <h3 className="text-base font-medium">Output</h3>
-                  {isTransformed && (
-                    <div className="flex gap-2">
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Button 
-                              variant="outline" 
-                              size="sm"
-                              onClick={copyToClipboard}
-                              className="h-8 text-xs border-purple-200 hover:bg-purple-50 text-purple-700"
-                            >
-                              <Copy className="h-3.5 w-3.5 mr-1.5" />
-                              Copy
-                            </Button>
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            <p className="text-xs">Copy transformed data to clipboard</p>
-                          </TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
-                      
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Button 
-                              variant="outline" 
-                              size="sm"
-                              onClick={downloadOutput}
-                              className="h-8 text-xs border-purple-200 hover:bg-purple-50 text-purple-700"
-                            >
-                              <Download className="h-3.5 w-3.5 mr-1.5" />
-                              Download
-                            </Button>
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            <p className="text-xs">Download as text file</p>
-                          </TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
-                    </div>
-                  )}
-                </div>
-                
-                <div 
-                  ref={outputRef}
-                  className={`
-                    p-3 border rounded-md min-h-[130px] max-h-[200px] overflow-auto 
-                    font-mono text-sm whitespace-pre-wrap break-all
-                    ${outputText ? 'bg-white border-purple-200' : 'bg-gray-50 border-gray-200 text-gray-400'}
-                  `}
-                >
-                  {outputText || "Transformed output will appear here..."}
-                </div>
-                
-                {/* LLM Output-specific output options */}
-                {transformDirection === 'markdown' && isTransformed && (
-                  <div className="mt-4">
-                    <div className="flex gap-2 mb-2 flex-wrap">
-                      <Button size="sm" variant="outline" onClick={copyHtmlToClipboard} className="border-purple-200 text-white bg-purple-600 hover:bg-purple-700">
-                        <Code className="h-3.5 w-3.5 mr-1.5" />
-                        Copy as HTML Code
-                      </Button>
-                      <Button size="sm" variant="outline" onClick={copyFormattedHtmlToClipboard} className="border-purple-200 text-white bg-pink-500 hover:bg-pink-600">
-                        <Copy className="h-3.5 w-3.5 mr-1.5" />
-                        Copy with Formatting
-                      </Button>
-                      <Button size="sm" variant="outline" onClick={copyPlainTextToClipboard} className="border-purple-200 text-white bg-purple-500 hover:bg-purple-600">
-                        <FileText className="h-3.5 w-3.5 mr-1.5" />
-                        Copy as Plain Text
-                      </Button>
-                      
-                      <div className="w-[1px] h-5 bg-gray-200 mx-1"></div>
-                      
-                      <Button size="sm" variant="outline" onClick={exportAsHtml} className="border-purple-200 text-white bg-blue-500 hover:bg-blue-600">
-                        <Download className="h-3.5 w-3.5 mr-1.5" />
-                        Export as HTML
-                      </Button>
-                      <Button size="sm" variant="outline" onClick={exportAsText} className="border-purple-200 text-white bg-green-500 hover:bg-green-600">
-                        <Download className="h-3.5 w-3.5 mr-1.5" />
-                        Export as Text
-                      </Button>
-                      <Button size="sm" variant="outline" onClick={exportAsWordDoc} className="border-purple-200 text-white bg-indigo-500 hover:bg-indigo-600">
-                        <FileText className="h-3.5 w-3.5 mr-1.5" />
-                        Export as Word
-                      </Button>
-                      <Button size="sm" variant="outline" onClick={exportAsExcel} className="border-purple-200 text-white bg-yellow-500 hover:bg-yellow-600">
-                        <FileText className="h-3.5 w-3.5 mr-1.5" />
-                        Export as Excel
-                      </Button>
+                  
+                  {/* Transform Button - render for all modes */}
+                  <div className="pt-2">
+                    <Button 
+                      onClick={transformData} 
+                      className="w-full bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white"
+                      disabled={!inputText.trim() || ( (transformDirection === 'columnToRow' || transformDirection === 'rowToColumn') && delimiter === 'custom' && !customDelimiter)}
+                    >
+                      {transformDirection === 'columnToRow' 
+                        ? 'Transform to Row' 
+                        : transformDirection === 'rowToColumn' 
+                          ? 'Transform to Column' 
+                          : 'Transform LLM Output'}
+                    </Button>
+                  </div>
+                  
+                  <div>
+                    <div className="flex justify-between items-center mb-2">
+                      <h3 className="text-base font-medium">Output</h3>
+                      {isTransformed && (
+                        <div className="flex gap-2">
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button 
+                                  variant="outline" 
+                                  size="sm"
+                                  onClick={copyToClipboard}
+                                  className="h-8 text-xs border-purple-200 hover:bg-purple-50 text-purple-700"
+                                >
+                                  <Copy className="h-3.5 w-3.5 mr-1.5" />
+                                  Copy
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p className="text-xs">Copy transformed data to clipboard</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                          
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button 
+                                  variant="outline" 
+                                  size="sm"
+                                  onClick={downloadOutput}
+                                  className="h-8 text-xs border-purple-200 hover:bg-purple-50 text-purple-700"
+                                >
+                                  <Download className="h-3.5 w-3.5 mr-1.5" />
+                                  Download
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p className="text-xs">Download as text file</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        </div>
+                      )}
                     </div>
                     
-                    {/* Expanded preview overlay */}
-                    {expandedPreview !== 'none' && (
-                      <div className="fixed inset-0 bg-white z-50 p-4 overflow-auto flex flex-col">
-                        <div className="flex justify-between items-center mb-4 sticky top-0 bg-white py-2 border-b">
-                          <h3 className="font-semibold text-lg text-purple-800">
-                            {expandedPreview === 'rich' ? 'Rich Text Preview' : 'Plain Text Preview'}
-                          </h3>
-                          <div className="flex items-center gap-2">
-                            <Button 
-                              size="sm" 
-                              variant="outline" 
-                              onClick={() => {
-                                if (expandedPreview === 'rich') {
-                                  copyFormattedHtmlToClipboard();
-                                } else {
-                                  copyPlainTextToClipboard();
-                                }
-                              }}
-                              className="border-purple-200 text-white bg-purple-600 hover:bg-purple-700"
-                            >
-                              <Copy className="h-4 w-4 mr-1.5" />
-                              Copy Content
-                            </Button>
-                            <Button 
-                              size="sm" 
-                              variant="outline" 
-                              onClick={() => setExpandedPreview('none')}
-                              className="border-purple-200 text-purple-700"
-                            >
-                              <Minimize2 className="h-4 w-4 mr-1.5" />
-                              Exit Fullscreen
-                            </Button>
-                            <Button 
-                              size="sm" 
-                              variant="ghost" 
-                              onClick={() => setExpandedPreview('none')}
-                              className="text-gray-500 h-8 w-8 p-0"
-                            >
-                              <X className="h-5 w-5" />
-                            </Button>
+                    <div 
+                      ref={outputRef}
+                      className={`
+                        p-3 border rounded-md min-h-[130px] max-h-[200px] overflow-auto 
+                        font-mono text-sm whitespace-pre-wrap break-all
+                        ${outputText ? 'bg-white border-purple-200' : 'bg-gray-50 border-gray-200 text-gray-400'}
+                      `}
+                    >
+                      {outputText || "Transformed output will appear here..."}
+                    </div>
+                    
+                    {/* LLM Output-specific output options */}
+                    {transformDirection === 'markdown' && isTransformed && (
+                      <div className="mt-4">
+                        <div className="flex gap-2 mb-2 flex-wrap">
+                          <Button size="sm" variant="outline" onClick={copyHtmlToClipboard} className="border-purple-200 text-white bg-purple-600 hover:bg-purple-700">
+                            <Code className="h-3.5 w-3.5 mr-1.5" />
+                            Copy as HTML Code
+                          </Button>
+                          <Button size="sm" variant="outline" onClick={copyFormattedHtmlToClipboard} className="border-purple-200 text-white bg-pink-500 hover:bg-pink-600">
+                            <Copy className="h-3.5 w-3.5 mr-1.5" />
+                            Copy with Formatting
+                          </Button>
+                          <Button size="sm" variant="outline" onClick={copyPlainTextToClipboard} className="border-purple-200 text-white bg-purple-500 hover:bg-purple-600">
+                            <FileText className="h-3.5 w-3.5 mr-1.5" />
+                            Copy as Plain Text
+                          </Button>
+                          
+                          <div className="w-[1px] h-5 bg-gray-200 mx-1"></div>
+                          
+                          <Button size="sm" variant="outline" onClick={exportAsHtml} className="border-purple-200 text-white bg-blue-500 hover:bg-blue-600">
+                            <Download className="h-3.5 w-3.5 mr-1.5" />
+                            Export as HTML
+                          </Button>
+                          <Button size="sm" variant="outline" onClick={exportAsText} className="border-purple-200 text-white bg-green-500 hover:bg-green-600">
+                            <Download className="h-3.5 w-3.5 mr-1.5" />
+                            Export as Text
+                          </Button>
+                          <Button size="sm" variant="outline" onClick={exportAsWordDoc} className="border-purple-200 text-white bg-indigo-500 hover:bg-indigo-600">
+                            <FileText className="h-3.5 w-3.5 mr-1.5" />
+                            Export as Word
+                          </Button>
+                          <Button size="sm" variant="outline" onClick={exportAsExcel} className="border-purple-200 text-white bg-yellow-500 hover:bg-yellow-600">
+                            <FileText className="h-3.5 w-3.5 mr-1.5" />
+                            Export as Excel
+                          </Button>
+                        </div>
+                        
+                        {/* Expanded preview overlay */}
+                        {expandedPreview !== 'none' && (
+                          <div className="fixed inset-0 bg-white z-50 p-4 overflow-auto flex flex-col">
+                            <div className="flex justify-between items-center mb-4 sticky top-0 bg-white py-2 border-b">
+                              <h3 className="font-semibold text-lg text-purple-800">
+                                {expandedPreview === 'rich' ? 'Rich Text Preview' : 'Plain Text Preview'}
+                              </h3>
+                              <div className="flex items-center gap-2">
+                                <Button 
+                                  size="sm" 
+                                  variant="outline" 
+                                  onClick={() => {
+                                    if (expandedPreview === 'rich') {
+                                      copyFormattedHtmlToClipboard();
+                                    } else {
+                                      copyPlainTextToClipboard();
+                                    }
+                                  }}
+                                  className="border-purple-200 text-white bg-purple-600 hover:bg-purple-700"
+                                >
+                                  <Copy className="h-4 w-4 mr-1.5" />
+                                  Copy Content
+                                </Button>
+                                <Button 
+                                  size="sm" 
+                                  variant="outline" 
+                                  onClick={() => setExpandedPreview('none')}
+                                  className="border-purple-200 text-purple-700"
+                                >
+                                  <Minimize2 className="h-4 w-4 mr-1.5" />
+                                  Exit Fullscreen
+                                </Button>
+                                <Button 
+                                  size="sm" 
+                                  variant="ghost" 
+                                  onClick={() => setExpandedPreview('none')}
+                                  className="text-gray-500 h-8 w-8 p-0"
+                                >
+                                  <X className="h-5 w-5" />
+                                </Button>
+                              </div>
+                            </div>
+                            
+                            <div className="flex-grow overflow-auto p-4 border rounded bg-white">
+                              {expandedPreview === 'rich' ? (
+                                <div dangerouslySetInnerHTML={{__html: markdownHtmlOutput}} />
+                              ) : (
+                                <div className="font-mono whitespace-pre-wrap">{markdownPlainTextOutput}</div>
+                              )}
+                            </div>
+                          </div>
+                        )}
+                        
+                        {/* Restructure the grid to have previews stacked vertically instead of side by side */}
+                        <div className="flex flex-col gap-6">
+                          <div>
+                            <div className="font-semibold text-xs text-purple-700 mb-1 flex justify-between items-center">
+                              <span>Rich Text Preview (for Word/Email)</span>
+                              <div className="flex items-center gap-2">
+                                <Button 
+                                  size="sm" 
+                                  variant="ghost" 
+                                  onClick={copyFormattedHtmlToClipboard}
+                                  className="h-7 text-xs text-purple-700"
+                                >
+                                  <Copy className="h-3.5 w-3.5 mr-1.5" />
+                                  Copy
+                                </Button>
+                                <Button 
+                                  size="sm" 
+                                  variant="ghost" 
+                                  onClick={() => setExpandedPreview('rich')}
+                                  className="h-7 text-xs text-purple-700"
+                                >
+                                  <Maximize2 className="h-3.5 w-3.5 mr-1.5" />
+                                  Expand
+                                </Button>
+                              </div>
+                            </div>
+                            <div className="p-4 border rounded bg-white border-purple-100 min-h-[300px] relative overflow-auto" style={{maxHeight: '400px'}}>
+                              <div dangerouslySetInnerHTML={{__html: markdownHtmlOutput}} />
+                            </div>
+                          </div>
+                          <div>
+                            <div className="font-semibold text-xs text-purple-700 mb-1 flex justify-between items-center">
+                              <span>Plain Text Preview</span>
+                              <div className="flex items-center gap-2">
+                                <Button 
+                                  size="sm" 
+                                  variant="ghost" 
+                                  onClick={copyPlainTextToClipboard}
+                                  className="h-7 text-xs text-purple-700"
+                                >
+                                  <Copy className="h-3.5 w-3.5 mr-1.5" />
+                                  Copy
+                                </Button>
+                                <Button 
+                                  size="sm" 
+                                  variant="ghost" 
+                                  onClick={() => setExpandedPreview('plain')}
+                                  className="h-7 text-xs text-purple-700"
+                                >
+                                  <Maximize2 className="h-3.5 w-3.5 mr-1.5" />
+                                  Expand
+                                </Button>
+                              </div>
+                            </div>
+                            <div className="p-4 border rounded bg-white border-purple-100 min-h-[300px] font-mono text-sm whitespace-pre-wrap overflow-auto" style={{maxHeight: '400px'}}>
+                              {markdownPlainTextOutput}
+                            </div>
                           </div>
                         </div>
                         
-                        <div className="flex-grow overflow-auto p-4 border rounded bg-white">
-                          {expandedPreview === 'rich' ? (
-                            <div dangerouslySetInnerHTML={{__html: markdownHtmlOutput}} />
-                          ) : (
-                            <div className="font-mono whitespace-pre-wrap">{markdownPlainTextOutput}</div>
-                          )}
+                        <div className="mt-2 bg-purple-50 rounded-md p-2 border border-purple-100">
+                          <div className="flex items-start">
+                            <Info className="h-3.5 w-3.5 text-purple-600 mt-0.5 mr-1.5 flex-shrink-0" />
+                            <span className="text-xs text-purple-700">
+                              <strong>Export options:</strong> HTML file for web use, Text file for plain text applications, Word document for Microsoft Word, and Excel spreadsheet for spreadsheet applications.
+                            </span>
+                          </div>
                         </div>
                       </div>
                     )}
                     
-                    {/* Restructure the grid to have previews stacked vertically instead of side by side */}
-                    <div className="flex flex-col gap-6">
-                      <div>
-                        <div className="font-semibold text-xs text-purple-700 mb-1 flex justify-between items-center">
-                          <span>Rich Text Preview (for Word/Email)</span>
-                          <div className="flex items-center gap-2">
-                            <Button 
-                              size="sm" 
-                              variant="ghost" 
-                              onClick={copyFormattedHtmlToClipboard}
-                              className="h-7 text-xs text-purple-700"
-                            >
-                              <Copy className="h-3.5 w-3.5 mr-1.5" />
-                              Copy
-                            </Button>
-                            <Button 
-                              size="sm" 
-                              variant="ghost" 
-                              onClick={() => setExpandedPreview('rich')}
-                              className="h-7 text-xs text-purple-700"
-                            >
-                              <Maximize2 className="h-3.5 w-3.5 mr-1.5" />
-                              Expand
-                            </Button>
-                          </div>
-                        </div>
-                        <div className="p-4 border rounded bg-white border-purple-100 min-h-[300px] relative overflow-auto" style={{maxHeight: '400px'}}>
-                          <div dangerouslySetInnerHTML={{__html: markdownHtmlOutput}} />
-                        </div>
+                    {isTransformed && (
+                      <div className="mt-2 text-xs text-purple-600 flex items-center">
+                        <CheckCircle className="h-3.5 w-3.5 mr-1.5" />
+                        {(transformDirection as string) === 'columnToRow'
+                          ? `Successfully transformed ${totalItems} items into a single row`
+                          : (transformDirection as string) === 'rowToColumn'
+                            ? `Successfully transformed row into ${totalItems} lines`
+                            : `Successfully transformed LLM Output to ${markdownOutputType === 'richText' ? 'Rich Text' : 'Plain Text'}`}
                       </div>
-                      <div>
-                        <div className="font-semibold text-xs text-purple-700 mb-1 flex justify-between items-center">
-                          <span>Plain Text Preview</span>
-                          <div className="flex items-center gap-2">
-                            <Button 
-                              size="sm" 
-                              variant="ghost" 
-                              onClick={copyPlainTextToClipboard}
-                              className="h-7 text-xs text-purple-700"
-                            >
-                              <Copy className="h-3.5 w-3.5 mr-1.5" />
-                              Copy
-                            </Button>
-                            <Button 
-                              size="sm" 
-                              variant="ghost" 
-                              onClick={() => setExpandedPreview('plain')}
-                              className="h-7 text-xs text-purple-700"
-                            >
-                              <Maximize2 className="h-3.5 w-3.5 mr-1.5" />
-                              Expand
-                            </Button>
-                          </div>
-                        </div>
-                        <div className="p-4 border rounded bg-white border-purple-100 min-h-[300px] font-mono text-sm whitespace-pre-wrap overflow-auto" style={{maxHeight: '400px'}}>
-                          {markdownPlainTextOutput}
-                        </div>
-                      </div>
-                    </div>
-                    
-                    <div className="mt-2 bg-purple-50 rounded-md p-2 border border-purple-100">
-                      <div className="flex items-start">
-                        <Info className="h-3.5 w-3.5 text-purple-600 mt-0.5 mr-1.5 flex-shrink-0" />
-                        <span className="text-xs text-purple-700">
-                          <strong>Export options:</strong> HTML file for web use, Text file for plain text applications, Word document for Microsoft Word, and Excel spreadsheet for spreadsheet applications.
-                        </span>
-                      </div>
-                    </div>
+                    )}
                   </div>
-                )}
+                </div>
+              </div>
+            </CardContent>
+            <CardFooter className="bg-purple-50/50 border-t border-purple-100/50 flex justify-between">
+              <div className="text-xs text-purple-700">
+                <Info className="h-3.5 w-3.5 inline-block mr-1 text-purple-600" />
+                {(transformDirection as string) === 'columnToRow'
+                  ? "This tool converts column data into a single row with your chosen delimiter"
+                  : (transformDirection as string) === 'rowToColumn'
+                    ? "This tool converts row data into columns by splitting at your chosen delimiter"
+                    : markdownOutputType === 'plainText'
+                      ? "This tool converts LLM Output to clean plain text, stripping all formatting."
+                      : "This tool converts LLM Output to rich text, retaining basic styling for emails/docs."}
+              </div>
+              {isTransformed && totalItems > 0 && (
+                <div className="text-xs font-medium text-purple-700">
+                  {(transformDirection as string) === 'columnToRow'
+                    ? `${totalItems} items → 1 row`
+                    : (transformDirection as string) === 'rowToColumn'
+                      ? `1 row → ${totalItems} items`
+                      : `` /* Placeholder for Markdown output summary */}
+                </div>
+              )}
+            </CardFooter>
+          </Card>
+          
+          <Card>
+            <CardHeader className="bg-gradient-to-r from-purple-50/50 to-pink-50/50 border-b border-purple-100/50">
+              <CardTitle className="text-lg font-semibold text-purple-800">How to Use Transform Mode</CardTitle>
+            </CardHeader>
+            <CardContent className="pt-4">
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <h4 className="text-sm font-medium text-purple-700 mb-2">Input Options</h4>
+                    <ul className="space-y-1.5 text-sm">
+                      <li className="flex items-start">
+                        <span className="bg-purple-100 text-purple-800 rounded-full h-5 w-5 flex items-center justify-center text-xs mr-2 mt-0.5 font-medium">1</span>
+                        <span>Paste your data with one item per line in the text area</span>
+                      </li>
+                      <li className="flex items-start">
+                        <span className="bg-purple-100 text-purple-800 rounded-full h-5 w-5 flex items-center justify-center text-xs mr-2 mt-0.5 font-medium">2</span>
+                        <span>Or upload a text file containing your data (one item per line)</span>
+                      </li>
+                      <li className="flex items-start">
+                        <span className="bg-purple-100 text-purple-800 rounded-full h-5 w-5 flex items-center justify-center text-xs mr-2 mt-0.5 font-medium">3</span>
+                        <span>Choose data cleaning options to handle messy data</span>
+                      </li>
+                      <li className="flex items-start">
+                        <span className="bg-purple-100 text-purple-800 rounded-full h-5 w-5 flex items-center justify-center text-xs mr-2 mt-0.5 font-medium">4</span>
+                        <span>Select your preferred delimiter from the dropdown list</span>
+                      </li>
+                    </ul>
+                  </div>
+                  
+                  <div>
+                    <h4 className="text-sm font-medium text-purple-700 mb-2">Output Options</h4>
+                    <ul className="space-y-1.5 text-sm">
+                      <li className="flex items-start">
+                        <span className="bg-purple-100 text-purple-800 rounded-full h-5 w-5 flex items-center justify-center text-xs mr-2 mt-0.5 font-medium">5</span>
+                        <span>Click the "Transform" button to convert your data</span>
+                      </li>
+                      <li className="flex items-start">
+                        <span className="bg-purple-100 text-purple-800 rounded-full h-5 w-5 flex items-center justify-center text-xs mr-2 mt-0.5 font-medium">6</span>
+                        <span>Copy the result to clipboard or download as a text file</span>
+                      </li>
+                      <li className="flex items-start">
+                        <span className="bg-purple-100 text-purple-800 rounded-full h-5 w-5 flex items-center justify-center text-xs mr-2 mt-0.5 font-medium">7</span>
+                        <span>Use "Clear All" to start fresh with new data</span>
+                      </li>
+                    </ul>
+                  </div>
+                </div>
                 
-                {isTransformed && (
-                  <div className="mt-2 text-xs text-purple-600 flex items-center">
-                    <CheckCircle className="h-3.5 w-3.5 mr-1.5" />
-                    {(transformDirection as string) === 'columnToRow'
-                      ? `Successfully transformed ${totalItems} items into a single row`
-                      : (transformDirection as string) === 'rowToColumn'
-                        ? `Successfully transformed row into ${totalItems} lines`
-                        : `Successfully transformed LLM Output to ${markdownOutputType === 'richText' ? 'Rich Text' : 'Plain Text'}`}
+                <Alert className="bg-gradient-to-r from-purple-50 to-pink-50/50 border-purple-100 mt-2">
+                  <AlertTriangle className="h-4 w-4 text-purple-600" />
+                  <AlertDescription className="text-purple-700 text-sm">
+                    <strong>Tips:</strong> Use the cleaning options to handle whitespace, duplicates, and case formatting. For large datasets, consider breaking them into smaller chunks.
+                  </AlertDescription>
+                </Alert>
+              </div>
+              
+              {/* Add a keyboard shortcuts help section to the "How to Use" card */}
+              <div className="mt-4">
+                <h4 className="text-sm font-medium text-purple-700 mb-2">Keyboard Shortcuts</h4>
+                <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-sm">
+                  <div className="flex justify-between items-center">
+                    <span>Transform data</span>
+                    <kbd className="px-2 py-0.5 bg-purple-100 rounded text-purple-800 font-mono text-xs">Ctrl+Enter</kbd>
                   </div>
-                )}
+                  <div className="flex justify-between items-center">
+                    <span>Copy output</span>
+                    <kbd className="px-2 py-0.5 bg-purple-100 rounded text-purple-800 font-mono text-xs">Ctrl+Shift+C</kbd>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span>Toggle live preview</span>
+                    <kbd className="px-2 py-0.5 bg-purple-100 rounded text-purple-800 font-mono text-xs">Ctrl+L</kbd>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span>Clear all data</span>
+                    <kbd className="px-2 py-0.5 bg-purple-100 rounded text-purple-800 font-mono text-xs">Ctrl+D</kbd>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span>Load sample data</span>
+                    <kbd className="px-2 py-0.5 bg-purple-100 rounded text-purple-800 font-mono text-xs">Ctrl+S</kbd>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </>
+      )}
+      {/* Name Matcher UI is rendered separately below, already conditionally rendered */}
+      {isNameMatcherMode(transformDirection) && (
+        <div className="px-6 pt-6 pb-2">
+          {/* Navigation and Clear Buttons */}
+          <div className="flex flex-wrap gap-2 mb-4 items-center justify-between">
+            <button
+              className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded flex items-center gap-2 shadow"
+              onClick={() => {
+                clearNameMatcherState();
+                setTransformDirection('markdown');
+              }}
+              title="Back to LLM Output"
+            >
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
+              Back to LLM Output
+            </button>
+            <button
+              className="bg-red-100 hover:bg-red-200 text-red-700 px-4 py-2 rounded flex items-center gap-2 border border-red-200"
+              onClick={clearNameMatcherState}
+              title="Clear all Name Matcher data"
+            >
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+              Clear All
+            </button>
+          </div>
+          {/* Help/Info Section */}
+          {showNameMatcherHelp ? (
+            <div className="mb-4 bg-purple-50 border border-purple-200 rounded-lg p-4 relative">
+              <button className="absolute top-2 right-2 text-purple-400 hover:text-purple-700" onClick={() => setShowNameMatcherHelp(false)} title="Dismiss">✕</button>
+              <div className="flex items-start gap-3">
+                <svg className="h-6 w-6 text-purple-600 mt-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 01.88 7.903A5.5 5.5 0 1112 6.5" /></svg>
+                <div>
+                  <div className="font-semibold text-purple-800 mb-1">What is Name Matcher?</div>
+                  <div className="text-sm text-purple-700 mb-2">Compare two lists of names from CSV files, even if the names are in different orders, have typos, or are formatted differently. The matcher uses fuzzy logic to find the best matches and can be tuned for strictness or flexibility.</div>
+                  <ul className="text-xs text-purple-700 list-disc pl-5 space-y-1">
+                    <li><b>Fuzzy matching</b> finds close matches, not just exact ones. Adjust the threshold for stricter or looser matching.</li>
+                    <li>Use <b>"Require same number of words"</b> to avoid matching single names to full names.</li>
+                    <li>Enable <b>"Show all matches above threshold"</b> to review possible matches for each name.</li>
+                    <li>For short names, <b>"Stricter for short names"</b> prevents accidental matches (e.g., "Ben" won't match "Ben Tan").</li>
+                    <li>Download results for further review or reporting.</li>
+                  </ul>
+                </div>
               </div>
             </div>
-          </div>
-        </CardContent>
-        <CardFooter className="bg-purple-50/50 border-t border-purple-100/50 flex justify-between">
-          <div className="text-xs text-purple-700">
-            <Info className="h-3.5 w-3.5 inline-block mr-1 text-purple-600" />
-            {(transformDirection as string) === 'columnToRow'
-              ? "This tool converts column data into a single row with your chosen delimiter"
-              : (transformDirection as string) === 'rowToColumn'
-                ? "This tool converts row data into columns by splitting at your chosen delimiter"
-                : markdownOutputType === 'plainText'
-                  ? "This tool converts LLM Output to clean plain text, stripping all formatting."
-                  : "This tool converts LLM Output to rich text, retaining basic styling for emails/docs."}
-          </div>
-          {isTransformed && totalItems > 0 && (
-            <div className="text-xs font-medium text-purple-700">
-              {(transformDirection as string) === 'columnToRow'
-                ? `${totalItems} items → 1 row`
-                : (transformDirection as string) === 'rowToColumn'
-                  ? `1 row → ${totalItems} items`
-                  : `` /* Placeholder for Markdown output summary */}
+          ) : (
+            <div className="mb-4 flex justify-end">
+              <button className="text-xs text-purple-600 underline" onClick={() => setShowNameMatcherHelp(true)}>What is this?</button>
             </div>
           )}
-        </CardFooter>
-      </Card>
-      
-      <Card>
-        <CardHeader className="bg-gradient-to-r from-purple-50/50 to-pink-50/50 border-b border-purple-100/50">
-          <CardTitle className="text-lg font-semibold text-purple-800">How to Use Transform Mode</CardTitle>
-        </CardHeader>
-        <CardContent className="pt-4">
-          <div className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <h4 className="text-sm font-medium text-purple-700 mb-2">Input Options</h4>
-                <ul className="space-y-1.5 text-sm">
-                  <li className="flex items-start">
-                    <span className="bg-purple-100 text-purple-800 rounded-full h-5 w-5 flex items-center justify-center text-xs mr-2 mt-0.5 font-medium">1</span>
-                    <span>Paste your data with one item per line in the text area</span>
-                  </li>
-                  <li className="flex items-start">
-                    <span className="bg-purple-100 text-purple-800 rounded-full h-5 w-5 flex items-center justify-center text-xs mr-2 mt-0.5 font-medium">2</span>
-                    <span>Or upload a text file containing your data (one item per line)</span>
-                  </li>
-                  <li className="flex items-start">
-                    <span className="bg-purple-100 text-purple-800 rounded-full h-5 w-5 flex items-center justify-center text-xs mr-2 mt-0.5 font-medium">3</span>
-                    <span>Choose data cleaning options to handle messy data</span>
-                  </li>
-                  <li className="flex items-start">
-                    <span className="bg-purple-100 text-purple-800 rounded-full h-5 w-5 flex items-center justify-center text-xs mr-2 mt-0.5 font-medium">4</span>
-                    <span>Select your preferred delimiter from the dropdown list</span>
-                  </li>
-                </ul>
-              </div>
-              
-              <div>
-                <h4 className="text-sm font-medium text-purple-700 mb-2">Output Options</h4>
-                <ul className="space-y-1.5 text-sm">
-                  <li className="flex items-start">
-                    <span className="bg-purple-100 text-purple-800 rounded-full h-5 w-5 flex items-center justify-center text-xs mr-2 mt-0.5 font-medium">5</span>
-                    <span>Click the "Transform" button to convert your data</span>
-                  </li>
-                  <li className="flex items-start">
-                    <span className="bg-purple-100 text-purple-800 rounded-full h-5 w-5 flex items-center justify-center text-xs mr-2 mt-0.5 font-medium">6</span>
-                    <span>Copy the result to clipboard or download as a text file</span>
-                  </li>
-                  <li className="flex items-start">
-                    <span className="bg-purple-100 text-purple-800 rounded-full h-5 w-5 flex items-center justify-center text-xs mr-2 mt-0.5 font-medium">7</span>
-                    <span>Use "Clear All" to start fresh with new data</span>
-                  </li>
-                </ul>
-              </div>
-            </div>
-            
-            <Alert className="bg-gradient-to-r from-purple-50 to-pink-50/50 border-purple-100 mt-2">
-              <AlertTriangle className="h-4 w-4 text-purple-600" />
-              <AlertDescription className="text-purple-700 text-sm">
-                <strong>Tips:</strong> Use the cleaning options to handle whitespace, duplicates, and case formatting. For large datasets, consider breaking them into smaller chunks.
-              </AlertDescription>
-            </Alert>
+          {/* User Controls */}
+          <div className="mb-4 flex flex-wrap gap-4 items-center bg-purple-50 border border-purple-100 rounded-lg p-3">
+            <label className="flex items-center gap-2 text-xs text-purple-800 cursor-pointer">
+              <input type="checkbox" checked={requireSameWordCount} onChange={() => setRequireSameWordCount(v => !v)} />
+              Require same number of words
+              <span className="text-purple-400" title="Only match names with the same number of words (e.g., 'Ben' won't match 'Ben Tan')">?</span>
+            </label>
+            <label className="flex items-center gap-2 text-xs text-purple-800 cursor-pointer">
+              <input type="checkbox" checked={showAllMatches} onChange={() => setShowAllMatches(v => !v)} />
+              Show all matches above threshold
+              <span className="text-purple-400" title="See all possible matches for each name, not just the best one">?</span>
+            </label>
+            <label className="flex items-center gap-2 text-xs text-purple-800 cursor-pointer">
+              <input type="checkbox" checked={strictShortNames} onChange={() => setStrictShortNames(v => !v)} />
+              Stricter for short names
+              <span className="text-purple-400" title="For short names (1 word, <5 chars), only allow exact matches">?</span>
+            </label>
           </div>
-          
-          {/* Add a keyboard shortcuts help section to the "How to Use" card */}
-          <div className="mt-4">
-            <h4 className="text-sm font-medium text-purple-700 mb-2">Keyboard Shortcuts</h4>
-            <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-sm">
-              <div className="flex justify-between items-center">
-                <span>Transform data</span>
-                <kbd className="px-2 py-0.5 bg-purple-100 rounded text-purple-800 font-mono text-xs">Ctrl+Enter</kbd>
-              </div>
-              <div className="flex justify-between items-center">
-                <span>Copy output</span>
-                <kbd className="px-2 py-0.5 bg-purple-100 rounded text-purple-800 font-mono text-xs">Ctrl+Shift+C</kbd>
-              </div>
-              <div className="flex justify-between items-center">
-                <span>Toggle live preview</span>
-                <kbd className="px-2 py-0.5 bg-purple-100 rounded text-purple-800 font-mono text-xs">Ctrl+L</kbd>
-              </div>
-              <div className="flex justify-between items-center">
-                <span>Clear all data</span>
-                <kbd className="px-2 py-0.5 bg-purple-100 rounded text-purple-800 font-mono text-xs">Ctrl+D</kbd>
-              </div>
-              <div className="flex justify-between items-center">
-                <span>Load sample data</span>
-                <kbd className="px-2 py-0.5 bg-purple-100 rounded text-purple-800 font-mono text-xs">Ctrl+S</kbd>
-              </div>
+          {/* ... rest of Name Matcher UI ... */}
+          {/* In the results table, if showAllMatches is enabled, show all matches as a dropdown or list */}
+          {/* ... existing code ... */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* CSV 1 Import */}
+            <div className="bg-white border border-purple-100 rounded-lg p-4 flex flex-col items-start gap-2">
+              <label className="block mb-2 font-medium text-purple-800 flex items-center gap-2">
+                <svg className="h-4 w-4 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5-5m0 0l5 5m-5-5v12" /></svg>
+                CSV 1: Source File
+              </label>
+              {!nameMatcherFile1 ? (
+                <button className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded flex items-center gap-2" onClick={() => document.getElementById('name-matcher-csv1')?.click()}>
+                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5-5m0 0l5 5m-5-5v12" /></svg>
+                  Import CSV 1
+                </button>
+              ) : (
+                <div className="flex flex-col gap-2 w-full">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-purple-700 font-mono truncate">{nameMatcherFile1.name}</span>
+                    <button className="text-xs text-red-500 hover:underline" onClick={() => { setNameMatcherFile1(null); setNameMatcherData1([]); setNameMatcherColumns1([]); setNameMatcherSelectedCol1(''); setNameMatcherSelectedColOfInterest(''); }}>
+                      Remove
+                    </button>
+                  </div>
+                  {nameMatcherColumns1.length > 0 && (
+                    <div className="mt-2">
+                      <label className="block text-xs mb-1">Select Name Column:</label>
+                      <select className="border rounded px-2 py-1 text-xs" value={nameMatcherSelectedCol1} onChange={e => setNameMatcherSelectedCol1(e.target.value)}>
+                        <option value="">-- Select --</option>
+                        {nameMatcherColumns1.map(col => <option key={col} value={col}>{col}</option>)}
+                      </select>
+                    </div>
+                  )}
+                  {nameMatcherColumns1.length > 0 && (
+                    <div className="mt-2">
+                      <label className="block text-xs mb-1">Select Column of Interest (e.g., NRIC):</label>
+                      <select className="border rounded px-2 py-1 text-xs" value={nameMatcherSelectedColOfInterest} onChange={e => setNameMatcherSelectedColOfInterest(e.target.value)}>
+                        <option value="">-- None --</option>
+                        {nameMatcherColumns1.map(col => <option key={col} value={col}>{col}</option>)}
+                      </select>
+                      <div className="text-xs text-purple-500 mt-1">This column will be shown in results and included in download.</div>
+                    </div>
+                  )}
+                </div>
+              )}
+              <input id="name-matcher-csv1" type="file" accept=".csv" className="hidden" onChange={e => e.target.files && handleNameMatcherFile(e.target.files[0], 1)} />
+              {/* Preview CSV1 column */}
+              {nameMatcherData1.length > 1 && nameMatcherSelectedCol1 && (
+                <div className="mt-3 w-full">
+                  <div className="text-xs text-purple-700 mb-1">Preview: First 5 values in <span className="font-semibold">{nameMatcherSelectedCol1}</span></div>
+                  <div className="bg-purple-50 border border-purple-100 rounded p-2 text-xs font-mono">
+                    {previewColumn(nameMatcherData1, nameMatcherColumns1.indexOf(nameMatcherSelectedCol1)).map((val, i) => (
+                      <div key={i}>{val}</div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+            {/* CSV 2 Import */}
+            <div className="bg-white border border-purple-100 rounded-lg p-4 flex flex-col items-start gap-2">
+              <label className="block mb-2 font-medium text-purple-800 flex items-center gap-2">
+                <svg className="h-4 w-4 text-pink-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5-5m0 0l5 5m-5-5v12" /></svg>
+                CSV 2: Target File
+              </label>
+              {!nameMatcherFile2 ? (
+                <button className="bg-pink-500 hover:bg-pink-600 text-white px-4 py-2 rounded flex items-center gap-2" onClick={() => document.getElementById('name-matcher-csv2')?.click()}>
+                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5-5m0 0l5 5m-5-5v12" /></svg>
+                  Import CSV 2
+                </button>
+              ) : (
+                <div className="flex flex-col gap-2 w-full">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-purple-700 font-mono truncate">{nameMatcherFile2.name}</span>
+                    <button className="text-xs text-red-500 hover:underline" onClick={() => { setNameMatcherFile2(null); setNameMatcherData2([]); setNameMatcherColumns2([]); setNameMatcherSelectedCol2(''); }}>
+                      Remove
+                    </button>
+                  </div>
+                  {nameMatcherColumns2.length > 0 && (
+                    <div className="mt-2">
+                      <label className="block text-xs mb-1">Select Name Column:</label>
+                      <select className="border rounded px-2 py-1 text-xs" value={nameMatcherSelectedCol2} onChange={e => setNameMatcherSelectedCol2(e.target.value)}>
+                        <option value="">-- Select --</option>
+                        {nameMatcherColumns2.map(col => <option key={col} value={col}>{col}</option>)}
+                      </select>
+                    </div>
+                  )}
+                </div>
+              )}
+              <input id="name-matcher-csv2" type="file" accept=".csv" className="hidden" onChange={e => e.target.files && handleNameMatcherFile(e.target.files[0], 2)} />
+              {/* Preview CSV2 column */}
+              {nameMatcherData2.length > 1 && nameMatcherSelectedCol2 && (
+                <div className="mt-3 w-full">
+                  <div className="text-xs text-purple-700 mb-1">Preview: First 5 values in <span className="font-semibold">{nameMatcherSelectedCol2}</span></div>
+                  <div className="bg-pink-50 border border-pink-100 rounded p-2 text-xs font-mono">
+                    {previewColumn(nameMatcherData2, nameMatcherColumns2.indexOf(nameMatcherSelectedCol2)).map((val, i) => (
+                      <div key={i}>{val}</div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
-        </CardContent>
-      </Card>
+          {/* Fuzzy matching and download UI */}
+          <div className="mt-6 bg-purple-50 border border-purple-100 rounded-lg p-4">
+            <div className="flex flex-col md:flex-row md:items-center gap-4 mb-4">
+              <div className="flex items-center gap-2">
+                <label className="font-medium text-purple-800 text-sm">Fuzzy Match Threshold:</label>
+                <input type="range" min="0.5" max="1" step="0.01" value={fuzzyThreshold} onChange={e => setFuzzyThreshold(Number(e.target.value))} className="accent-purple-600" style={{width:'120px'}} />
+                <span className="text-xs text-purple-700">{Math.round(fuzzyThreshold*100)}%</span>
+                <span className="text-xs text-purple-500 ml-2">(Lower = more lenient, Higher = stricter)</span>
+              </div>
+              <button className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded flex items-center gap-2" onClick={runNameMatcher} disabled={!nameMatcherSelectedCol1 || !nameMatcherSelectedCol2}>
+                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 01.88 7.903A5.5 5.5 0 1112 6.5" /></svg>
+                Match Names
+              </button>
+              <button className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded flex items-center gap-2" onClick={downloadNameMatcherResults} disabled={!nameMatcherResults.length}>
+                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
+                Download Results
+              </button>
+            </div>
+            {nameMatcherResults.length > 0 && (
+              <div className="overflow-x-auto">
+                <table className="min-w-full border border-purple-200 rounded-lg overflow-hidden">
+                  <thead>
+                    <tr className="bg-purple-100 text-purple-800">
+                      <th className="border px-2 py-1 text-xs">CSV1 Name</th>
+                      {nameMatcherSelectedColOfInterest && <th className="border px-2 py-1 text-xs">{nameMatcherSelectedColOfInterest}</th>}
+                      <th className="border px-2 py-1 text-xs">Best Match in CSV2</th>
+                      <th className="border px-2 py-1 text-xs">Similarity</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {nameMatcherResults.map((row, idx) => {
+                      let color = '';
+                      const score = row.score ?? 0;
+                      if (score >= 0.97) color = 'bg-green-50';
+                      else if (score >= fuzzyThreshold) color = 'bg-yellow-50';
+                      else color = 'bg-red-50';
+                      return (
+                        <tr key={idx} className={color}>
+                          <td className="border px-2 py-1 text-xs font-mono">{row.name1}</td>
+                          {nameMatcherSelectedColOfInterest && <td className="border px-2 py-1 text-xs font-mono">{row.colOfInterest || ''}</td>}
+                          <td className="border px-2 py-1 text-xs font-mono">
+                            {showAllMatches && row.allMatches && row.allMatches.length > 0 ? (
+                              <details>
+                                <summary className="cursor-pointer">{row.allMatches[0].match} <span className="text-xs text-purple-500">({Math.round(row.allMatches[0].score*100)}%)</span></summary>
+                                <ul className="pl-4 mt-1">
+                                  {row.allMatches.map((m: {match: string, score: number}, i: number) => (
+                                    <li key={i} className={m.score >= 0.97 ? 'text-green-700' : m.score >= fuzzyThreshold ? 'text-yellow-700' : 'text-red-500'}>
+                                      {m.match} <span className="text-xs">({Math.round(m.score*100)}%)</span>
+                                    </li>
+                                  ))}
+                                </ul>
+                              </details>
+                            ) : (
+                              row.match || <span className="text-red-500">No Match</span>
+                            )}
+                          </td>
+                          <td className="border px-2 py-1 text-xs font-mono">
+                            {`${Math.round(score*100)}%`}
+                            {score >= 0.97 && <span className="ml-1 text-green-600 font-bold">✔</span>}
+                            {score >= fuzzyThreshold && score < 0.97 && <span className="ml-1 text-yellow-600 font-bold">~</span>}
+                            {score < fuzzyThreshold && <span className="ml-1 text-red-500 font-bold">✗</span>}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+                <div className="text-xs text-purple-600 mt-2">
+                  <span className="inline-block bg-green-50 border border-green-200 rounded px-2 py-0.5 mr-2">✔ Strong Match</span>
+                  <span className="inline-block bg-yellow-50 border border-yellow-200 rounded px-2 py-0.5 mr-2">~ Possible Match</span>
+                  <span className="inline-block bg-red-50 border border-red-200 rounded px-2 py-0.5">✗ No Match</span>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 };
