@@ -1,5 +1,5 @@
 import React from 'react';
-import Image from 'next/image';
+import Mascot3D from '@/components/Mascot3D';
 import { Button } from '@/components/ui/button';
 import UsageGuide from '@/components/UsageGuide';
 
@@ -26,19 +26,9 @@ const HeroSection: React.FC<{ onStart: () => void }> = ({ onStart }) => {
       </div>
       {/* Horizontal Flex Container */}
       <div className="z-10 flex flex-col md:flex-row items-center justify-center w-full max-w-5xl px-6 py-12 md:py-20 gap-10 md:gap-20">
-        {/* Left: Mascot/Logo and Illustration */}
+        {/* Left: 3D Mascot */}
         <div className="flex flex-col items-center md:items-center justify-center flex-shrink-0 h-full md:h-auto md:justify-center">
-          <Image src="/logo.png" alt="Fillable Logo" width={110} height={110} className="rounded-2xl shadow-lg mb-4 animate-float" />
-          {/* Mascot SVG */}
-          <div className="mb-2 animate-wave">
-            <svg width="60" height="60" viewBox="0 0 60 60" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <circle cx="30" cy="30" r="30" fill="#fff" fillOpacity="0.8" />
-              <ellipse cx="30" cy="38" rx="14" ry="6" fill="#a5b4fc" />
-              <circle cx="22" cy="28" r="3" fill="#6366f1" />
-              <circle cx="38" cy="28" r="3" fill="#6366f1" />
-              <path d="M25 36c2.5 3 10 3 12.5 0" stroke="#6366f1" strokeWidth="2" strokeLinecap="round" />
-            </svg>
-          </div>
+          <Mascot3D />
         </div>
         {/* Right: Headline, Description, CTAs */}
         <div className="flex flex-col items-center md:items-start text-center md:text-left max-w-xl">
