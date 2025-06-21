@@ -103,7 +103,25 @@ const HeroSection: React.FC<{ onStart: () => void }> = ({ onStart }) => {
           0% { box-shadow: 0 0 0 0 rgba(99,102,241,0.7); }
           100% { box-shadow: 0 0 24px 8px rgba(99,102,241,0.25); }
         }
+        .hero-wave {
+          position: absolute;
+          left: 0;
+          bottom: 0;
+          width: 100%;
+          height: 120px;
+          pointer-events: none;
+          z-index: 1;
+        }
+        @media (max-width: 768px) {
+          .hero-wave { height: 60px; }
+        }
       `}</style>
+      {/* SVG Wave for Undulating Tonality */}
+      <svg className="hero-wave" viewBox="0 0 1440 120" preserveAspectRatio="none">
+        <path d="M0,80 C360,160 1080,0 1440,80 L1440,120 L0,120 Z" fill="#a5b4fc" fillOpacity="0.35" />
+        <path d="M0,100 C400,60 1040,180 1440,60 L1440,120 L0,120 Z" fill="#818cf8" fillOpacity="0.25" />
+        <path d="M0,90 C600,180 900,0 1440,100 L1440,120 L0,120 Z" fill="#fff" fillOpacity="0.12" />
+      </svg>
     </section>
   );
 };
