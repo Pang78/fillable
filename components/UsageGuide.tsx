@@ -14,12 +14,27 @@ import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
-const UsageGuide = () => (
+interface UsageGuideProps {
+  large?: boolean;
+}
+
+const UsageGuide: React.FC<UsageGuideProps> = ({ large = false }) => (
   <Dialog>
     <DialogTrigger asChild>
-      <Button variant="outline" size="icon" aria-label="Help and Usage Guide">
-        <HelpCircle className="h-4 w-4" />
-      </Button>
+      {large ? (
+        <Button
+          variant="outline"
+          size="lg"
+          className="border-white bg-white/90 text-indigo-700 font-semibold px-8 py-3 rounded-full hover:bg-white focus:bg-white focus:text-indigo-900 flex items-center gap-2 transition-colors"
+        >
+          <svg width="22" height="22" fill="none" viewBox="0 0 24 24" className="inline-block align-middle mr-2"><path d="M8 5v14l11-7z" fill="currentColor"/></svg>
+          See How It Works
+        </Button>
+      ) : (
+        <Button variant="outline" size="icon" aria-label="Help and Usage Guide">
+          <HelpCircle className="h-4 w-4" />
+        </Button>
+      )}
     </DialogTrigger>
     <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
       <DialogHeader>
