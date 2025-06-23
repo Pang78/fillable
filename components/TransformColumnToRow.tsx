@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Clipboard, Download, Copy, CheckCircle, AlertTriangle, Trash2, FileUp, Lightbulb, Info, Code, FileText, Maximize2, Minimize2, X } from 'lucide-react';
+import { Clipboard, Download, Copy, CheckCircle, AlertTriangle, Trash2, FileUp, Lightbulb, Info, Code, FileText, Maximize2, Minimize2, X, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -26,6 +26,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { marked, Renderer } from 'marked';
 import { htmlToText } from 'html-to-text';
 import hljs from 'highlight.js';
+import { Checkbox } from '@/components/ui/checkbox';
 
 const SAMPLE_DATA = `John Smith
 Jane Doe
@@ -332,14 +333,20 @@ const TransformBidirectional = () => {
   const [nameMatcherColumns2, setNameMatcherColumns2] = useState<string[]>([]);
   const [nameMatcherSelectedCol1, setNameMatcherSelectedCol1] = useState<string>('');
   const [nameMatcherSelectedCol2, setNameMatcherSelectedCol2] = useState<string>('');
-  const [nameMatcherResults, setNameMatcherResults] = useState<{name1: string, match: string|null, colOfInterest?: string, score?: number, allMatches?: {match: string, score: number}[]}[]>([]);
   const [nameMatcherSelectedColOfInterest, setNameMatcherSelectedColOfInterest] = useState<string>('');
+  // Add state for multi-select columns of interest and popover
+  const [nameMatcherSelectedColsOfInterest, setNameMatcherSelectedColsOfInterest] = useState<string[]>([]);
+  const [showColsPopover1, setShowColsPopover1] = useState(false);
   
   // Add state for help/info section and user controls
   const [showNameMatcherHelp, setShowNameMatcherHelp] = useState(true);
   const [requireSameWordCount, setRequireSameWordCount] = useState(false);
   const [showAllMatches, setShowAllMatches] = useState(false);
   const [strictShortNames, setStrictShortNames] = useState(true);
+  
+  // Add state for popovers for name column and column of interest
+  const [showNameColPopover1, setShowNameColPopover1] = useState(false);
+  const [showColOfInterestPopover1, setShowColOfInterestPopover1] = useState(false);
   
   // Helper: Parse CSV string to array
   function parseCSV(csv: string): string[][] {
@@ -412,16 +419,16 @@ const TransformBidirectional = () => {
     if (!nameMatcherResults.length) return;
     const header = [
       'CSV1 Name',
-      nameMatcherSelectedColOfInterest ? nameMatcherSelectedColOfInterest : '',
+      ...nameMatcherSelectedColsOfInterest,
       'Best Match in CSV2',
       'Similarity Score (%)'
-    ].filter(Boolean);
+    ];
     const rows = nameMatcherResults.map(row => [
       row.name1,
-      nameMatcherSelectedColOfInterest ? (row.colOfInterest || '') : undefined,
+      ...nameMatcherSelectedColsOfInterest.map(col => row.colsOfInterest?.[col] || ''),
       row.match || '',
       row.score !== undefined ? Math.round(row.score * 100) : ''
-    ].filter(v => v !== undefined));
+    ]);
     const csv = [header, ...rows].map(r => r.map(x => `"${(x||'').toString().replace(/"/g,'""')}"`).join(',')).join('\n');
     const blob = new Blob([csv], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
@@ -455,7 +462,11 @@ const TransformBidirectional = () => {
     if (!nameMatcherSelectedCol1 || !nameMatcherSelectedCol2) return;
     const colIdx1 = nameMatcherColumns1.indexOf(nameMatcherSelectedCol1);
     const colIdx2 = nameMatcherColumns2.indexOf(nameMatcherSelectedCol2);
-    const colOfInterestIdx = nameMatcherSelectedColOfInterest ? nameMatcherColumns1.indexOf(nameMatcherSelectedColOfInterest) : -1;
+    // Get indices for all selected columns of interest (excluding name col)
+    const colsOfInterestIdx = nameMatcherSelectedColsOfInterest
+      .filter(col => col !== nameMatcherSelectedCol1)
+      .map(col => nameMatcherColumns1.indexOf(col))
+      .filter(idx => idx !== -1);
     if (colIdx1 === -1 || colIdx2 === -1) return;
     const names1 = nameMatcherData1.slice(1).map(row => row[colIdx1] || '');
     const names2 = nameMatcherData2.slice(1).map(row => row[colIdx2] || '');
@@ -466,9 +477,14 @@ const TransformBidirectional = () => {
       const allMatches = getAllMatches(norm1, norm2, names2, fuzzyThreshold, requireSameWordCount, strictShortNames);
       // Best match
       const best = allMatches[0] || { match: null, score: 0 };
+      // Get all selected columns of interest for this row
+      const colsOfInterest: Record<string, string> = {};
+      colsOfInterestIdx.forEach((idx, j) => {
+        colsOfInterest[nameMatcherSelectedColsOfInterest[j]] = nameMatcherData1[i+1]?.[idx] || '';
+      });
       return {
         name1,
-        colOfInterest: colOfInterestIdx !== -1 ? nameMatcherData1[i+1]?.[colOfInterestIdx] : undefined,
+        colsOfInterest,
         match: best.match,
         score: best.score,
         allMatches
@@ -727,6 +743,10 @@ const TransformBidirectional = () => {
     if (textareaRef.current) {
       textareaRef.current.focus();
     }
+    setShowColsPopover1(false);
+    setShowNameColPopover1(false);
+    setShowColOfInterestPopover1(false);
+    clearNameMatcherState();
     toast({
       description: "All data cleared",
     });
@@ -1628,6 +1648,16 @@ ${markdownHtmlOutput}
     return val === 'nameMatcher';
   }
   
+  // Update the type for nameMatcherResults and setNameMatcherResults
+  interface NameMatcherResult {
+    name1: string;
+    colsOfInterest: Record<string, string>;
+    match: string | null;
+    score?: number;
+    allMatches?: { match: string; score: number }[];
+  }
+  const [nameMatcherResults, setNameMatcherResults] = useState<NameMatcherResult[]>([]);
+  
   return (
     <div className="space-y-6">
       {/* Only render the main transformer UI and how-to card if not in Name Matcher mode */}
@@ -2212,15 +2242,11 @@ ${markdownHtmlOutput}
                                     <div key={index} className="grid grid-cols-1 gap-1 bg-white/60 p-2 rounded border border-purple-100">
                                       <div className="flex items-start">
                                         <span className="bg-purple-100 text-purple-800 rounded-full h-4 w-4 flex items-center justify-center text-[10px] mr-1.5 flex-shrink-0 mt-0.5">B</span>
-                                        <div className="font-mono text-[10px] overflow-hidden overflow-ellipsis whitespace-nowrap text-gray-600">
-                                          {originalLine || <span className="italic text-gray-400">(empty line)</span>}
-                                        </div>
+                                        <div className="font-mono text-[10px] whitespace-pre-wrap break-words max-w-xs overflow-hidden text-gray-600 py-0.5">{originalLine || <span className="italic text-gray-400">(empty line)</span>}</div>
                                       </div>
                                       <div className="flex items-start">
                                         <span className="bg-purple-500 text-white rounded-full h-4 w-4 flex items-center justify-center text-[10px] mr-1.5 flex-shrink-0 mt-0.5">A</span>
-                                        <div className="font-mono text-[10px] overflow-hidden overflow-ellipsis whitespace-nowrap text-purple-700 font-medium">
-                                          {samplePreview.cleaned[index] || <span className="italic text-purple-300">(empty line)</span>}
-                                        </div>
+                                        <div className="font-mono text-[10px] whitespace-pre-wrap break-words max-w-xs overflow-hidden text-purple-700 font-medium py-0.5">{samplePreview.cleaned[index] || <span className="italic text-purple-300">(empty line)</span>}</div>
                                       </div>
                                       {originalLine !== samplePreview.cleaned[index] && (
                                         <div className="text-[10px] text-purple-600 pl-6">
@@ -2825,22 +2851,49 @@ ${markdownHtmlOutput}
             </div>
           )}
           {/* User Controls */}
-          <div className="mb-4 flex flex-wrap gap-4 items-center bg-purple-50 border border-purple-100 rounded-lg p-3">
-            <label className="flex items-center gap-2 text-xs text-purple-800 cursor-pointer">
-              <input type="checkbox" checked={requireSameWordCount} onChange={() => setRequireSameWordCount(v => !v)} />
-              Require same number of words
-              <span className="text-purple-400" title="Only match names with the same number of words (e.g., 'Ben' won't match 'Ben Tan')">?</span>
-            </label>
-            <label className="flex items-center gap-2 text-xs text-purple-800 cursor-pointer">
-              <input type="checkbox" checked={showAllMatches} onChange={() => setShowAllMatches(v => !v)} />
-              Show all matches above threshold
-              <span className="text-purple-400" title="See all possible matches for each name, not just the best one">?</span>
-            </label>
-            <label className="flex items-center gap-2 text-xs text-purple-800 cursor-pointer">
-              <input type="checkbox" checked={strictShortNames} onChange={() => setStrictShortNames(v => !v)} />
-              Stricter for short names
-              <span className="text-purple-400" title="For short names (1 word, <5 chars), only allow exact matches">?</span>
-            </label>
+          <div className="mb-4 bg-purple-50 border border-purple-100 rounded-lg p-4">
+            <div className="font-semibold text-purple-800 mb-2 text-sm flex items-center gap-2">
+              <svg className="h-4 w-4 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 01.88 7.903A5.5 5.5 0 1112 6.5" /></svg>
+              Matching Options
+            </div>
+            <div className="flex flex-col gap-3">
+              <label htmlFor="requireSameWordCount" className="flex items-center gap-3 cursor-pointer text-sm">
+                <Checkbox
+                  id="requireSameWordCount"
+                  checked={requireSameWordCount}
+                  onCheckedChange={() => setRequireSameWordCount(v => !v)}
+                  className="h-5 w-5 accent-purple-600 rounded border-purple-300"
+                />
+                <span>Require same number of words</span>
+                <span className="ml-1 text-purple-400" title="Only match names with the same number of words (e.g., 'Ben' won't match 'Ben Tan')">
+                  <Info className="h-4 w-4" />
+                </span>
+              </label>
+              <label htmlFor="showAllMatches" className="flex items-center gap-3 cursor-pointer text-sm">
+                <Checkbox
+                  id="showAllMatches"
+                  checked={showAllMatches}
+                  onCheckedChange={() => setShowAllMatches(v => !v)}
+                  className="h-5 w-5 accent-purple-600 rounded border-purple-300"
+                />
+                <span>Show all matches above threshold</span>
+                <span className="ml-1 text-purple-400" title="See all possible matches for each name, not just the best one">
+                  <Info className="h-4 w-4" />
+                </span>
+              </label>
+              <label htmlFor="strictShortNames" className="flex items-center gap-3 cursor-pointer text-sm">
+                <Checkbox
+                  id="strictShortNames"
+                  checked={strictShortNames}
+                  onCheckedChange={() => setStrictShortNames(v => !v)}
+                  className="h-5 w-5 accent-purple-600 rounded border-purple-300"
+                />
+                <span>Stricter for short names</span>
+                <span className="ml-1 text-purple-400" title="For short names (1 word, <5 chars), only allow exact matches">
+                  <Info className="h-4 w-4" />
+                </span>
+              </label>
+            </div>
           </div>
           {/* ... rest of Name Matcher UI ... */}
           {/* In the results table, if showAllMatches is enabled, show all matches as a dropdown or list */}
@@ -2868,20 +2921,95 @@ ${markdownHtmlOutput}
                   {nameMatcherColumns1.length > 0 && (
                     <div className="mt-2">
                       <label className="block text-xs mb-1">Select Name Column:</label>
-                      <select className="border rounded px-2 py-1 text-xs" value={nameMatcherSelectedCol1} onChange={e => setNameMatcherSelectedCol1(e.target.value)}>
-                        <option value="">-- Select --</option>
-                        {nameMatcherColumns1.map(col => <option key={col} value={col}>{col}</option>)}
-                      </select>
+                      <div className="relative">
+                        <Button
+                          variant="outline"
+                          className="w-full flex justify-between items-center text-xs border-purple-200"
+                          onClick={() => setShowNameColPopover1((v) => !v)}
+                          type="button"
+                        >
+                          {nameMatcherSelectedCol1 || 'Select name column...'}
+                          <ChevronDown className="h-4 w-4 ml-2" />
+                        </Button>
+                        {showNameColPopover1 && (
+                          <div
+                            className="fixed inset-0 z-40"
+                            onClick={() => setShowNameColPopover1(false)}
+                            style={{ cursor: 'default' }}
+                          />
+                        )}
+                        {showNameColPopover1 && (
+                          <div className="absolute z-50 mt-1 w-full bg-white border border-purple-200 rounded shadow-lg p-2 max-h-48 overflow-auto">
+                            {nameMatcherColumns1.map(col => (
+                              <div
+                                key={col}
+                                className={`flex items-center gap-2 py-1 px-2 rounded hover:bg-purple-50 cursor-pointer text-xs ${nameMatcherSelectedCol1 === col ? 'bg-purple-100 font-semibold' : ''}`}
+                                onClick={() => {
+                                  setNameMatcherSelectedCol1(col);
+                                  setShowNameColPopover1(false);
+                                }}
+                              >
+                                {nameMatcherSelectedCol1 === col && <CheckCircle className="h-3 w-3 text-purple-600" />}
+                                <span>{col}</span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
                     </div>
                   )}
-                  {nameMatcherColumns1.length > 0 && (
+                  { nameMatcherColumns1.length > 0 && (
                     <div className="mt-2">
-                      <label className="block text-xs mb-1">Select Column of Interest (e.g., NRIC):</label>
-                      <select className="border rounded px-2 py-1 text-xs" value={nameMatcherSelectedColOfInterest} onChange={e => setNameMatcherSelectedColOfInterest(e.target.value)}>
-                        <option value="">-- None --</option>
-                        {nameMatcherColumns1.map(col => <option key={col} value={col}>{col}</option>)}
-                      </select>
-                      <div className="text-xs text-purple-500 mt-1">This column will be shown in results and included in download.</div>
+                      <label className="block text-xs mb-1">Select Columns of Interest (optional):</label>
+                      <div className="relative">
+                        <Button
+                          variant="outline"
+                          className="w-full flex justify-between items-center text-xs border-purple-200"
+                          onClick={() => setShowColOfInterestPopover1((v) => !v)}
+                          type="button"
+                        >
+                          {nameMatcherSelectedColsOfInterest.length === 0
+                            ? '-- None --'
+                            : nameMatcherSelectedColsOfInterest.length <= 2
+                              ? nameMatcherSelectedColsOfInterest.join(', ')
+                              : `${nameMatcherSelectedColsOfInterest.length} columns selected`}
+                          <ChevronDown className="h-4 w-4 ml-2" />
+                        </Button>
+                        {showColOfInterestPopover1 && (
+                          <div className="fixed inset-0 z-40" onClick={() => setShowColOfInterestPopover1(false)} style={{ cursor: 'default' }} />
+                        )}
+                        {showColOfInterestPopover1 && (
+                          <div className="absolute z-50 mt-1 w-full bg-white border border-purple-200 rounded shadow-lg p-2 max-h-48 overflow-auto">
+                            <div
+                              className={`flex items-center gap-2 py-1 px-2 rounded hover:bg-purple-50 cursor-pointer text-xs ${nameMatcherSelectedColsOfInterest.length === 0 ? 'bg-purple-100 font-semibold' : ''}`}
+                              onClick={() => {
+                                setNameMatcherSelectedColsOfInterest([]);
+                                setShowColOfInterestPopover1(false);
+                              }}
+                            >
+                              {nameMatcherSelectedColsOfInterest.length === 0 && <CheckCircle className="h-3 w-3 text-purple-600" />}
+                              <span>-- None --</span>
+                            </div>
+                            {nameMatcherColumns1.map(col => (
+                              <div
+                                key={col}
+                                className={`flex items-center gap-2 py-1 px-2 rounded hover:bg-purple-50 cursor-pointer text-xs ${nameMatcherSelectedColsOfInterest.includes(col) ? 'bg-purple-100 font-semibold' : ''}`}
+                                onClick={() => {
+                                  if (nameMatcherSelectedColsOfInterest.includes(col)) {
+                                    setNameMatcherSelectedColsOfInterest(nameMatcherSelectedColsOfInterest.filter(c => c !== col));
+                                  } else {
+                                    setNameMatcherSelectedColsOfInterest([...nameMatcherSelectedColsOfInterest, col]);
+                                  }
+                                }}
+                              >
+                                <input type="checkbox" checked={nameMatcherSelectedColsOfInterest.includes(col)} readOnly className="accent-purple-600 h-3 w-3 rounded border-purple-300" />
+                                <span>{col}</span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                      <div className="text-xs text-purple-500 mt-1">Selected columns will be shown in results and included in download.</div>
                     </div>
                   )}
                 </div>
@@ -2893,7 +3021,7 @@ ${markdownHtmlOutput}
                   <div className="text-xs text-purple-700 mb-1">Preview: First 5 values in <span className="font-semibold">{nameMatcherSelectedCol1}</span></div>
                   <div className="bg-purple-50 border border-purple-100 rounded p-2 text-xs font-mono">
                     {previewColumn(nameMatcherData1, nameMatcherColumns1.indexOf(nameMatcherSelectedCol1)).map((val, i) => (
-                      <div key={i}>{val}</div>
+                      <div key={i} className="whitespace-pre-wrap break-words max-w-full text-xs font-mono text-gray-700 py-0.5">{val}</div>
                     ))}
                   </div>
                 </div>
@@ -2921,10 +3049,37 @@ ${markdownHtmlOutput}
                   {nameMatcherColumns2.length > 0 && (
                     <div className="mt-2">
                       <label className="block text-xs mb-1">Select Name Column:</label>
-                      <select className="border rounded px-2 py-1 text-xs" value={nameMatcherSelectedCol2} onChange={e => setNameMatcherSelectedCol2(e.target.value)}>
-                        <option value="">-- Select --</option>
-                        {nameMatcherColumns2.map(col => <option key={col} value={col}>{col}</option>)}
-                      </select>
+                      <div className="relative">
+                        <Button
+                          variant="outline"
+                          className="w-full flex justify-between items-center text-xs border-purple-200"
+                          onClick={() => setShowColsPopover1((v) => !v)}
+                          type="button"
+                        >
+                          {nameMatcherSelectedCol2 || 'Select name column...'}
+                          <ChevronDown className="h-4 w-4 ml-2" />
+                        </Button>
+                        {showColsPopover1 && (
+                          <div className="fixed inset-0 z-40" onClick={() => setShowColsPopover1(false)} style={{ cursor: 'default' }} />
+                        )}
+                        {showColsPopover1 && (
+                          <div className="absolute z-50 mt-1 w-full bg-white border border-purple-200 rounded shadow-lg p-2 max-h-48 overflow-auto">
+                            {nameMatcherColumns2.map(col => (
+                              <div
+                                key={col}
+                                className={`flex items-center gap-2 py-1 px-2 rounded hover:bg-purple-50 cursor-pointer text-xs ${nameMatcherSelectedCol2 === col ? 'bg-purple-100 font-semibold' : ''}`}
+                                onClick={() => {
+                                  setNameMatcherSelectedCol2(col);
+                                  setShowColsPopover1(false);
+                                }}
+                              >
+                                {nameMatcherSelectedCol2 === col && <CheckCircle className="h-3 w-3 text-purple-600" />}
+                                <span>{col}</span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
                     </div>
                   )}
                 </div>
@@ -2936,7 +3091,7 @@ ${markdownHtmlOutput}
                   <div className="text-xs text-purple-700 mb-1">Preview: First 5 values in <span className="font-semibold">{nameMatcherSelectedCol2}</span></div>
                   <div className="bg-pink-50 border border-pink-100 rounded p-2 text-xs font-mono">
                     {previewColumn(nameMatcherData2, nameMatcherColumns2.indexOf(nameMatcherSelectedCol2)).map((val, i) => (
-                      <div key={i}>{val}</div>
+                      <div key={i} className="whitespace-pre-wrap break-words max-w-full text-xs font-mono text-gray-700 py-0.5">{val}</div>
                     ))}
                   </div>
                 </div>
@@ -2947,10 +3102,21 @@ ${markdownHtmlOutput}
           <div className="mt-6 bg-purple-50 border border-purple-100 rounded-lg p-4">
             <div className="flex flex-col md:flex-row md:items-center gap-4 mb-4">
               <div className="flex items-center gap-2">
-                <label className="font-medium text-purple-800 text-sm">Fuzzy Match Threshold:</label>
-                <input type="range" min="0.5" max="1" step="0.01" value={fuzzyThreshold} onChange={e => setFuzzyThreshold(Number(e.target.value))} className="accent-purple-600" style={{width:'120px'}} />
-                <span className="text-xs text-purple-700">{Math.round(fuzzyThreshold*100)}%</span>
-                <span className="text-xs text-purple-500 ml-2">(Lower = more lenient, Higher = stricter)</span>
+                <label className="font-medium text-purple-800 text-sm flex items-center gap-1" htmlFor="fuzzy-threshold-slider">
+                  Fuzzy Match Threshold
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <span className="ml-1 text-purple-400 cursor-pointer"><Info className="h-4 w-4" /></span>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <span className="text-xs">Controls how strict the name matching is. Higher = stricter, lower = more lenient. 100% = only exact matches.</span>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                </label>
+                <input id="fuzzy-threshold-slider" type="range" min="0.5" max="1" step="0.01" value={fuzzyThreshold} onChange={e => setFuzzyThreshold(Number(e.target.value))} className="accent-purple-600 w-40 h-2 rounded-lg bg-purple-100" />
+                <span className="inline-block bg-purple-100 text-purple-700 font-semibold px-2 py-0.5 rounded text-xs border border-purple-200 ml-2">{Math.round(fuzzyThreshold*100)}%</span>
               </div>
               <button className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded flex items-center gap-2" onClick={runNameMatcher} disabled={!nameMatcherSelectedCol1 || !nameMatcherSelectedCol2}>
                 <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 01.88 7.903A5.5 5.5 0 1112 6.5" /></svg>
@@ -2962,18 +3128,20 @@ ${markdownHtmlOutput}
               </button>
             </div>
             {nameMatcherResults.length > 0 && (
-              <div className="overflow-x-auto">
+              <div className="overflow-x-auto custom-scrollbar">
                 <table className="min-w-full border border-purple-200 rounded-lg overflow-hidden">
                   <thead>
                     <tr className="bg-purple-100 text-purple-800">
                       <th className="border px-2 py-1 text-xs">CSV1 Name</th>
-                      {nameMatcherSelectedColOfInterest && <th className="border px-2 py-1 text-xs">{nameMatcherSelectedColOfInterest}</th>}
+                      {nameMatcherSelectedColsOfInterest.map(col => (
+                        <th key={col} className="border px-2 py-1 text-xs">{col}</th>
+                      ))}
                       <th className="border px-2 py-1 text-xs">Best Match in CSV2</th>
                       <th className="border px-2 py-1 text-xs">Similarity</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {nameMatcherResults.map((row, idx) => {
+                    {nameMatcherResults.map((row: NameMatcherResult, idx) => {
                       let color = '';
                       const score = row.score ?? 0;
                       if (score >= 0.97) color = 'bg-green-50';
@@ -2982,7 +3150,9 @@ ${markdownHtmlOutput}
                       return (
                         <tr key={idx} className={color}>
                           <td className="border px-2 py-1 text-xs font-mono">{row.name1}</td>
-                          {nameMatcherSelectedColOfInterest && <td className="border px-2 py-1 text-xs font-mono">{row.colOfInterest || ''}</td>}
+                          {nameMatcherSelectedColsOfInterest.map(col => (
+                            <td key={col} className="border px-2 py-1 text-xs font-mono">{row.colsOfInterest?.[col] || ''}</td>
+                          ))}
                           <td className="border px-2 py-1 text-xs font-mono">
                             {showAllMatches && row.allMatches && row.allMatches.length > 0 ? (
                               <details>
