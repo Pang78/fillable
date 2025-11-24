@@ -109,30 +109,30 @@ marked.setOptions({ renderer });
 function cleanHtmlForWordEmail(html: string, stylingLevel: 'minimal' | 'basic' | 'full' = 'basic'): string {
   // Remove all class attributes regardless of styling level
   html = html.replace(/ class="[^"]*"/g, '');
-  
+
   // Remove data attributes
   html = html.replace(/ data-[^=]*="[^"]*"/g, '');
-  
+
   // Basic cleanup for all levels
   html = html.replace(/<\/?span[^>]*>/g, ''); // Remove spans
-  
+
   if (stylingLevel === 'minimal') {
     // For minimal, strip almost all styling, leave just the structure
     return html;
   }
-  
+
   // Add styles based on the selected level
   if (stylingLevel === 'basic' || stylingLevel === 'full') {
     // Basic table styling (cleaner, more minimal)
     html = html.replace(/<table>/g, '<table style="border-collapse:collapse;width:100%;margin-bottom:10px;">');
     html = html.replace(/<th>/g, '<th style="border:1px solid #ccc;padding:4px;background-color:#f1f1f1;">');
     html = html.replace(/<td>/g, '<td style="border:1px solid #ccc;padding:4px;">');
-    
+
     // Basic code styling
     html = html.replace(/<pre>/g, '<pre style="background:#f4f4f4;padding:8px;border-radius:4px;overflow:auto;margin:10px 0;">');
     html = html.replace(/<code>/g, '<code style="font-family:monospace;">');
   }
-  
+
   if (stylingLevel === 'full') {
     // Add more elaborate styling for the full option
     html = html.replace(/<h1>/g, '<h1 style="color:#333;border-bottom:1px solid #eee;padding-bottom:10px;">');
@@ -144,7 +144,7 @@ function cleanHtmlForWordEmail(html: string, stylingLevel: 'minimal' | 'basic' |
     html = html.replace(/<blockquote>/g, '<blockquote style="border-left:4px solid #eee;padding-left:15px;margin-left:0;color:#777;">');
     html = html.replace(/<hr>/g, '<hr style="border:none;border-top:1px solid #eee;margin:20px 0;">');
   }
-  
+
   return html;
 }
 
@@ -205,7 +205,7 @@ async function copyHtmlWithFormatting(html: string): Promise<boolean> {
     tempDiv.innerHTML = html;
     tempDiv.setAttribute('style', 'position: absolute; left: -9999px; top: 0');
     document.body.appendChild(tempDiv);
-    
+
     // Select the div's content
     const selection = window.getSelection();
     if (selection) {
@@ -213,14 +213,14 @@ async function copyHtmlWithFormatting(html: string): Promise<boolean> {
       range.selectNodeContents(tempDiv);
       selection.removeAllRanges();
       selection.addRange(range);
-      
+
       // Execute copy command
       const success = document.execCommand('copy');
-      
+
       // Clean up
       selection.removeAllRanges();
       document.body.removeChild(tempDiv);
-      
+
       return success;
     }
     return false;
@@ -239,7 +239,7 @@ const TransformBidirectional = () => {
   const [isSampleLoaded, setIsSampleLoaded] = useState(false);
   const [isTransformed, setIsTransformed] = useState(false);
   const [totalItems, setTotalItems] = useState(0);
-  
+
   // Data cleaning options
   const [cleaningOptions, setCleaningOptions] = useState({
     trimWhitespace: true,
@@ -252,9 +252,13 @@ const TransformBidirectional = () => {
     removeLeadingNumbers: false,
     removeTrailingNumbers: false,
     useCustomRegex: false,
-    normalizeWhitespace: false // New option
+    normalizeWhitespace: false, // New option
+    // Smart cleaning options
+    smartEmail: false,
+    smartPhone: false,
+    smartName: false,
   });
-  
+
   // Add type definition for SavedConfig after cleaningOptions is defined
   type SavedConfig = {
     id: string;
@@ -266,7 +270,7 @@ const TransformBidirectional = () => {
     customRegexReplacement: string;
     timestamp: number;
   };
-  
+
   // Add new state variables for preview stats
   const [previewStats, setPreviewStats] = useState({
     originalLines: 0,
@@ -276,12 +280,12 @@ const TransformBidirectional = () => {
     afterCleaning: 0,
     showPreview: false
   });
-  
+
   // Add state for custom regex pattern and replacement
   const [customRegexPattern, setCustomRegexPattern] = useState('');
   const [customRegexReplacement, setCustomRegexReplacement] = useState('');
   const [customRegexError, setCustomRegexError] = useState('');
-  
+
   // Add state for sample preview
   const [samplePreview, setSamplePreview] = useState<{
     original: string[];
@@ -292,41 +296,41 @@ const TransformBidirectional = () => {
     cleaned: [],
     showPreview: false
   });
-  
+
   // Add state for live preview
   const [liveModeEnabled, setLiveModeEnabled] = useState(true);
   const [livePreview, setLivePreview] = useState('');
-  
+
   // Add state for drag and drop
   const [isDragging, setIsDragging] = useState(false);
-  
+
   // Add state for configurations
   const [savedConfigs, setSavedConfigs] = useState<SavedConfig[]>([]);
   const [configName, setConfigName] = useState('');
   const [showSaveConfigModal, setShowSaveConfigModal] = useState(false);
   const [showLoadConfigModal, setShowLoadConfigModal] = useState(false);
-  
+
   // Add transformation direction state
   const [transformDirection, setTransformDirection] = useState<'columnToRow' | 'rowToColumn' | 'markdown' | 'nameMatcher'>('markdown');
   const [markdownOutputType, setMarkdownOutputType] = useState<'plainText' | 'richText'>('richText');
-  
+
   // Add state for both HTML and plain text outputs in Markdown mode
   const [markdownHtmlOutput, setMarkdownHtmlOutput] = useState('');
   const [markdownPlainTextOutput, setMarkdownPlainTextOutput] = useState('');
-  
+
   // Add style level state for rich text output
   const [htmlStyleLevel, setHtmlStyleLevel] = useState<'minimal' | 'basic' | 'full'>('full');
-  
+
   // Add state for expanded previews
   const [expandedPreview, setExpandedPreview] = useState<'none' | 'rich' | 'plain'>('none');
-  
+
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const outputRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  
+
   // Add a new transformDirection for name matching
-  const [nameMatcherFile1, setNameMatcherFile1] = useState<File|null>(null);
-  const [nameMatcherFile2, setNameMatcherFile2] = useState<File|null>(null);
+  const [nameMatcherFile1, setNameMatcherFile1] = useState<File | null>(null);
+  const [nameMatcherFile2, setNameMatcherFile2] = useState<File | null>(null);
   const [nameMatcherData1, setNameMatcherData1] = useState<string[][]>([]);
   const [nameMatcherData2, setNameMatcherData2] = useState<string[][]>([]);
   const [nameMatcherColumns1, setNameMatcherColumns1] = useState<string[]>([]);
@@ -337,22 +341,22 @@ const TransformBidirectional = () => {
   // Add state for multi-select columns of interest and popover
   const [nameMatcherSelectedColsOfInterest, setNameMatcherSelectedColsOfInterest] = useState<string[]>([]);
   const [showColsPopover1, setShowColsPopover1] = useState(false);
-  
+
   // Add state for help/info section and user controls
   const [showNameMatcherHelp, setShowNameMatcherHelp] = useState(true);
   const [requireSameWordCount, setRequireSameWordCount] = useState(false);
   const [showAllMatches, setShowAllMatches] = useState(false);
   const [strictShortNames, setStrictShortNames] = useState(true);
-  
+
   // Add state for popovers for name column and column of interest
   const [showNameColPopover1, setShowNameColPopover1] = useState(false);
   const [showColOfInterestPopover1, setShowColOfInterestPopover1] = useState(false);
-  
+
   // Helper: Parse CSV string to array
   function parseCSV(csv: string): string[][] {
     return csv.split(/\r?\n/).map(row => row.split(','));
   }
-  
+
   // Helper: Normalize name (sort words, lower case, trim)
   function normalizeName(name: string): string {
     return name
@@ -362,9 +366,9 @@ const TransformBidirectional = () => {
       .sort()
       .join(' ');
   }
-  
+
   // Handle file upload for Name Matcher
-  const handleNameMatcherFile = (file: File, which: 1|2) => {
+  const handleNameMatcherFile = (file: File, which: 1 | 2) => {
     const reader = new FileReader();
     reader.onload = (e) => {
       const text = e.target?.result as string;
@@ -383,7 +387,7 @@ const TransformBidirectional = () => {
     };
     reader.readAsText(file);
   };
-  
+
   // Levenshtein distance for fuzzy matching
   function levenshtein(a: string, b: string): number {
     if (a === b) return 0;
@@ -429,12 +433,12 @@ const TransformBidirectional = () => {
       row.match || '',
       row.score !== undefined ? Math.round(row.score * 100) : ''
     ]);
-    const csv = [header, ...rows].map(r => r.map(x => `"${(x||'').toString().replace(/"/g,'""')}"`).join(',')).join('\n');
+    const csv = [header, ...rows].map(r => r.map(x => `"${(x || '').toString().replace(/"/g, '""')}"`).join(',')).join('\n');
     const blob = new Blob([csv], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `name-matcher-results-${new Date().toISOString().slice(0,10)}.csv`;
+    link.download = `name-matcher-results-${new Date().toISOString().slice(0, 10)}.csv`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -442,7 +446,7 @@ const TransformBidirectional = () => {
   }
 
   // Helper: Get all matches above threshold
-  function getAllMatches(norm1: string, norm2Arr: string[], names2: string[], threshold: number, requireSameWords: boolean, strictShort: boolean): {match: string, score: number}[] {
+  function getAllMatches(norm1: string, norm2Arr: string[], names2: string[], threshold: number, requireSameWords: boolean, strictShort: boolean): { match: string, score: number }[] {
     return norm2Arr.map((norm2, j) => {
       let score = similarityScore(norm1, norm2);
       // If strict for short names
@@ -480,7 +484,7 @@ const TransformBidirectional = () => {
       // Get all selected columns of interest for this row
       const colsOfInterest: Record<string, string> = {};
       colsOfInterestIdx.forEach((idx, j) => {
-        colsOfInterest[nameMatcherSelectedColsOfInterest[j]] = nameMatcherData1[i+1]?.[idx] || '';
+        colsOfInterest[nameMatcherSelectedColsOfInterest[j]] = nameMatcherData1[i + 1]?.[idx] || '';
       });
       return {
         name1,
@@ -492,7 +496,7 @@ const TransformBidirectional = () => {
     });
     setNameMatcherResults(results);
   };
-  
+
   const transformData = async () => {
     if (!inputText.trim()) {
       toast({
@@ -502,45 +506,79 @@ const TransformBidirectional = () => {
       });
       return;
     }
-    
+
     if (transformDirection === 'columnToRow') {
       // Existing column to row transformation
       // Split text by newlines
       let lines = inputText.split('\n');
-      
+
       // Apply cleaning options
       if (cleaningOptions.trimWhitespace) {
         lines = lines.map(line => line.trim());
       }
-      
+
       if (cleaningOptions.removeEmptyLines) {
         lines = lines.filter(line => line.trim() !== '');
       }
-      
+
       if (cleaningOptions.toLowerCase) {
         lines = lines.map(line => line.toLowerCase());
       }
-      
+
       if (cleaningOptions.toUpperCase) {
         lines = lines.map(line => line.toUpperCase());
       }
-      
+
       if (cleaningOptions.removeSpecialChars) {
         lines = lines.map(line => line.replace(/[^\w\s]/gi, ''));
       }
-      
+
       if (cleaningOptions.replaceMultipleSpaces) {
         lines = lines.map(line => line.replace(/\s+/g, ' '));
       }
-      
+
       if (cleaningOptions.removeLeadingNumbers) {
         lines = lines.map(line => line.replace(/^\d+\s*/, ''));
       }
-      
+
       if (cleaningOptions.removeTrailingNumbers) {
         lines = lines.map(line => line.replace(/\s*\d+$/, ''));
       }
-      
+
+      // Apply Smart Cleaning Options
+      if (cleaningOptions.smartEmail) {
+        const emailRegex = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/;
+        lines = lines.map(line => {
+          const match = line.match(emailRegex);
+          return match ? match[0].toLowerCase() : ''; // Extract and lowercase, or empty if no email
+        });
+        // Auto-remove empty lines if smart email is on, as we likely filtered out non-emails
+        if (cleaningOptions.smartEmail) {
+          lines = lines.filter(line => line !== '');
+        }
+      }
+
+      if (cleaningOptions.smartPhone) {
+        lines = lines.map(line => {
+          // Remove all non-digits
+          let digits = line.replace(/\D/g, '');
+          // Basic SG phone formatting (optional, but good for "smart")
+          // If 8 digits and starts with 8 or 9, it's likely a mobile number.
+          // For now, just strip non-digits as requested in plan.
+          return digits;
+        });
+      }
+
+      if (cleaningOptions.smartName) {
+        lines = lines.map(line => {
+          return line
+            .toLowerCase()
+            .split(' ')
+            .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+            .join(' ');
+        });
+      }
+
       // Apply custom regex if enabled and valid
       if (cleaningOptions.useCustomRegex && customRegexPattern) {
         try {
@@ -556,23 +594,23 @@ const TransformBidirectional = () => {
           });
         }
       }
-      
+
       if (cleaningOptions.removeDuplicates) {
         lines = [...new Set(lines)];
       }
-      
+
       setTotalItems(lines.length);
-      
+
       // Join with the selected delimiter
       const actualDelimiter = delimiter === 'custom' ? customDelimiter : delimiter;
       let transformed = lines.join(actualDelimiter);
-      
+
       // Apply post-transformation whitespace normalization
       transformed = normalizeOutputWhitespace(transformed);
 
       setOutputText(transformed);
       setIsTransformed(true);
-      
+
       toast({
         description: `Successfully transformed ${lines.length} items into a single row`,
       });
@@ -580,14 +618,14 @@ const TransformBidirectional = () => {
       // New row to column transformation
       // Get the delimiter
       const actualDelimiter = delimiter === 'custom' ? customDelimiter : delimiter;
-      
+
       // Handle special delimiter cases
       let delimiterForSplit = actualDelimiter;
       if (actualDelimiter === '\\t') delimiterForSplit = '\t';
-      
+
       // Split the input by delimiter
       let items: string[];
-      
+
       try {
         // For complex delimiters, use RegExp to split
         if (['|', '.', '*', '+', '?', '^', '$', '\\'].some(c => actualDelimiter.includes(c))) {
@@ -596,40 +634,69 @@ const TransformBidirectional = () => {
           // Simple string split for basic delimiters
           items = inputText.split(delimiterForSplit);
         }
-        
+
         // Apply cleaning options to each item
         if (cleaningOptions.trimWhitespace) {
           items = items.map(item => item.trim());
         }
-        
+
         if (cleaningOptions.removeEmptyLines) {
           items = items.filter(item => item.trim() !== '');
         }
-        
+
         if (cleaningOptions.toLowerCase) {
           items = items.map(item => item.toLowerCase());
         }
-        
+
         if (cleaningOptions.toUpperCase) {
           items = items.map(item => item.toUpperCase());
         }
-        
+
         if (cleaningOptions.removeSpecialChars) {
           items = items.map(item => item.replace(/[^\w\s]/gi, ''));
         }
-        
+
         if (cleaningOptions.replaceMultipleSpaces) {
           items = items.map(item => item.replace(/\s+/g, ' '));
         }
-        
+
         if (cleaningOptions.removeLeadingNumbers) {
           items = items.map(item => item.replace(/^\d+\s*/, ''));
         }
-        
+
         if (cleaningOptions.removeTrailingNumbers) {
           items = items.map(item => item.replace(/\s*\d+$/, ''));
         }
-        
+
+        // Apply Smart Cleaning Options
+        if (cleaningOptions.smartEmail) {
+          const emailRegex = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/;
+          items = items.map(item => {
+            const match = item.match(emailRegex);
+            return match ? match[0].toLowerCase() : '';
+          });
+          if (cleaningOptions.smartEmail) {
+            items = items.filter(item => item !== '');
+          }
+        }
+
+        if (cleaningOptions.smartPhone) {
+          items = items.map(item => {
+            let digits = item.replace(/\D/g, '');
+            return digits;
+          });
+        }
+
+        if (cleaningOptions.smartName) {
+          items = items.map(item => {
+            return item
+              .toLowerCase()
+              .split(' ')
+              .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+              .join(' ');
+          });
+        }
+
         // Apply custom regex if enabled and valid
         if (cleaningOptions.useCustomRegex && customRegexPattern) {
           try {
@@ -645,22 +712,22 @@ const TransformBidirectional = () => {
             });
           }
         }
-        
+
         if (cleaningOptions.removeDuplicates) {
           items = [...new Set(items)];
         }
-        
+
         setTotalItems(items.length);
-        
+
         // Join items with newline to create columns
         const transformed = items.join('\n');
-        
+
         // Apply post-transformation whitespace normalization
         const normalizedTransformed = normalizeOutputWhitespace(transformed);
 
         setOutputText(normalizedTransformed);
         setIsTransformed(true);
-        
+
         toast({
           description: `Successfully transformed row into ${items.length} lines`,
         });
@@ -676,16 +743,16 @@ const TransformBidirectional = () => {
       let transformedMarkdown = '';
       let htmlOutput = '';
       let plainTextOutput = '';
-      
+
       try {
         // Generate initial HTML from markdown
         htmlOutput = await marked.parse(inputText) as string;
-        
+
         if (markdownOutputType === 'richText') {
           // Clean HTML for Word/Email with the selected styling level
           transformedMarkdown = cleanHtmlForWordEmail(htmlOutput, htmlStyleLevel);
           setMarkdownHtmlOutput(transformedMarkdown);
-          
+
           // Also generate plain text version
           plainTextOutput = htmlToPlainTextSafe(htmlOutput);
           setMarkdownPlainTextOutput(plainTextOutput);
@@ -695,13 +762,13 @@ const TransformBidirectional = () => {
           setMarkdownPlainTextOutput(plainTextOutput);
           transformedMarkdown = plainTextOutput;
         }
-        
+
         // Apply whitespace normalization
         transformedMarkdown = normalizeOutputWhitespace(transformedMarkdown);
         setOutputText(transformedMarkdown);
         setIsTransformed(true);
         setTotalItems(1);
-        
+
         toast({
           description: `Successfully transformed LLM Output to ${markdownOutputType === 'richText' ? 'Rich Text' : 'Plain Text'}`,
         });
@@ -718,7 +785,7 @@ const TransformBidirectional = () => {
       runNameMatcher();
     }
   };
-  
+
   const copyToClipboard = () => {
     if (!outputText) {
       toast({
@@ -727,13 +794,13 @@ const TransformBidirectional = () => {
       });
       return;
     }
-    
+
     navigator.clipboard.writeText(outputText);
     toast({
       description: "Transformed data copied to clipboard",
     });
   };
-  
+
   const clearAll = () => {
     setInputText('');
     setOutputText('');
@@ -751,7 +818,7 @@ const TransformBidirectional = () => {
       description: "All data cleared",
     });
   };
-  
+
   const loadSampleData = () => {
     if (transformDirection === 'columnToRow') {
       setInputText(SAMPLE_DATA);
@@ -765,7 +832,7 @@ const TransformBidirectional = () => {
       description: "Sample data loaded",
     });
   };
-  
+
   // Add drag and drop event handlers
   const handleDragEnter = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
@@ -799,13 +866,13 @@ const TransformBidirectional = () => {
   // Extract file handling logic into separate function to reuse with drag-and-drop
   const handleFileContent = (file: File) => {
     if (!file) return;
-    
+
     // Check file type and size
     const validTypes = ['.txt', '.csv', '.md', '.json', 'text/plain', 'text/csv', 'text/markdown', 'application/json'];
-    const isValidType = validTypes.some(type => 
+    const isValidType = validTypes.some(type =>
       file.name.toLowerCase().endsWith(type) || file.type.includes(type)
     );
-    
+
     if (!isValidType) {
       toast({
         title: "Invalid file type",
@@ -814,7 +881,7 @@ const TransformBidirectional = () => {
       });
       return;
     }
-    
+
     // Check file size (max 5MB)
     const maxSize = 5 * 1024 * 1024; // 5MB
     if (file.size > maxSize) {
@@ -825,7 +892,7 @@ const TransformBidirectional = () => {
       });
       return;
     }
-    
+
     const reader = new FileReader();
     reader.onload = (e) => {
       const content = e.target?.result as string;
@@ -842,7 +909,7 @@ const TransformBidirectional = () => {
         variant: "destructive",
       });
     };
-    
+
     reader.readAsText(file);
   };
 
@@ -853,7 +920,7 @@ const TransformBidirectional = () => {
       handleFileContent(file);
     }
   };
-  
+
   const downloadOutput = () => {
     if (!outputText) {
       toast({
@@ -862,7 +929,7 @@ const TransformBidirectional = () => {
       });
       return;
     }
-    
+
     const blob = new Blob([outputText], { type: 'text/plain' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
@@ -871,12 +938,12 @@ const TransformBidirectional = () => {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-    
+
     toast({
       description: "Transformed data downloaded as text file",
     });
   };
-  
+
   // Add a function to calculate preview stats based on current cleaning options
   const calculatePreviewStats = () => {
     if (!inputText.trim()) {
@@ -893,44 +960,73 @@ const TransformBidirectional = () => {
 
     // Original lines
     const originalLines = inputText.split('\n');
-    
+
     // After trimming
-    let afterTrimming = cleaningOptions.trimWhitespace 
-      ? originalLines.map(line => line.trim()) 
+    let afterTrimming = cleaningOptions.trimWhitespace
+      ? originalLines.map(line => line.trim())
       : [...originalLines];
-    
+
     // After removing empty
-    let afterRemovingEmpty = cleaningOptions.removeEmptyLines 
-      ? afterTrimming.filter(line => line !== '') 
+    let afterRemovingEmpty = cleaningOptions.removeEmptyLines
+      ? afterTrimming.filter(line => line !== '')
       : [...afterTrimming];
-    
+
     // Apply intermediate cleaning steps
     let cleanedLines = [...afterRemovingEmpty];
-    
+
     // Apply case conversion
     if (cleaningOptions.toLowerCase) {
       cleanedLines = cleanedLines.map(line => line.toLowerCase());
     } else if (cleaningOptions.toUpperCase) {
       cleanedLines = cleanedLines.map(line => line.toUpperCase());
     }
-    
+
     // Apply other cleaning options
     if (cleaningOptions.removeSpecialChars) {
       cleanedLines = cleanedLines.map(line => line.replace(/[^\w\s]/gi, ''));
     }
-    
+
     if (cleaningOptions.replaceMultipleSpaces) {
       cleanedLines = cleanedLines.map(line => line.replace(/\s+/g, ' '));
     }
-    
+
     if (cleaningOptions.removeLeadingNumbers) {
       cleanedLines = cleanedLines.map(line => line.replace(/^\d+\s*/, ''));
     }
-    
+
     if (cleaningOptions.removeTrailingNumbers) {
       cleanedLines = cleanedLines.map(line => line.replace(/\s*\d+$/, ''));
     }
-    
+
+    // Apply Smart Cleaning Options
+    if (cleaningOptions.smartEmail) {
+      const emailRegex = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/;
+      cleanedLines = cleanedLines.map(line => {
+        const match = line.match(emailRegex);
+        return match ? match[0].toLowerCase() : '';
+      });
+      if (cleaningOptions.smartEmail) {
+        cleanedLines = cleanedLines.filter(line => line !== '');
+      }
+    }
+
+    if (cleaningOptions.smartPhone) {
+      cleanedLines = cleanedLines.map(line => {
+        let digits = line.replace(/\D/g, '');
+        return digits;
+      });
+    }
+
+    if (cleaningOptions.smartName) {
+      cleanedLines = cleanedLines.map(line => {
+        return line
+          .toLowerCase()
+          .split(' ')
+          .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+          .join(' ');
+      });
+    }
+
     // Apply custom regex if enabled and valid
     if (cleaningOptions.useCustomRegex && customRegexPattern) {
       try {
@@ -942,12 +1038,12 @@ const TransformBidirectional = () => {
         // Don't apply the regex in preview if there's an error
       }
     }
-    
+
     // After removing duplicates (final step)
-    let afterRemovingDuplicates = cleaningOptions.removeDuplicates 
-      ? [...new Set(cleanedLines)] 
+    let afterRemovingDuplicates = cleaningOptions.removeDuplicates
+      ? [...new Set(cleanedLines)]
       : [...cleanedLines];
-    
+
     setPreviewStats({
       originalLines: originalLines.length,
       afterTrimming: cleaningOptions.trimWhitespace ? afterTrimming.length : 0,
@@ -985,10 +1081,10 @@ const TransformBidirectional = () => {
           ]
         });
       }
-      cleanedSample = normalizeOutputWhitespace(cleanedSample).substring(0,100) + (cleanedSample.length > 100 ? '...':'');
+      cleanedSample = normalizeOutputWhitespace(cleanedSample).substring(0, 100) + (cleanedSample.length > 100 ? '...' : '');
 
       setSamplePreview({
-        original: [mdSample.substring(0,100) + (mdSample.length > 100 ? '...':'')], // Show a snippet of original Markdown
+        original: [mdSample.substring(0, 100) + (mdSample.length > 100 ? '...' : '')], // Show a snippet of original Markdown
         cleaned: [cleanedSample], // Show a snippet of transformed output
         showPreview: true
       });
@@ -998,52 +1094,83 @@ const TransformBidirectional = () => {
     // Get up to 3 sample lines from the input for non-markdown modes
     const allLines = inputText.split('\n');
     const sampleLines: string[] = [];
-    
+
     // Try to select lines with content to show meaningful transformations
     let contentLines = allLines.filter(line => line.trim().length > 0);
-    
+
     // If no content lines, use original lines
     if (contentLines.length === 0) {
       contentLines = [...allLines];
     }
-    
+
     // Take up to 3 lines, prioritizing ones with interesting content if possible
     for (let i = 0; i < Math.min(3, contentLines.length); i++) {
       sampleLines.push(contentLines[i]);
     }
-    
+
     // Now apply the transformations to the sample lines
     let processedLines = [...sampleLines];
-    
+
     // Apply all the cleaning operations
     if (cleaningOptions.trimWhitespace) {
       processedLines = processedLines.map(line => line.trim());
     }
-    
+
     if (cleaningOptions.toLowerCase) {
       processedLines = processedLines.map(line => line.toLowerCase());
     }
-    
+
     if (cleaningOptions.toUpperCase) {
       processedLines = processedLines.map(line => line.toUpperCase());
     }
-    
+
     if (cleaningOptions.removeSpecialChars) {
       processedLines = processedLines.map(line => line.replace(/[^\w\s]/gi, ''));
     }
-    
+
     if (cleaningOptions.replaceMultipleSpaces) {
       processedLines = processedLines.map(line => line.replace(/\s+/g, ' '));
     }
-    
+
     if (cleaningOptions.removeLeadingNumbers) {
       processedLines = processedLines.map(line => line.replace(/^\d+\s*/, ''));
     }
-    
+
     if (cleaningOptions.removeTrailingNumbers) {
       processedLines = processedLines.map(line => line.replace(/\s*\d+$/, ''));
     }
-    
+
+    // Apply Smart Cleaning Options
+    if (cleaningOptions.smartEmail) {
+      const emailRegex = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/;
+      processedLines = processedLines.map(line => {
+        const match = line.match(emailRegex);
+        return match ? match[0].toLowerCase() : '';
+      });
+      // Note: For sample preview, we might want to show empty lines if they were filtered out, 
+      // or just show the result. Let's keep consistency.
+      // But sample preview expects 1-to-1 mapping for "Changes detected" logic usually?
+      // Actually the UI shows "Original" vs "Cleaned". If we filter out lines, the indices won't match.
+      // So for sample preview, let's NOT filter out empty lines, just show them as empty.
+    }
+
+    if (cleaningOptions.smartPhone) {
+      processedLines = processedLines.map(line => {
+        let digits = line.replace(/\D/g, '');
+        return digits;
+      });
+    }
+
+    if (cleaningOptions.smartName) {
+      processedLines = processedLines.map(line => {
+        return line
+          .toLowerCase()
+          .split(' ')
+          .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+          .join(' ');
+      });
+    }
+
     if (cleaningOptions.useCustomRegex && customRegexPattern) {
       try {
         const regex = new RegExp(customRegexPattern, 'g');
@@ -1052,7 +1179,7 @@ const TransformBidirectional = () => {
         // Skip custom regex if invalid
       }
     }
-    
+
     // Set the sample preview state
     setSamplePreview({
       original: sampleLines,
@@ -1071,14 +1198,14 @@ const TransformBidirectional = () => {
       setSamplePreview(prev => ({ ...prev, showPreview: false }));
     }
   }, [inputText, cleaningOptions, customRegexPattern, customRegexReplacement, transformDirection]);
-  
+
   // Modify the toggleCleaningOption function to update preview stats
   const toggleCleaningOption = (option: keyof typeof cleaningOptions) => {
     setCleaningOptions(prev => ({
       ...prev,
       [option]: !prev[option]
     }));
-    
+
     // Handle mutually exclusive options
     if (option === 'toLowerCase' && cleaningOptions.toUpperCase && !cleaningOptions.toLowerCase) {
       setCleaningOptions(prev => ({
@@ -1086,17 +1213,17 @@ const TransformBidirectional = () => {
         toUpperCase: false
       }));
     }
-    
+
     if (option === 'toUpperCase' && cleaningOptions.toLowerCase && !cleaningOptions.toUpperCase) {
       setCleaningOptions(prev => ({
         ...prev,
         toLowerCase: false
       }));
     }
-    
+
     // Preview will update via useEffect
   };
-  
+
   // Add useEffect to update live preview
   useEffect(() => {
     if (liveModeEnabled && inputText) {
@@ -1112,8 +1239,8 @@ const TransformBidirectional = () => {
       setLivePreview('');
       return;
     }
-    
-    let processedInput = inputText; 
+
+    let processedInput = inputText;
     // Note: specific pre-cleaning options from `cleaningOptions` can be applied to `processedInput` here if needed before transformation.
 
     try {
@@ -1121,7 +1248,7 @@ const TransformBidirectional = () => {
 
       if (transformDirection === 'columnToRow') {
         let lines = processedInput.split('\n');
-        
+
         if (cleaningOptions.trimWhitespace) {
           lines = lines.map(line => line.trim());
         }
@@ -1136,6 +1263,18 @@ const TransformBidirectional = () => {
         if (cleaningOptions.replaceMultipleSpaces) lines = lines.map(l => l.replace(/\s+/g, ' '));
         if (cleaningOptions.removeLeadingNumbers) lines = lines.map(l => l.replace(/^\d+\s*/, ''));
         if (cleaningOptions.removeTrailingNumbers) lines = lines.map(l => l.replace(/\s*\d+$/, ''));
+
+        // Smart Cleaning for Live Preview
+        if (cleaningOptions.smartEmail) {
+          const emailRegex = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/;
+          lines = lines.map(l => {
+            const match = l.match(emailRegex);
+            return match ? match[0].toLowerCase() : '';
+          });
+          if (cleaningOptions.smartEmail) lines = lines.filter(l => l !== '');
+        }
+        if (cleaningOptions.smartPhone) lines = lines.map(l => l.replace(/\D/g, ''));
+        if (cleaningOptions.smartName) lines = lines.map(l => l.toLowerCase().split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' '));
         if (cleaningOptions.useCustomRegex && customRegexPattern) {
           try {
             const regex = new RegExp(customRegexPattern, 'g');
@@ -1152,14 +1291,14 @@ const TransformBidirectional = () => {
         const actualDelimiter = delimiter === 'custom' ? customDelimiter : delimiter;
         let delimiterForSplit = actualDelimiter;
         if (actualDelimiter === '\\t') delimiterForSplit = '\t';
-        
+
         let items: string[];
         if (['|', '.', '*', '+', '?', '^', '$', '\\'].some(c => actualDelimiter.includes(c))) {
           items = processedInput.split(new RegExp(delimiterForSplit.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'));
         } else {
           items = processedInput.split(delimiterForSplit);
         }
-        
+
         if (cleaningOptions.trimWhitespace) items = items.map(item => item.trim());
         if (cleaningOptions.removeEmptyLines) items = items.filter(item => item.trim() !== '');
         // ... (Apply other relevant pre-markdown cleaning options for rowToColumn preview)
@@ -1169,6 +1308,18 @@ const TransformBidirectional = () => {
         if (cleaningOptions.replaceMultipleSpaces) items = items.map(i => i.replace(/\s+/g, ' '));
         if (cleaningOptions.removeLeadingNumbers) items = items.map(i => i.replace(/^\d+\s*/, ''));
         if (cleaningOptions.removeTrailingNumbers) items = items.map(i => i.replace(/\s*\d+$/, ''));
+
+        // Smart Cleaning for Live Preview (Row to Column)
+        if (cleaningOptions.smartEmail) {
+          const emailRegex = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/;
+          items = items.map(i => {
+            const match = i.match(emailRegex);
+            return match ? match[0].toLowerCase() : '';
+          });
+          if (cleaningOptions.smartEmail) items = items.filter(i => i !== '');
+        }
+        if (cleaningOptions.smartPhone) items = items.map(i => i.replace(/\D/g, ''));
+        if (cleaningOptions.smartName) items = items.map(i => i.toLowerCase().split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' '));
         if (cleaningOptions.useCustomRegex && customRegexPattern) {
           try {
             const regex = new RegExp(customRegexPattern, 'g');
@@ -1180,7 +1331,7 @@ const TransformBidirectional = () => {
         const maxPreviewItems = 3;
         const previewItems = items.slice(0, maxPreviewItems);
         previewText = previewItems.join('\n');
-        
+
         if (items.length > maxPreviewItems) {
           previewText += `\n... (${items.length - maxPreviewItems} more)`;
         }
@@ -1213,7 +1364,7 @@ const TransformBidirectional = () => {
             // Removed whitespacePreformatted
           });
         }
-        previewText = previewMarkdown; 
+        previewText = previewMarkdown;
       }
 
       // Apply post-transformation whitespace normalization for live preview
@@ -1230,13 +1381,13 @@ const TransformBidirectional = () => {
       console.error("Live preview error:", error);
     }
   };
-  
+
   // Add keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       // Only process keyboard shortcuts if Ctrl/Cmd key is pressed
       if (!(e.ctrlKey || e.metaKey)) return;
-      
+
       // Check for various keyboard shortcuts
       switch (e.key) {
         case 'Enter':
@@ -1272,16 +1423,16 @@ const TransformBidirectional = () => {
           break;
       }
     };
-    
+
     // Add event listener for keyboard shortcuts
     window.addEventListener('keydown', handleKeyDown);
-    
+
     // Clean up the event listener on component unmount
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
     };
   }, [inputText, outputText, isSampleLoaded]);
-  
+
   // Load saved configurations from localStorage on mount
   useEffect(() => {
     const configs = localStorage.getItem('transformConfigs');
@@ -1305,7 +1456,7 @@ const TransformBidirectional = () => {
       });
       return;
     }
-    
+
     const newConfig: SavedConfig = {
       id: Date.now().toString(),
       name: configName.trim(),
@@ -1316,14 +1467,14 @@ const TransformBidirectional = () => {
       customRegexReplacement,
       timestamp: Date.now()
     };
-    
+
     const updatedConfigs = [...savedConfigs, newConfig];
     setSavedConfigs(updatedConfigs);
     localStorage.setItem('transformConfigs', JSON.stringify(updatedConfigs));
-    
+
     setConfigName('');
     setShowSaveConfigModal(false);
-    
+
     toast({
       description: `Configuration "${newConfig.name}" saved successfully`,
     });
@@ -1336,9 +1487,9 @@ const TransformBidirectional = () => {
     setCleaningOptions({ ...config.cleaningOptions });
     setCustomRegexPattern(config.customRegexPattern);
     setCustomRegexReplacement(config.customRegexReplacement);
-    
+
     setShowLoadConfigModal(false);
-    
+
     toast({
       description: `Configuration "${config.name}" loaded successfully`,
     });
@@ -1349,12 +1500,12 @@ const TransformBidirectional = () => {
     const updatedConfigs = savedConfigs.filter(config => config.id !== id);
     setSavedConfigs(updatedConfigs);
     localStorage.setItem('transformConfigs', JSON.stringify(updatedConfigs));
-    
+
     toast({
       description: `Configuration "${name}" deleted`,
     });
   };
-  
+
   const normalizeOutputWhitespace = (text: string): string => {
     if (!cleaningOptions.normalizeWhitespace) return text;
 
@@ -1366,21 +1517,21 @@ const TransformBidirectional = () => {
     });
 
     // 1. Replace multiple newlines with a single newline 
-    tempText = tempText.replace(/(\r\n|\n|\r){2,}/g, '\n'); 
+    tempText = tempText.replace(/(\r\n|\n|\r){2,}/g, '\n');
 
     // 2. Trim leading/trailing whitespace from each line (outside <pre>)
     tempText = tempText.split('\n').map(line => line.trim()).join('\n');
 
     // 3. Optional: Remove leading spaces from lines that are not part of lists (outside <pre>)
     if (transformDirection !== 'markdown' || markdownOutputType !== 'richText') {
-        tempText = tempText.split('\n').map(line => {
-            if (line.match(/^(\s*)[-*+>|#]/) || line.startsWith('<PRE_PLACEHOLDER_')) { 
-                return line; 
-            }
-            return line.replace(/^\s+/, '');
-        }).join('\n');
+      tempText = tempText.split('\n').map(line => {
+        if (line.match(/^(\s*)[-*+>|#]/) || line.startsWith('<PRE_PLACEHOLDER_')) {
+          return line;
+        }
+        return line.replace(/^\s+/, '');
+      }).join('\n');
     }
-    
+
     // 4. Final trim of the whole string
     tempText = tempText.trim();
 
@@ -1392,7 +1543,7 @@ const TransformBidirectional = () => {
 
     return tempText;
   };
-  
+
   // Effect to load highlight.js CSS
   useEffect(() => {
     if (!document.getElementById(HIGHLIGHT_JS_CSS_ID)) {
@@ -1410,7 +1561,7 @@ const TransformBidirectional = () => {
     //   }
     // };
   }, []);
-  
+
   // Add copy as HTML and copy as plain text functions
   const copyHtmlToClipboard = () => {
     if (!markdownHtmlOutput) return toast({ description: 'Nothing to copy', variant: 'destructive' });
@@ -1422,15 +1573,15 @@ const TransformBidirectional = () => {
     navigator.clipboard.writeText(markdownPlainTextOutput);
     toast({ description: 'Plain text copied to clipboard' });
   };
-  
+
   // Add this function after copyPlainTextToClipboard
   const copyFormattedHtmlToClipboard = async () => {
     if (!markdownHtmlOutput) {
       return toast({ description: 'Nothing to copy', variant: 'destructive' });
     }
-    
+
     const success = await copyHtmlWithFormatting(markdownHtmlOutput);
-    
+
     if (success) {
       toast({ description: 'Formatted HTML copied to clipboard (paste with formatting preserved)' });
     } else {
@@ -1439,13 +1590,13 @@ const TransformBidirectional = () => {
       toast({ description: 'HTML copied to clipboard (as code only)' });
     }
   };
-  
+
   // Add new export functions below copyFormattedHtmlToClipboard
   const exportAsHtml = () => {
     if (!markdownHtmlOutput) {
       return toast({ description: 'Nothing to export', variant: 'destructive' });
     }
-    
+
     // Create full HTML document
     const fullHtml = `<!DOCTYPE html>
 <html>
@@ -1468,7 +1619,7 @@ const TransformBidirectional = () => {
 ${markdownHtmlOutput}
 </body>
 </html>`;
-    
+
     const blob = new Blob([fullHtml], { type: 'text/html' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
@@ -1478,15 +1629,15 @@ ${markdownHtmlOutput}
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
-    
+
     toast({ description: 'Exported as HTML file' });
   };
-  
+
   const exportAsText = () => {
     if (!markdownPlainTextOutput) {
       return toast({ description: 'Nothing to export', variant: 'destructive' });
     }
-    
+
     const blob = new Blob([markdownPlainTextOutput], { type: 'text/plain' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
@@ -1496,15 +1647,15 @@ ${markdownHtmlOutput}
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
-    
+
     toast({ description: 'Exported as text file' });
   };
-  
+
   const exportAsWordDoc = () => {
     if (!markdownHtmlOutput) {
       return toast({ description: 'Nothing to export', variant: 'destructive' });
     }
-    
+
     // Create Word-compatible HTML
     const wordHtml = `<html xmlns:o="urn:schemas-microsoft-com:office:office" 
       xmlns:w="urn:schemas-microsoft-com:office:word" 
@@ -1537,7 +1688,7 @@ ${markdownHtmlOutput}
 ${markdownHtmlOutput}
 </body>
 </html>`;
-    
+
     const blob = new Blob([wordHtml], { type: 'application/msword' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
@@ -1547,16 +1698,16 @@ ${markdownHtmlOutput}
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
-    
+
     toast({ description: 'Exported as Word document (.doc)' });
   };
-  
+
   // Add Excel export function
   const exportAsExcel = () => {
     if (!markdownHtmlOutput) {
       return toast({ description: 'Nothing to export', variant: 'destructive' });
     }
-    
+
     // Create Excel-compatible HTML
     const excelHtml = `<html xmlns:o="urn:schemas-microsoft-com:office:office"
       xmlns:x="urn:schemas-microsoft-com:office:excel"
@@ -1597,7 +1748,7 @@ ${markdownHtmlOutput}
 ${markdownHtmlOutput}
 </body>
 </html>`;
-    
+
     const blob = new Blob([excelHtml], { type: 'application/vnd.ms-excel' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
@@ -1607,10 +1758,10 @@ ${markdownHtmlOutput}
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
-    
+
     toast({ description: 'Exported as Excel spreadsheet (.xls)' });
   };
-  
+
   // Add function to handle escape key to exit expanded preview
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -1618,17 +1769,17 @@ ${markdownHtmlOutput}
         setExpandedPreview('none');
       }
     };
-    
+
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [expandedPreview]);
-  
+
   // Helper: Preview first 5 rows of a column
   function previewColumn(data: string[][], colIdx: number): string[] {
     if (colIdx === -1) return [];
     return data.slice(1, 6).map(row => row[colIdx] || '');
   }
-  
+
   // Helper: Clear all Name Matcher state
   function clearNameMatcherState() {
     setNameMatcherFile1(null);
@@ -1642,12 +1793,12 @@ ${markdownHtmlOutput}
     setNameMatcherSelectedColOfInterest('');
     setNameMatcherResults([]);
   }
-  
+
   // Helper: Type guard for name matcher mode
   function isNameMatcherMode(val: any): boolean {
     return val === 'nameMatcher';
   }
-  
+
   // Update the type for nameMatcherResults and setNameMatcherResults
   interface NameMatcherResult {
     name1: string;
@@ -1657,7 +1808,7 @@ ${markdownHtmlOutput}
     allMatches?: { match: string; score: number }[];
   }
   const [nameMatcherResults, setNameMatcherResults] = useState<NameMatcherResult[]>([]);
-  
+
   return (
     <div className="space-y-6">
       {/* Only render the main transformer UI and how-to card if not in Name Matcher mode */}
@@ -1675,11 +1826,10 @@ ${markdownHtmlOutput}
               <div className="bg-purple-50/70 rounded-lg p-1 flex">
                 <button
                   onClick={() => setTransformDirection('columnToRow')}
-                  className={`flex-1 py-2 rounded-md text-sm font-medium transition-colors ${
-                    transformDirection === 'columnToRow'
-                      ? 'bg-white shadow-sm text-purple-700'
-                      : 'text-purple-600 hover:bg-white/60'
-                  }`}
+                  className={`flex-1 py-2 rounded-md text-sm font-medium transition-colors ${transformDirection === 'columnToRow'
+                    ? 'bg-white shadow-sm text-purple-700'
+                    : 'text-purple-600 hover:bg-white/60'
+                    }`}
                 >
                   <span className="flex items-center justify-center">
                     <svg className="h-4 w-4 mr-2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -1695,11 +1845,10 @@ ${markdownHtmlOutput}
                 </button>
                 <button
                   onClick={() => setTransformDirection('rowToColumn')}
-                  className={`flex-1 py-2 rounded-md text-sm font-medium transition-colors ${
-                    transformDirection === 'rowToColumn'
-                      ? 'bg-white shadow-sm text-purple-700'
-                      : 'text-purple-600 hover:bg-white/60'
-                  }`}
+                  className={`flex-1 py-2 rounded-md text-sm font-medium transition-colors ${transformDirection === 'rowToColumn'
+                    ? 'bg-white shadow-sm text-purple-700'
+                    : 'text-purple-600 hover:bg-white/60'
+                    }`}
                 >
                   <span className="flex items-center justify-center">
                     <svg className="h-4 w-4 mr-2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -1715,28 +1864,26 @@ ${markdownHtmlOutput}
                 </button>
                 <button
                   onClick={() => setTransformDirection('markdown')}
-                  className={`flex-1 py-2 rounded-md text-sm font-medium transition-colors ${
-                    transformDirection === 'markdown'
-                      ? 'bg-white shadow-sm text-purple-700'
-                      : 'text-purple-600 hover:bg-white/60'
-                  }`}
+                  className={`flex-1 py-2 rounded-md text-sm font-medium transition-colors ${transformDirection === 'markdown'
+                    ? 'bg-white shadow-sm text-purple-700'
+                    : 'text-purple-600 hover:bg-white/60'
+                    }`}
                 >
                   <span className="flex items-center justify-center">
                     <svg className="h-4 w-4 mr-2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M10 13a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1h-2a1 1 0 0 1-1-1v-2z"/>
-                      <path d="M2 3h6a4 4 0 0 1 4 4v10a2 2 0 0 0-2-2H3a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z"/>
-                      <path d="M16 3h1a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2h-1"/>
+                      <path d="M10 13a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1h-2a1 1 0 0 1-1-1v-2z" />
+                      <path d="M2 3h6a4 4 0 0 1 4 4v10a2 2 0 0 0-2-2H3a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z" />
+                      <path d="M16 3h1a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2h-1" />
                     </svg>
                     LLM Output
                   </span>
                 </button>
                 <button
                   onClick={() => setTransformDirection('nameMatcher')}
-                  className={`flex-1 py-2 rounded-md text-sm font-medium transition-colors ${
-                    isNameMatcherMode(transformDirection)
-                      ? 'bg-white shadow-sm text-purple-700'
-                      : 'text-purple-600 hover:bg-white/60'
-                  }`}
+                  className={`flex-1 py-2 rounded-md text-sm font-medium transition-colors ${isNameMatcherMode(transformDirection)
+                    ? 'bg-white shadow-sm text-purple-700'
+                    : 'text-purple-600 hover:bg-white/60'
+                    }`}
                 >
                   <span className="flex items-center justify-center">
                     <svg className="h-4 w-4 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 01.88 7.903A5.5 5.5 0 1112 6.5" /></svg>
@@ -1752,8 +1899,8 @@ ${markdownHtmlOutput}
                 <div className="bg-purple-50/60 rounded-lg p-3 flex flex-wrap gap-4 items-center justify-between">
                   <div className="flex items-center space-x-3">
                     <Label htmlFor="markdownOutputType" className="text-sm">Output Format:</Label>
-                    <Select 
-                      value={markdownOutputType} 
+                    <Select
+                      value={markdownOutputType}
                       onValueChange={(value: 'plainText' | 'richText') => setMarkdownOutputType(value)}
                     >
                       <SelectTrigger id="markdownOutputType" className="h-8 w-[140px] border-purple-200">
@@ -1765,12 +1912,12 @@ ${markdownHtmlOutput}
                       </SelectContent>
                     </Select>
                   </div>
-                  
+
                   {markdownOutputType === 'richText' && (
                     <div className="flex items-center space-x-3">
                       <Label htmlFor="htmlStyleLevel" className="text-sm">Styling Level:</Label>
-                      <Select 
-                        value={htmlStyleLevel} 
+                      <Select
+                        value={htmlStyleLevel}
                         onValueChange={(value: 'minimal' | 'basic' | 'full') => setHtmlStyleLevel(value as 'minimal' | 'basic' | 'full')}
                       >
                         <SelectTrigger id="htmlStyleLevel" className="h-8 w-[140px] border-purple-200">
@@ -1784,15 +1931,15 @@ ${markdownHtmlOutput}
                       </Select>
                     </div>
                   )}
-                  
+
                   <div className="w-full text-xs text-purple-600">
                     <Info className="h-3 w-3 inline-block mr-1" />
-                    {markdownOutputType === 'plainText' 
-                      ? "Plain Text converts LLM Output to clean text for simple emails or plain text fields." 
-                      : htmlStyleLevel === 'minimal' 
-                        ? "Minimal styling: Just the HTML structure without additional styles (most compatible)." 
-                        : htmlStyleLevel === 'basic' 
-                          ? "Basic styling: Essential styles for tables and code blocks (good for most editors)." 
+                    {markdownOutputType === 'plainText'
+                      ? "Plain Text converts LLM Output to clean text for simple emails or plain text fields."
+                      : htmlStyleLevel === 'minimal'
+                        ? "Minimal styling: Just the HTML structure without additional styles (most compatible)."
+                        : htmlStyleLevel === 'basic'
+                          ? "Basic styling: Essential styles for tables and code blocks (good for most editors)."
                           : "Full styling: Comprehensive styles for all elements (best visual appearance)."}
                   </div>
                 </div>
@@ -1809,9 +1956,9 @@ ${markdownHtmlOutput}
                       <TooltipProvider>
                         <Tooltip>
                           <TooltipTrigger asChild>
-                            <Button 
-                              variant="outline" 
-                              size="sm" 
+                            <Button
+                              variant="outline"
+                              size="sm"
                               onClick={loadSampleData}
                               className="h-8 text-xs border-purple-200 hover:bg-purple-50 text-purple-700"
                               disabled={isSampleLoaded}
@@ -1825,12 +1972,12 @@ ${markdownHtmlOutput}
                           </TooltipContent>
                         </Tooltip>
                       </TooltipProvider>
-                      
+
                       <TooltipProvider>
                         <Tooltip>
                           <TooltipTrigger asChild>
-                            <Button 
-                              variant="outline" 
+                            <Button
+                              variant="outline"
                               size="sm"
                               onClick={clearAll}
                               className="h-8 text-xs border-red-200 hover:bg-red-50 text-red-500"
@@ -1846,13 +1993,13 @@ ${markdownHtmlOutput}
                       </TooltipProvider>
                     </div>
                   </div>
-                  
+
                   <Tabs value={activeInputTab} onValueChange={setActiveInputTab} className="w-full">
                     <TabsList className="grid w-full grid-cols-2 h-9">
                       <TabsTrigger value="paste" className="text-xs">Paste Text</TabsTrigger>
                       <TabsTrigger value="upload" className="text-xs">Upload File</TabsTrigger>
                     </TabsList>
-                    
+
                     <TabsContent value="paste" className="mt-2">
                       <Textarea
                         ref={textareaRef}
@@ -1868,13 +2015,13 @@ ${markdownHtmlOutput}
                         onChange={(e) => setInputText(e.target.value)}
                       />
                     </TabsContent>
-                    
+
                     <TabsContent value="upload" className="mt-2">
-                      <div 
+                      <div
                         className={`
                           border-2 border-dashed rounded-md p-6 text-center
-                          ${isDragging 
-                            ? 'border-purple-400 bg-purple-100/70' 
+                          ${isDragging
+                            ? 'border-purple-400 bg-purple-100/70'
                             : 'border-purple-200 bg-purple-50/50'
                           }
                           transition-colors duration-200
@@ -1884,12 +2031,12 @@ ${markdownHtmlOutput}
                         onDragOver={handleDragOver}
                         onDrop={handleDrop}
                       >
-                        <input 
-                          type="file" 
+                        <input
+                          type="file"
                           ref={fileInputRef}
                           onChange={handleFileUpload}
                           accept=".txt,.csv,.md,.json,text/plain,text/csv"
-                          className="hidden" 
+                          className="hidden"
                         />
                         <div className="flex flex-col items-center justify-center space-y-2">
                           <div className={`rounded-full p-3 ${isDragging ? 'bg-purple-200' : 'bg-purple-100'}`}>
@@ -1899,19 +2046,18 @@ ${markdownHtmlOutput}
                             {isDragging ? 'Drop File Here' : 'Upload a Text File'}
                           </h4>
                           <p className="text-xs text-purple-600 max-w-xs">
-                            {isDragging 
-                              ? 'Release to upload your file' 
+                            {isDragging
+                              ? 'Release to upload your file'
                               : 'Drag & drop your file here or click the button below'
                             }
                           </p>
                           <Button
                             variant="outline"
                             onClick={() => fileInputRef.current?.click()}
-                            className={`mt-2 ${
-                              isDragging 
-                                ? 'border-purple-400 bg-purple-200 hover:bg-purple-300 text-purple-800' 
-                                : 'border-purple-300 hover:bg-purple-100 text-purple-700'
-                            }`}
+                            className={`mt-2 ${isDragging
+                              ? 'border-purple-400 bg-purple-200 hover:bg-purple-300 text-purple-800'
+                              : 'border-purple-300 hover:bg-purple-100 text-purple-700'
+                              }`}
                           >
                             Choose File
                           </Button>
@@ -1919,7 +2065,7 @@ ${markdownHtmlOutput}
                       </div>
                     </TabsContent>
                   </Tabs>
-                  
+
                   <Alert className="bg-purple-50 border-purple-100">
                     <Info className="h-4 w-4 text-purple-600" />
                     <AlertDescription className="text-purple-700 text-sm">
@@ -1931,21 +2077,21 @@ ${markdownHtmlOutput}
                     </AlertDescription>
                   </Alert>
                 </div>
-                
+
                 {/* Configuration and Output Section */}
                 <div className="space-y-4">
                   <div className="space-y-6">
                     <div>
                       <h3 className="text-base font-medium mb-3">Configure Transformation</h3>
-                      
+
                       {/* Conditionally render Delimiter options only if not in LLM Output mode */}
                       {transformDirection !== 'markdown' && (
                         <div className="space-y-4">
                           <div className="grid grid-cols-5 gap-3 items-end">
                             <div className="col-span-2">
                               <Label htmlFor="delimiter" className="text-sm mb-1 block">Delimiter</Label>
-                              <Select 
-                                defaultValue="," 
+                              <Select
+                                defaultValue=","
                                 value={delimiter}
                                 onValueChange={(value) => setDelimiter(value)}
                               >
@@ -1964,7 +2110,7 @@ ${markdownHtmlOutput}
                                 </SelectContent>
                               </Select>
                             </div>
-                            
+
                             {delimiter === 'custom' && (
                               <div className="col-span-3">
                                 <Label htmlFor="customDelimiter" className="text-sm mb-1 block">Custom Delimiter</Label>
@@ -1977,11 +2123,11 @@ ${markdownHtmlOutput}
                                 />
                               </div>
                             )}
-                            
+
                             {delimiter !== 'custom' && (
                               <div className="col-span-3">
-                                <Button 
-                                  onClick={transformData} 
+                                <Button
+                                  onClick={transformData}
                                   className="w-full bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white"
                                   disabled={!inputText.trim()}
                                 >
@@ -1989,11 +2135,11 @@ ${markdownHtmlOutput}
                                 </Button>
                               </div>
                             )}
-                            
+
                             {delimiter === 'custom' && (
                               <div className="col-span-5 mt-2">
-                                <Button 
-                                  onClick={transformData} 
+                                <Button
+                                  onClick={transformData}
                                   className="w-full bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white"
                                   disabled={!inputText.trim() || !customDelimiter}
                                 >
@@ -2005,113 +2151,113 @@ ${markdownHtmlOutput}
                         </div>
                       )}
                     </div>
-                    
+
                     {/* Add Data Cleaning Options - Already conditional based on transformDirection */}
                     {transformDirection !== 'markdown' && (
                       <div>
                         <h3 className="text-base font-medium mb-2 flex items-center">
                           <svg className="h-4 w-4 mr-1.5 text-purple-600" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                            <path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/>
-                            <path d="M12 18a3 3 0 1 0 0-6 3 3 0 0 0 0 6z"/>
+                            <path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z" />
+                            <path d="M12 18a3 3 0 1 0 0-6 3 3 0 0 0 0 6z" />
                           </svg>
                           Data Cleaning Options
                         </h3>
-                        
+
                         <div className="grid grid-cols-2 gap-x-4 gap-y-2">
                           <label className="flex items-center space-x-2 text-sm">
-                            <input 
-                              type="checkbox" 
-                              checked={cleaningOptions.trimWhitespace} 
+                            <input
+                              type="checkbox"
+                              checked={cleaningOptions.trimWhitespace}
                               onChange={() => toggleCleaningOption('trimWhitespace')}
                               className="h-4 w-4 rounded border-purple-300 text-purple-600 focus:ring-purple-500"
                             />
                             <span>Trim whitespace</span>
                           </label>
-                          
+
                           <label className="flex items-center space-x-2 text-sm">
-                            <input 
-                              type="checkbox" 
-                              checked={cleaningOptions.removeEmptyLines} 
+                            <input
+                              type="checkbox"
+                              checked={cleaningOptions.removeEmptyLines}
                               onChange={() => toggleCleaningOption('removeEmptyLines')}
                               className="h-4 w-4 rounded border-purple-300 text-purple-600 focus:ring-purple-500"
                             />
                             <span>Remove empty lines</span>
                           </label>
-                          
+
                           <label className="flex items-center space-x-2 text-sm">
-                            <input 
-                              type="checkbox" 
-                              checked={cleaningOptions.removeDuplicates} 
+                            <input
+                              type="checkbox"
+                              checked={cleaningOptions.removeDuplicates}
                               onChange={() => toggleCleaningOption('removeDuplicates')}
                               className="h-4 w-4 rounded border-purple-300 text-purple-600 focus:ring-purple-500"
                             />
                             <span>Remove duplicates</span>
                           </label>
-                          
+
                           <label className="flex items-center space-x-2 text-sm">
-                            <input 
-                              type="checkbox" 
-                              checked={cleaningOptions.removeSpecialChars} 
+                            <input
+                              type="checkbox"
+                              checked={cleaningOptions.removeSpecialChars}
                               onChange={() => toggleCleaningOption('removeSpecialChars')}
                               className="h-4 w-4 rounded border-purple-300 text-purple-600 focus:ring-purple-500"
                             />
                             <span>Remove special characters</span>
                           </label>
-                          
+
                           <label className="flex items-center space-x-2 text-sm">
-                            <input 
-                              type="checkbox" 
-                              checked={cleaningOptions.toLowerCase} 
+                            <input
+                              type="checkbox"
+                              checked={cleaningOptions.toLowerCase}
                               onChange={() => toggleCleaningOption('toLowerCase')}
                               className="h-4 w-4 rounded border-purple-300 text-purple-600 focus:ring-purple-500"
                             />
                             <span>Convert to lowercase</span>
                           </label>
-                          
+
                           <label className="flex items-center space-x-2 text-sm">
-                            <input 
-                              type="checkbox" 
-                              checked={cleaningOptions.toUpperCase} 
+                            <input
+                              type="checkbox"
+                              checked={cleaningOptions.toUpperCase}
                               onChange={() => toggleCleaningOption('toUpperCase')}
                               className="h-4 w-4 rounded border-purple-300 text-purple-600 focus:ring-purple-500"
                             />
                             <span>Convert to UPPERCASE</span>
                           </label>
-                          
+
                           <label className="flex items-center space-x-2 text-sm">
-                            <input 
-                              type="checkbox" 
-                              checked={cleaningOptions.replaceMultipleSpaces} 
+                            <input
+                              type="checkbox"
+                              checked={cleaningOptions.replaceMultipleSpaces}
                               onChange={() => toggleCleaningOption('replaceMultipleSpaces')}
                               className="h-4 w-4 rounded border-purple-300 text-purple-600 focus:ring-purple-500"
                             />
                             <span>Replace multiple spaces</span>
                           </label>
-                          
+
                           <label className="flex items-center space-x-2 text-sm">
-                            <input 
-                              type="checkbox" 
-                              checked={cleaningOptions.removeLeadingNumbers} 
+                            <input
+                              type="checkbox"
+                              checked={cleaningOptions.removeLeadingNumbers}
                               onChange={() => toggleCleaningOption('removeLeadingNumbers')}
                               className="h-4 w-4 rounded border-purple-300 text-purple-600 focus:ring-purple-500"
                             />
                             <span>Remove leading numbers</span>
                           </label>
-                          
+
                           <label className="flex items-center space-x-2 text-sm">
-                            <input 
-                              type="checkbox" 
-                              checked={cleaningOptions.removeTrailingNumbers} 
+                            <input
+                              type="checkbox"
+                              checked={cleaningOptions.removeTrailingNumbers}
                               onChange={() => toggleCleaningOption('removeTrailingNumbers')}
                               className="h-4 w-4 rounded border-purple-300 text-purple-600 focus:ring-purple-500"
                             />
                             <span>Remove trailing numbers</span>
                           </label>
-                          
+
                           <label className="flex items-center space-x-2 text-sm">
-                            <input 
-                              type="checkbox" 
-                              checked={cleaningOptions.useCustomRegex} 
+                            <input
+                              type="checkbox"
+                              checked={cleaningOptions.useCustomRegex}
                               onChange={() => toggleCleaningOption('useCustomRegex')}
                               className="h-4 w-4 rounded border-purple-300 text-purple-600 focus:ring-purple-500"
                             />
@@ -2119,16 +2265,77 @@ ${markdownHtmlOutput}
                           </label>
 
                           <label className="flex items-center space-x-2 text-sm">
-                            <input 
-                              type="checkbox" 
-                              checked={cleaningOptions.normalizeWhitespace} 
+                            <input
+                              type="checkbox"
+                              checked={cleaningOptions.normalizeWhitespace}
                               onChange={() => toggleCleaningOption('normalizeWhitespace')}
                               className="h-4 w-4 rounded border-purple-300 text-purple-600 focus:ring-purple-500"
                             />
                             <span>Normalize Whitespace (Post-Transform)</span>
                           </label>
                         </div>
-                        
+
+                        {/* Smart Cleaning Section */}
+                        <div className="mt-4 border-t border-purple-100 pt-3">
+                          <h4 className="text-sm font-medium mb-2 text-purple-800 flex items-center">
+                            <span className="bg-purple-100 p-1 rounded mr-2">
+                              <svg className="h-3 w-3 text-purple-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
+                              </svg>
+                            </span>
+                            Smart Presets
+                          </h4>
+                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                            <label className={`
+                                flex flex-col items-center justify-center p-3 rounded-lg border cursor-pointer transition-all
+                                ${cleaningOptions.smartEmail
+                                ? 'bg-purple-50 border-purple-300 ring-1 ring-purple-300'
+                                : 'bg-white border-gray-200 hover:border-purple-200 hover:bg-purple-50/30'}
+                              `}>
+                              <input
+                                type="checkbox"
+                                className="sr-only"
+                                checked={cleaningOptions.smartEmail}
+                                onChange={() => toggleCleaningOption('smartEmail')}
+                              />
+                              <span className="font-medium text-sm text-purple-900 mb-1">Email Cleaner</span>
+                              <span className="text-[10px] text-center text-gray-500 leading-tight">Extracts & lowercases emails</span>
+                            </label>
+
+                            <label className={`
+                                flex flex-col items-center justify-center p-3 rounded-lg border cursor-pointer transition-all
+                                ${cleaningOptions.smartPhone
+                                ? 'bg-purple-50 border-purple-300 ring-1 ring-purple-300'
+                                : 'bg-white border-gray-200 hover:border-purple-200 hover:bg-purple-50/30'}
+                              `}>
+                              <input
+                                type="checkbox"
+                                className="sr-only"
+                                checked={cleaningOptions.smartPhone}
+                                onChange={() => toggleCleaningOption('smartPhone')}
+                              />
+                              <span className="font-medium text-sm text-purple-900 mb-1">Phone Cleaner</span>
+                              <span className="text-[10px] text-center text-gray-500 leading-tight">Strips non-digits</span>
+                            </label>
+
+                            <label className={`
+                                flex flex-col items-center justify-center p-3 rounded-lg border cursor-pointer transition-all
+                                ${cleaningOptions.smartName
+                                ? 'bg-purple-50 border-purple-300 ring-1 ring-purple-300'
+                                : 'bg-white border-gray-200 hover:border-purple-200 hover:bg-purple-50/30'}
+                              `}>
+                              <input
+                                type="checkbox"
+                                className="sr-only"
+                                checked={cleaningOptions.smartName}
+                                onChange={() => toggleCleaningOption('smartName')}
+                              />
+                              <span className="font-medium text-sm text-purple-900 mb-1">Name Formatter</span>
+                              <span className="text-[10px] text-center text-gray-500 leading-tight">Converts to Title Case</span>
+                            </label>
+                          </div>
+                        </div>
+
                         {/* Custom regex section */}
                         {cleaningOptions.useCustomRegex && (
                           <div className="mt-3 p-3 border border-purple-200 rounded-md bg-purple-50/30">
@@ -2167,20 +2374,20 @@ ${markdownHtmlOutput}
                             </div>
                           </div>
                         )}
-                        
+
                         {previewStats.showPreview && (
                           <div className="mt-3 bg-purple-50/70 rounded-md p-3 border border-purple-100 text-xs text-purple-700">
                             <h4 className="font-medium mb-1 flex items-center">
                               <CheckCircle className="h-3 w-3 mr-1 text-purple-600" />
                               Data Cleaning Preview
                             </h4>
-                            
+
                             <div className="grid grid-cols-2 gap-x-3 gap-y-1 mt-2">
                               <div className="flex justify-between">
                                 <span>Original lines:</span>
                                 <span className="font-semibold">{previewStats.originalLines}</span>
                               </div>
-                              
+
                               {cleaningOptions.removeEmptyLines && (
                                 <div className="flex justify-between">
                                   <span>After removing empty:</span>
@@ -2194,22 +2401,21 @@ ${markdownHtmlOutput}
                                   </span>
                                 </div>
                               )}
-                              
+
                               {cleaningOptions.removeDuplicates && (
                                 <div className="flex justify-between">
                                   <span>After removing duplicates:</span>
-                                  <span className={`font-semibold ${
-                                    (cleaningOptions.removeEmptyLines ? 
-                                      previewStats.afterRemovingDuplicates !== previewStats.afterRemovingEmpty : 
-                                      previewStats.afterRemovingDuplicates !== previewStats.originalLines) ? 'text-purple-600' : ''
-                                  }`}>
+                                  <span className={`font-semibold ${(cleaningOptions.removeEmptyLines ?
+                                    previewStats.afterRemovingDuplicates !== previewStats.afterRemovingEmpty :
+                                    previewStats.afterRemovingDuplicates !== previewStats.originalLines) ? 'text-purple-600' : ''
+                                    }`}>
                                     {previewStats.afterRemovingDuplicates}
-                                    {cleaningOptions.removeEmptyLines ? 
+                                    {cleaningOptions.removeEmptyLines ?
                                       (previewStats.afterRemovingDuplicates !== previewStats.afterRemovingEmpty && (
                                         <span className="text-purple-500 ml-1">
                                           (-{previewStats.afterRemovingEmpty - previewStats.afterRemovingDuplicates})
                                         </span>
-                                      )) : 
+                                      )) :
                                       (previewStats.afterRemovingDuplicates !== previewStats.originalLines && (
                                         <span className="text-purple-500 ml-1">
                                           (-{previewStats.originalLines - previewStats.afterRemovingDuplicates})
@@ -2219,13 +2425,13 @@ ${markdownHtmlOutput}
                                   </span>
                                 </div>
                               )}
-                              
+
                               <div className="flex justify-between col-span-2 border-t border-purple-200 mt-1 pt-1">
                                 <span className="font-medium">Final lines after cleaning:</span>
                                 <span className="font-semibold text-purple-600">{previewStats.afterCleaning}</span>
                               </div>
                             </div>
-                            
+
                             {/* Add sample line visual preview */}
                             {samplePreview.showPreview && samplePreview.original.length > 0 && (
                               <div className="mt-3 pt-2 border-t border-purple-200">
@@ -2261,7 +2467,7 @@ ${markdownHtmlOutput}
                             )}
                           </div>
                         )}
-                        
+
                         <div className="mt-3 bg-purple-50 rounded-md p-2 border border-purple-100">
                           <div className="flex items-start">
                             <Info className="h-3.5 w-3.5 text-purple-600 mt-0.5 mr-1.5 flex-shrink-0" />
@@ -2273,7 +2479,7 @@ ${markdownHtmlOutput}
                       </div>
                     )}
                   </div>
-                  
+
                   {/* Conditionally render Live Preview only if not in LLM Output mode */}
                   {transformDirection !== 'markdown' && (
                     <div className="mt-4 border-t border-purple-100 pt-3">
@@ -2286,8 +2492,8 @@ ${markdownHtmlOutput}
                         </h3>
                         <div className="flex items-center">
                           <label className="relative inline-flex items-center cursor-pointer">
-                            <input 
-                              type="checkbox" 
+                            <input
+                              type="checkbox"
                               className="sr-only peer"
                               checked={liveModeEnabled}
                               onChange={() => setLiveModeEnabled(!liveModeEnabled)}
@@ -2299,7 +2505,7 @@ ${markdownHtmlOutput}
                           </label>
                         </div>
                       </div>
-                      
+
                       {liveModeEnabled && (
                         <div className="relative">
                           <div className="p-2 border rounded-md bg-gray-50 border-purple-100 overflow-hidden h-10 flex items-center">
@@ -2322,7 +2528,7 @@ ${markdownHtmlOutput}
                       )}
                     </div>
                   )}
-                  
+
                   {/* Conditionally render Save/Load Configurations only if not in LLM Output mode */}
                   {transformDirection !== 'markdown' && (
                     <div className="mt-4 border-t border-purple-100 pt-3">
@@ -2336,16 +2542,16 @@ ${markdownHtmlOutput}
                           Configurations
                         </h3>
                         <div className="flex gap-2">
-                          <Button 
-                            variant="outline" 
+                          <Button
+                            variant="outline"
                             size="sm"
                             onClick={() => setShowSaveConfigModal(true)}
                             className="h-8 text-xs border-purple-200 hover:bg-purple-50 text-purple-700"
                           >
                             Save Config
                           </Button>
-                          <Button 
-                            variant="outline" 
+                          <Button
+                            variant="outline"
                             size="sm"
                             onClick={() => setShowLoadConfigModal(true)}
                             className="h-8 text-xs border-purple-200 hover:bg-purple-50 text-purple-700"
@@ -2355,7 +2561,7 @@ ${markdownHtmlOutput}
                           </Button>
                         </div>
                       </div>
-                      
+
                       {/* Save Configuration Modal */}
                       {showSaveConfigModal && (
                         <div className="fixed inset-0 bg-black/30 z-50 flex items-center justify-center">
@@ -2375,13 +2581,13 @@ ${markdownHtmlOutput}
                               This will save your current delimiter and all cleaning options.
                             </div>
                             <div className="flex justify-end gap-2">
-                              <Button 
-                                variant="outline" 
+                              <Button
+                                variant="outline"
                                 onClick={() => setShowSaveConfigModal(false)}
                               >
                                 Cancel
                               </Button>
-                              <Button 
+                              <Button
                                 onClick={saveCurrentConfig}
                                 className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white"
                               >
@@ -2391,7 +2597,7 @@ ${markdownHtmlOutput}
                           </div>
                         </div>
                       )}
-                      
+
                       {/* Load Configuration Modal */}
                       {showLoadConfigModal && (
                         <div className="fixed inset-0 bg-black/30 z-50 flex items-center justify-center">
@@ -2401,19 +2607,19 @@ ${markdownHtmlOutput}
                               <div className="max-h-60 overflow-auto mb-4">
                                 <div className="space-y-2">
                                   {savedConfigs.map(config => (
-                                    <div 
-                                      key={config.id} 
+                                    <div
+                                      key={config.id}
                                       className="p-3 border border-purple-100 rounded-md hover:bg-purple-50 transition-colors cursor-pointer flex justify-between items-center"
                                       onClick={() => loadConfig(config)}
                                     >
                                       <div>
                                         <div className="font-medium">{config.name}</div>
                                         <div className="text-xs text-gray-500">
-                                          {new Date(config.timestamp).toLocaleString()} • 
+                                          {new Date(config.timestamp).toLocaleString()} •
                                           Delimiter: {config.delimiter === 'custom' ? config.customDelimiter : config.delimiter}
                                         </div>
                                       </div>
-                                      <button 
+                                      <button
                                         className="text-red-500 hover:text-red-700"
                                         onClick={(e) => {
                                           e.stopPropagation(); // Prevent loadConfig from being called
@@ -2432,8 +2638,8 @@ ${markdownHtmlOutput}
                               </div>
                             )}
                             <div className="flex justify-end">
-                              <Button 
-                                variant="outline" 
+                              <Button
+                                variant="outline"
                                 onClick={() => setShowLoadConfigModal(false)}
                               >
                                 Close
@@ -2444,22 +2650,22 @@ ${markdownHtmlOutput}
                       )}
                     </div>
                   )}
-                  
+
                   {/* Transform Button - render for all modes */}
                   <div className="pt-2">
-                    <Button 
-                      onClick={transformData} 
+                    <Button
+                      onClick={transformData}
                       className="w-full bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white"
-                      disabled={!inputText.trim() || ( (transformDirection === 'columnToRow' || transformDirection === 'rowToColumn') && delimiter === 'custom' && !customDelimiter)}
+                      disabled={!inputText.trim() || ((transformDirection === 'columnToRow' || transformDirection === 'rowToColumn') && delimiter === 'custom' && !customDelimiter)}
                     >
-                      {transformDirection === 'columnToRow' 
-                        ? 'Transform to Row' 
-                        : transformDirection === 'rowToColumn' 
-                          ? 'Transform to Column' 
+                      {transformDirection === 'columnToRow'
+                        ? 'Transform to Row'
+                        : transformDirection === 'rowToColumn'
+                          ? 'Transform to Column'
                           : 'Transform LLM Output'}
                     </Button>
                   </div>
-                  
+
                   <div>
                     <div className="flex justify-between items-center mb-2">
                       <h3 className="text-base font-medium">Output</h3>
@@ -2468,8 +2674,8 @@ ${markdownHtmlOutput}
                           <TooltipProvider>
                             <Tooltip>
                               <TooltipTrigger asChild>
-                                <Button 
-                                  variant="outline" 
+                                <Button
+                                  variant="outline"
                                   size="sm"
                                   onClick={copyToClipboard}
                                   className="h-8 text-xs border-purple-200 hover:bg-purple-50 text-purple-700"
@@ -2483,12 +2689,12 @@ ${markdownHtmlOutput}
                               </TooltipContent>
                             </Tooltip>
                           </TooltipProvider>
-                          
+
                           <TooltipProvider>
                             <Tooltip>
                               <TooltipTrigger asChild>
-                                <Button 
-                                  variant="outline" 
+                                <Button
+                                  variant="outline"
                                   size="sm"
                                   onClick={downloadOutput}
                                   className="h-8 text-xs border-purple-200 hover:bg-purple-50 text-purple-700"
@@ -2505,8 +2711,8 @@ ${markdownHtmlOutput}
                         </div>
                       )}
                     </div>
-                    
-                    <div 
+
+                    <div
                       ref={outputRef}
                       className={`
                         p-3 border rounded-md min-h-[130px] max-h-[200px] overflow-auto 
@@ -2516,7 +2722,7 @@ ${markdownHtmlOutput}
                     >
                       {outputText || "Transformed output will appear here..."}
                     </div>
-                    
+
                     {/* LLM Output-specific output options */}
                     {transformDirection === 'markdown' && isTransformed && (
                       <div className="mt-4">
@@ -2533,9 +2739,9 @@ ${markdownHtmlOutput}
                             <FileText className="h-3.5 w-3.5 mr-1.5" />
                             Copy as Plain Text
                           </Button>
-                          
+
                           <div className="w-[1px] h-5 bg-gray-200 mx-1"></div>
-                          
+
                           <Button size="sm" variant="outline" onClick={exportAsHtml} className="border-purple-200 text-white bg-blue-500 hover:bg-blue-600">
                             <Download className="h-3.5 w-3.5 mr-1.5" />
                             Export as HTML
@@ -2553,7 +2759,7 @@ ${markdownHtmlOutput}
                             Export as Excel
                           </Button>
                         </div>
-                        
+
                         {/* Expanded preview overlay */}
                         {expandedPreview !== 'none' && (
                           <div className="fixed inset-0 bg-white z-50 p-4 overflow-auto flex flex-col">
@@ -2562,9 +2768,9 @@ ${markdownHtmlOutput}
                                 {expandedPreview === 'rich' ? 'Rich Text Preview' : 'Plain Text Preview'}
                               </h3>
                               <div className="flex items-center gap-2">
-                                <Button 
-                                  size="sm" 
-                                  variant="outline" 
+                                <Button
+                                  size="sm"
+                                  variant="outline"
                                   onClick={() => {
                                     if (expandedPreview === 'rich') {
                                       copyFormattedHtmlToClipboard();
@@ -2577,18 +2783,18 @@ ${markdownHtmlOutput}
                                   <Copy className="h-4 w-4 mr-1.5" />
                                   Copy Content
                                 </Button>
-                                <Button 
-                                  size="sm" 
-                                  variant="outline" 
+                                <Button
+                                  size="sm"
+                                  variant="outline"
                                   onClick={() => setExpandedPreview('none')}
                                   className="border-purple-200 text-purple-700"
                                 >
                                   <Minimize2 className="h-4 w-4 mr-1.5" />
                                   Exit Fullscreen
                                 </Button>
-                                <Button 
-                                  size="sm" 
-                                  variant="ghost" 
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
                                   onClick={() => setExpandedPreview('none')}
                                   className="text-gray-500 h-8 w-8 p-0"
                                 >
@@ -2596,35 +2802,35 @@ ${markdownHtmlOutput}
                                 </Button>
                               </div>
                             </div>
-                            
+
                             <div className="flex-grow overflow-auto p-4 border rounded bg-white">
                               {expandedPreview === 'rich' ? (
-                                <div dangerouslySetInnerHTML={{__html: markdownHtmlOutput}} />
+                                <div dangerouslySetInnerHTML={{ __html: markdownHtmlOutput }} />
                               ) : (
                                 <div className="font-mono whitespace-pre-wrap">{markdownPlainTextOutput}</div>
                               )}
                             </div>
                           </div>
                         )}
-                        
+
                         {/* Restructure the grid to have previews stacked vertically instead of side by side */}
                         <div className="flex flex-col gap-6">
                           <div>
                             <div className="font-semibold text-xs text-purple-700 mb-1 flex justify-between items-center">
                               <span>Rich Text Preview (for Word/Email)</span>
                               <div className="flex items-center gap-2">
-                                <Button 
-                                  size="sm" 
-                                  variant="ghost" 
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
                                   onClick={copyFormattedHtmlToClipboard}
                                   className="h-7 text-xs text-purple-700"
                                 >
                                   <Copy className="h-3.5 w-3.5 mr-1.5" />
                                   Copy
                                 </Button>
-                                <Button 
-                                  size="sm" 
-                                  variant="ghost" 
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
                                   onClick={() => setExpandedPreview('rich')}
                                   className="h-7 text-xs text-purple-700"
                                 >
@@ -2633,26 +2839,26 @@ ${markdownHtmlOutput}
                                 </Button>
                               </div>
                             </div>
-                            <div className="p-4 border rounded bg-white border-purple-100 min-h-[300px] relative overflow-auto" style={{maxHeight: '400px'}}>
-                              <div dangerouslySetInnerHTML={{__html: markdownHtmlOutput}} />
+                            <div className="p-4 border rounded bg-white border-purple-100 min-h-[300px] relative overflow-auto" style={{ maxHeight: '400px' }}>
+                              <div dangerouslySetInnerHTML={{ __html: markdownHtmlOutput }} />
                             </div>
                           </div>
                           <div>
                             <div className="font-semibold text-xs text-purple-700 mb-1 flex justify-between items-center">
                               <span>Plain Text Preview</span>
                               <div className="flex items-center gap-2">
-                                <Button 
-                                  size="sm" 
-                                  variant="ghost" 
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
                                   onClick={copyPlainTextToClipboard}
                                   className="h-7 text-xs text-purple-700"
                                 >
                                   <Copy className="h-3.5 w-3.5 mr-1.5" />
                                   Copy
                                 </Button>
-                                <Button 
-                                  size="sm" 
-                                  variant="ghost" 
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
                                   onClick={() => setExpandedPreview('plain')}
                                   className="h-7 text-xs text-purple-700"
                                 >
@@ -2661,12 +2867,12 @@ ${markdownHtmlOutput}
                                 </Button>
                               </div>
                             </div>
-                            <div className="p-4 border rounded bg-white border-purple-100 min-h-[300px] font-mono text-sm whitespace-pre-wrap overflow-auto" style={{maxHeight: '400px'}}>
+                            <div className="p-4 border rounded bg-white border-purple-100 min-h-[300px] font-mono text-sm whitespace-pre-wrap overflow-auto" style={{ maxHeight: '400px' }}>
                               {markdownPlainTextOutput}
                             </div>
                           </div>
                         </div>
-                        
+
                         <div className="mt-2 bg-purple-50 rounded-md p-2 border border-purple-100">
                           <div className="flex items-start">
                             <Info className="h-3.5 w-3.5 text-purple-600 mt-0.5 mr-1.5 flex-shrink-0" />
@@ -2677,7 +2883,7 @@ ${markdownHtmlOutput}
                         </div>
                       </div>
                     )}
-                    
+
                     {isTransformed && (
                       <div className="mt-2 text-xs text-purple-600 flex items-center">
                         <CheckCircle className="h-3.5 w-3.5 mr-1.5" />
@@ -2714,7 +2920,7 @@ ${markdownHtmlOutput}
               )}
             </CardFooter>
           </Card>
-          
+
           <Card>
             <CardHeader className="bg-gradient-to-r from-purple-50/50 to-pink-50/50 border-b border-purple-100/50">
               <CardTitle className="text-lg font-semibold text-purple-800">How to Use Transform Mode</CardTitle>
@@ -2743,7 +2949,7 @@ ${markdownHtmlOutput}
                       </li>
                     </ul>
                   </div>
-                  
+
                   <div>
                     <h4 className="text-sm font-medium text-purple-700 mb-2">Output Options</h4>
                     <ul className="space-y-1.5 text-sm">
@@ -2762,7 +2968,7 @@ ${markdownHtmlOutput}
                     </ul>
                   </div>
                 </div>
-                
+
                 <Alert className="bg-gradient-to-r from-purple-50 to-pink-50/50 border-purple-100 mt-2">
                   <AlertTriangle className="h-4 w-4 text-purple-600" />
                   <AlertDescription className="text-purple-700 text-sm">
@@ -2770,7 +2976,7 @@ ${markdownHtmlOutput}
                   </AlertDescription>
                 </Alert>
               </div>
-              
+
               {/* Add a keyboard shortcuts help section to the "How to Use" card */}
               <div className="mt-4">
                 <h4 className="text-sm font-medium text-purple-700 mb-2">Keyboard Shortcuts</h4>
@@ -2958,7 +3164,7 @@ ${markdownHtmlOutput}
                       </div>
                     </div>
                   )}
-                  { nameMatcherColumns1.length > 0 && (
+                  {nameMatcherColumns1.length > 0 && (
                     <div className="mt-2">
                       <label className="block text-xs mb-1">Select Columns of Interest (optional):</label>
                       <div className="relative">
@@ -3116,7 +3322,7 @@ ${markdownHtmlOutput}
                   </TooltipProvider>
                 </label>
                 <input id="fuzzy-threshold-slider" type="range" min="0.5" max="1" step="0.01" value={fuzzyThreshold} onChange={e => setFuzzyThreshold(Number(e.target.value))} className="accent-purple-600 w-40 h-2 rounded-lg bg-purple-100" />
-                <span className="inline-block bg-purple-100 text-purple-700 font-semibold px-2 py-0.5 rounded text-xs border border-purple-200 ml-2">{Math.round(fuzzyThreshold*100)}%</span>
+                <span className="inline-block bg-purple-100 text-purple-700 font-semibold px-2 py-0.5 rounded text-xs border border-purple-200 ml-2">{Math.round(fuzzyThreshold * 100)}%</span>
               </div>
               <button className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded flex items-center gap-2" onClick={runNameMatcher} disabled={!nameMatcherSelectedCol1 || !nameMatcherSelectedCol2}>
                 <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 01.88 7.903A5.5 5.5 0 1112 6.5" /></svg>
@@ -3156,11 +3362,11 @@ ${markdownHtmlOutput}
                           <td className="border px-2 py-1 text-xs font-mono">
                             {showAllMatches && row.allMatches && row.allMatches.length > 0 ? (
                               <details>
-                                <summary className="cursor-pointer">{row.allMatches[0].match} <span className="text-xs text-purple-500">({Math.round(row.allMatches[0].score*100)}%)</span></summary>
+                                <summary className="cursor-pointer">{row.allMatches[0].match} <span className="text-xs text-purple-500">({Math.round(row.allMatches[0].score * 100)}%)</span></summary>
                                 <ul className="pl-4 mt-1">
-                                  {row.allMatches.map((m: {match: string, score: number}, i: number) => (
+                                  {row.allMatches.map((m: { match: string, score: number }, i: number) => (
                                     <li key={i} className={m.score >= 0.97 ? 'text-green-700' : m.score >= fuzzyThreshold ? 'text-yellow-700' : 'text-red-500'}>
-                                      {m.match} <span className="text-xs">({Math.round(m.score*100)}%)</span>
+                                      {m.match} <span className="text-xs">({Math.round(m.score * 100)}%)</span>
                                     </li>
                                   ))}
                                 </ul>
@@ -3170,7 +3376,7 @@ ${markdownHtmlOutput}
                             )}
                           </td>
                           <td className="border px-2 py-1 text-xs font-mono">
-                            {`${Math.round(score*100)}%`}
+                            {`${Math.round(score * 100)}%`}
                             {score >= 0.97 && <span className="ml-1 text-green-600 font-bold">✔</span>}
                             {score >= fuzzyThreshold && score < 0.97 && <span className="ml-1 text-yellow-600 font-bold">~</span>}
                             {score < fuzzyThreshold && <span className="ml-1 text-red-500 font-bold">✗</span>}
