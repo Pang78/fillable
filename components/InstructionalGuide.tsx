@@ -13,11 +13,11 @@ const InstructionalGuide: React.FC = () => {
       title: 'Step 1: Enter Your Form URL',
       description: 'Start by entering the base URL of your FormSG form. This is the URL you see in your browser when viewing the form.',
       content: (
-        <div className="space-y-4 max-h-[400px] overflow-y-auto p-4 bg-gray-50 rounded-lg">
+        <div className="space-y-4 max-h-[400px] overflow-y-auto p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
           <img
             src="/form-url-guide.png"
             alt="Form URL Example"
-            className="w-full h-auto object-cover bg-gray-100 rounded"
+            className="w-full h-auto object-cover bg-gray-100 dark:bg-gray-700 rounded"
           />
           <Alert className="bg-blue-50 border-blue-100">
             <Info className="h-4 w-4 text-blue-600" />
@@ -80,22 +80,22 @@ const InstructionalGuide: React.FC = () => {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h3 className="text-lg font-semibold text-gray-800">
+        <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-200">
           {steps[currentStep].title}
         </h3>
         <div className="flex items-center space-x-2">
-          <Button 
-            variant="outline" 
-            size="icon" 
+          <Button
+            variant="outline"
+            size="icon"
             onClick={() => setCurrentStep(Math.max(0, currentStep - 1))}
             disabled={currentStep === 0}
             aria-label="Previous step"
           >
             <ChevronLeft className="h-4 w-4" />
           </Button>
-          <Button 
-            variant="outline" 
-            size="icon" 
+          <Button
+            variant="outline"
+            size="icon"
             onClick={() => setCurrentStep(Math.min(steps.length - 1, currentStep + 1))}
             disabled={currentStep === steps.length - 1}
             aria-label="Next step"
@@ -104,21 +104,20 @@ const InstructionalGuide: React.FC = () => {
           </Button>
         </div>
       </div>
-      
-      <p className="text-sm text-gray-600">
+
+      <p className="text-sm text-gray-600 dark:text-gray-400">
         {steps[currentStep].description}
       </p>
-      
+
       {steps[currentStep].content}
-      
+
       <div className="flex justify-center space-x-2 mt-4">
         {steps.map((_, index) => (
           <button
             key={index}
             onClick={() => setCurrentStep(index)}
-            className={`h-2 w-2 rounded-full ${
-              currentStep === index ? 'bg-blue-600' : 'bg-gray-300'
-            }`}
+            className={`h-2 w-2 rounded-full ${currentStep === index ? 'bg-blue-600' : 'bg-gray-300 dark:bg-gray-600'
+              }`}
             aria-label={`Go to step ${index + 1}`}
           />
         ))}

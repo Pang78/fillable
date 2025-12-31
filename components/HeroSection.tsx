@@ -8,7 +8,7 @@ const HeroSection: React.FC<{ onStart: () => void }> = ({ onStart }) => {
     <section className="relative min-h-[80vh] flex flex-col items-center justify-center overflow-hidden bg-gradient-to-br from-indigo-700 via-blue-600 to-purple-700 animate-gradient-move">
       {/* Animated SVG Blobs - Parallax Layers */}
       <div className="absolute inset-0 pointer-events-none z-0">
-        <svg width="100%" height="100%" className="absolute top-0 left-0 opacity-30 animate-blob-move" style={{zIndex:0}}>
+        <svg width="100%" height="100%" className="absolute top-0 left-0 opacity-30 animate-blob-move" style={{ zIndex: 0 }}>
           <defs>
             <radialGradient id="blobGradient1" cx="50%" cy="50%" r="50%">
               <stop offset="0%" stopColor="#a5b4fc" stopOpacity="0.7" />
@@ -50,7 +50,7 @@ const HeroSection: React.FC<{ onStart: () => void }> = ({ onStart }) => {
             <span className="text-white/80">No more manual entry. No more errors. Just seamless automation.</span>
           </p>
           <div className="flex gap-4 mb-6 animate-fade-in">
-            <Button size="lg" className="bg-white text-primary font-bold px-8 py-3 rounded-full shadow-lg hover:scale-105 hover:shadow-xl transition-transform focus:ring-4 focus:ring-indigo-300 animate-cta-glow" onClick={onStart}>
+            <Button size="lg" className="bg-white dark:bg-gray-800 dark:text-gray-100 text-primary font-bold px-8 py-3 rounded-full shadow-lg hover:scale-105 hover:shadow-xl transition-transform focus:ring-4 focus:ring-indigo-300 animate-cta-glow" onClick={onStart}>
               Start Prefilling
             </Button>
             {/* See How It Works button as UsageGuide large trigger */}

@@ -15,10 +15,10 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import {
-  Dialog, 
-  DialogContent, 
-  DialogHeader, 
-  DialogTitle, 
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
   DialogDescription,
   DialogTrigger,
   DialogFooter
@@ -174,7 +174,7 @@ const CSVImportDialog: React.FC<{
             Upload a CSV file to auto-populate form fields
           </DialogDescription>
         </DialogHeader>
-        
+
         <div className="space-y-4">
           <div className="bg-gradient-to-r from-blue-50/80 to-blue-50 p-4 rounded-lg border border-blue-100 mb-2">
             <div className="flex items-start">
@@ -196,22 +196,22 @@ const CSVImportDialog: React.FC<{
           </div>
 
           <div className="flex items-center gap-2">
-            <input 
-              type="file" 
-              accept=".csv" 
+            <input
+              type="file"
+              accept=".csv"
               ref={fileInputRef}
               onChange={handleFileUpload}
-              className="hidden" 
+              className="hidden"
             />
-            <Button 
+            <Button
               onClick={() => fileInputRef.current?.click()}
               className="bg-primary hover:bg-primary/90"
             >
               <Upload className="mr-2 h-4 w-4" />
               Select CSV File
             </Button>
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               onClick={downloadTemplate}
               className="border-primary/20 hover:bg-primary/5"
             >
@@ -227,8 +227,8 @@ const CSVImportDialog: React.FC<{
                   <CheckCircle className="h-4 w-4 text-green-600 mr-2" />
                   Imported Fields ({importedData.length})
                 </h4>
-                <Button 
-                  variant="outline" 
+                <Button
+                  variant="outline"
                   size="sm"
                   onClick={handleClearImport}
                   className="h-8 text-xs border-destructive/20 hover:bg-destructive/10 text-destructive"
@@ -310,11 +310,11 @@ const FormPrefillGuide = () => {
     setMounted(true);
     const savedTheme = getTheme();
     setCurrentTheme(savedTheme);
-    
+
     // Load saved state
     const savedState = localStorage.getItem(LOCAL_STORAGE_KEY);
     const savedUrlsStr = localStorage.getItem(SAVED_URLS_KEY);
-    
+
     if (savedState) {
       try {
         const { formUrl: savedUrl, fields: savedFields } = JSON.parse(savedState);
@@ -351,21 +351,21 @@ const FormPrefillGuide = () => {
       if (index < 0 || index >= prevUrls.length) {
         return prevUrls; // Index out of bounds
       }
-      
+
       // Get the name for the toast message
       const deletedUrlName = prevUrls[index].name;
-      
+
       // Create a new array without the deleted URL
       const newUrls = [...prevUrls];
       newUrls.splice(index, 1);
-      
+
       // Show success toast with the name
       toast({
         title: "URL Deleted",
         description: `"${deletedUrlName}" has been removed from your saved URLs.`,
         variant: "default",
       });
-      
+
       return newUrls;
     });
   };
@@ -379,31 +379,31 @@ const FormPrefillGuide = () => {
 
   const saveGeneratedUrl = () => {
     if (!generatedUrl) return;
-    
+
     if (!urlName.trim()) {
       toast({
         title: "Name Required",
         description: "Please give your URL a descriptive name before saving.",
         variant: "destructive",
       });
-      
+
       if (nameUrlInputRef.current) {
         nameUrlInputRef.current.focus();
       }
       setIsUrlNameHighlighted(true);
       return;
     }
-    
+
     const newSavedUrl: SavedUrl = {
       url: generatedUrl,
       name: urlName.trim(),
       createdAt: new Date().toISOString(),
     };
-    
+
     setSavedUrls(prev => [newSavedUrl, ...prev]);
     setUrlName('');
     setIsUrlNameHighlighted(false);
-    
+
     toast({
       title: "URL Saved",
       description: `"${newSavedUrl.name}" has been added to your saved URLs.`,
@@ -423,10 +423,10 @@ const FormPrefillGuide = () => {
     const now = new Date();
     const dateStr = `${now.getFullYear()}-${(now.getMonth() + 1).toString().padStart(2, '0')}-${now.getDate().toString().padStart(2, '0')}`;
     setExportFilename(`prefill-urls-${dateStr}.csv`);
-    
+
     // Show the export dialog
     setShowExportDialog(true);
-    
+
     // Focus the filename input after dialog appears
     setTimeout(() => {
       if (exportFileInputRef.current) {
@@ -443,33 +443,33 @@ const FormPrefillGuide = () => {
       // Parse the URL to get field values
       const params = new URLSearchParams(new URL(url.url).search);
       const fieldParams = Array.from(params.entries());
-      
+
       // Create the base row with URL info
       const row: Record<string, string> = {
         'URL Name': url.name,
         'Form URL': url.url,
         'Created At': new Date(url.createdAt).toLocaleString()
       };
-      
+
       // Add each field's ID, label, and value as separate columns
       fieldParams.forEach(([fieldId, value], index) => {
         const field = fields.find(f => f.id === fieldId);
         const label = field?.label || fieldId;
-        
-        row[`Field${index+1}_ID`] = fieldId;
-        row[`Field${index+1}_Label`] = label;
-        row[`Field${index+1}_Value`] = value;
+
+        row[`Field${index + 1}_ID`] = fieldId;
+        row[`Field${index + 1}_Label`] = label;
+        row[`Field${index + 1}_Value`] = value;
       });
-      
+
       return row;
     });
-    
+
     // Get all unique column headers across all rows
     const allHeaders = new Set<string>();
     processedData.forEach(row => {
       Object.keys(row).forEach(key => allHeaders.add(key));
     });
-    
+
     // Convert to array and ensure URL info columns come first
     const orderedHeaders = ['URL Name', 'Form URL', 'Created At'];
     const fieldHeaders = Array.from(allHeaders).filter(
@@ -478,31 +478,31 @@ const FormPrefillGuide = () => {
       // Sort field headers to keep them in order (Field1_ID, Field1_Label, Field1_Value, Field2_ID, etc.)
       const aMatch = a.match(/Field(\d+)_(\w+)/);
       const bMatch = b.match(/Field(\d+)_(\w+)/);
-      
+
       if (aMatch && bMatch) {
         const [, aNum, aType] = aMatch;
         const [, bNum, bType] = bMatch;
-        
+
         // Compare field numbers first
         if (parseInt(aNum) !== parseInt(bNum)) {
           return parseInt(aNum) - parseInt(bNum);
         }
-        
+
         // For same field number, maintain ID, Label, Value order
         const typeOrder = { ID: 1, Label: 2, Value: 3 };
         return typeOrder[aType as keyof typeof typeOrder] - typeOrder[bType as keyof typeof typeOrder];
       }
-      
+
       return a.localeCompare(b);
     });
-    
+
     const headers = [...orderedHeaders, ...fieldHeaders];
-    
+
     // Create CSV data with all columns for each row
-    const rows = processedData.map(row => 
+    const rows = processedData.map(row =>
       headers.map(header => row[header] || '')
     );
-    
+
     const csv = Papa.unparse({
       fields: headers,
       data: rows
@@ -562,7 +562,7 @@ const FormPrefillGuide = () => {
     setGeneratedUrl('');
     setUrlName('');
     addToHistory({ formUrl: '', fields: [INITIAL_FIELD] });
-    
+
     toast({
       description: "All fields cleared",
     });
@@ -575,7 +575,7 @@ const FormPrefillGuide = () => {
   };
 
   const updateField = (index: number, key: keyof Field, value: string) => {
-    const newFields = fields.map((field, i) => 
+    const newFields = fields.map((field, i) =>
       i === index ? { ...field, [key]: value } : field
     );
     setFields(newFields);
@@ -584,25 +584,25 @@ const FormPrefillGuide = () => {
   const suggestUrlName = (): string => {
     // Try to create a meaningful name from the fields
     const labeledFields = fields.filter(f => f.label && f.label.trim() !== '');
-    
+
     if (labeledFields.length > 0) {
       // Try to find a field labeled like "name" or "full name"
-      const nameField = labeledFields.find(f => 
-        f.label.toLowerCase().includes('name') && 
+      const nameField = labeledFields.find(f =>
+        f.label.toLowerCase().includes('name') &&
         f.value.trim() !== ''
       );
-      
+
       if (nameField) {
         return `Form for ${nameField.value}`;
       }
-      
+
       // Or use the first labeled field with a value
       const firstField = labeledFields.find(f => f.value.trim() !== '');
       if (firstField) {
         return `${firstField.label}: ${firstField.value}`;
       }
     }
-    
+
     // Fallback: use the domain name from the URL
     try {
       const domain = new URL(formUrl).hostname.replace('www.', '');
@@ -635,19 +635,19 @@ const FormPrefillGuide = () => {
 
       setGeneratedUrl(finalUrl);
       navigator.clipboard.writeText(finalUrl);
-      
+
       // Suggest a name for the URL
       const suggestedName = suggestUrlName();
       setUrlName(suggestedName);
-      
+
       // Show toast with suggestion to name the URL
       toast({
         title: "URL Generated",
         description: "Your pre-filled URL is ready! Give it a name to save it for later use.",
         action: (
-          <Button 
-            variant="outline" 
-            size="sm" 
+          <Button
+            variant="outline"
+            size="sm"
             onClick={() => {
               if (nameUrlInputRef.current) {
                 nameUrlInputRef.current.focus();
@@ -662,10 +662,10 @@ const FormPrefillGuide = () => {
         ),
         duration: 5000,
       });
-      
+
       // Highlight the name field
       setIsUrlNameHighlighted(true);
-      
+
       // Focus on the name input field
       setTimeout(() => {
         if (nameUrlInputRef.current) {
@@ -673,7 +673,7 @@ const FormPrefillGuide = () => {
           nameUrlInputRef.current.select();
         }
       }, 500);
-      
+
       addToHistory({ formUrl, fields });
     } catch (error) {
       console.error("URL generation error:", error);
@@ -703,7 +703,7 @@ const FormPrefillGuide = () => {
     setFields(newFields);
     setActiveTab('construct');
     addToHistory({ formUrl: result.baseUrl, fields: newFields });
-    
+
     toast({
       title: "Success",
       description: "URL deconstructed successfully",
@@ -719,7 +719,7 @@ const FormPrefillGuide = () => {
       "transition-colors duration-300"
     )}>
       {/* Hero Section */}
-      <HeroSection 
+      <HeroSection
         onStart={() => toolRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
         onHowItWorks={() => setShowHowItWorks(true)}
       />
@@ -727,7 +727,7 @@ const FormPrefillGuide = () => {
       {/* How It Works Modal (placeholder) */}
       {showHowItWorks && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
-          <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-lg w-full relative animate-fade-in">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl p-8 max-w-lg w-full relative animate-fade-in">
             <button
               className="absolute top-3 right-3 text-xl text-muted-foreground hover:text-primary"
               onClick={() => setShowHowItWorks(false)}
@@ -752,7 +752,7 @@ const FormPrefillGuide = () => {
       {/* Main Tool Section */}
       <div ref={toolRef} className="max-w-4xl mx-auto mt-[-60px] md:mt-[-120px] relative z-10">
         {/* Card wrapper for the main tool */}
-        <div className="bg-white/90 rounded-3xl shadow-2xl p-4 md:p-8 backdrop-blur-lg border border-primary/10">
+        <div className="bg-white/90 dark:bg-gray-800/90 rounded-3xl shadow-2xl p-4 md:p-8 backdrop-blur-lg border border-primary/10 dark:border-primary/20">
           {/* Existing main tool content below */}
           <div className="max-w-4xl mx-auto">
             <header className="flex justify-between items-center mb-6">
@@ -821,8 +821,8 @@ const FormPrefillGuide = () => {
                     <div className="bg-muted/20 p-3 rounded-lg border flex items-start">
                       <div className="bg-primary/10 rounded-full p-1 mr-2">
                         <svg className="h-4 w-4 text-primary" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                          <circle cx="12" cy="12" r="10"/>
-                          <polyline points="12 6 12 12 16 14"/>
+                          <circle cx="12" cy="12" r="10" />
+                          <polyline points="12 6 12 12 16 14" />
                         </svg>
                       </div>
                       <div>
@@ -833,8 +833,8 @@ const FormPrefillGuide = () => {
                     <div className="bg-muted/20 p-3 rounded-lg border flex items-start">
                       <div className="bg-primary/10 rounded-full p-1 mr-2">
                         <svg className="h-4 w-4 text-primary" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                          <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
-                          <polyline points="22 4 12 14.01 9 11.01"/>
+                          <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+                          <polyline points="22 4 12 14.01 9 11.01" />
                         </svg>
                       </div>
                       <div>
@@ -845,8 +845,8 @@ const FormPrefillGuide = () => {
                     <div className="bg-muted/20 p-3 rounded-lg border flex items-start">
                       <div className="bg-primary/10 rounded-full p-1 mr-2">
                         <svg className="h-4 w-4 text-primary" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                          <path d="M12 20h9"/>
-                          <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
+                          <path d="M12 20h9" />
+                          <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
                         </svg>
                       </div>
                       <div>
@@ -857,9 +857,9 @@ const FormPrefillGuide = () => {
                     <div className="bg-muted/20 p-3 rounded-lg border flex items-start">
                       <div className="bg-primary/10 rounded-full p-1 mr-2">
                         <svg className="h-4 w-4 text-primary" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                          <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
-                          <polyline points="3.27 6.96 12 12.01 20.73 6.96"/>
-                          <line x1="12" y1="22.08" x2="12" y2="12"/>
+                          <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
+                          <polyline points="3.27 6.96 12 12.01 20.73 6.96" />
+                          <line x1="12" y1="22.08" x2="12" y2="12" />
                         </svg>
                       </div>
                       <div>
@@ -883,30 +883,30 @@ const FormPrefillGuide = () => {
                 </div>
               </CardContent>
             </Card>
-            
+
             <Card>
               <CardHeader>
                 <CardTitle className="flex justify-between items-center">
                   <span>URL Generator</span>
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      onClick={undo}
-                      disabled={historyIndex <= 0}
-                      title="Undo last action"
-                    >
-                      <RotateCcw className="h-4 w-4" />
-                    </Button>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={undo}
+                    disabled={historyIndex <= 0}
+                    title="Undo last action"
+                  >
+                    <RotateCcw className="h-4 w-4" />
+                  </Button>
                 </CardTitle>
               </CardHeader>
               <CardContent>
-              <Tabs value={activeTab} onValueChange={setActiveTab}>
+                <Tabs value={activeTab} onValueChange={setActiveTab}>
                   <TabsList className="mb-4 bg-gradient-to-r from-muted/80 via-muted to-muted/80 p-1 rounded-full shadow-sm border border-muted/50">
                     <TooltipProvider>
                       <Tooltip>
                         <TooltipTrigger asChild>
-                          <TabsTrigger 
-                            value="construct" 
+                          <TabsTrigger
+                            value="construct"
                             className="
                               inline-flex items-center justify-center 
                               whitespace-nowrap rounded-full
@@ -934,12 +934,12 @@ const FormPrefillGuide = () => {
                         </TooltipContent>
                       </Tooltip>
                     </TooltipProvider>
-                    
+
                     <TooltipProvider>
                       <Tooltip>
                         <TooltipTrigger asChild>
-                          <TabsTrigger 
-                            value="deconstruct" 
+                          <TabsTrigger
+                            value="deconstruct"
                             className="
                               inline-flex items-center justify-center 
                               whitespace-nowrap rounded-full
@@ -971,11 +971,11 @@ const FormPrefillGuide = () => {
                         </TooltipContent>
                       </Tooltip>
                     </TooltipProvider>
-                    
+
                     <TooltipProvider>
                       <Tooltip>
                         <TooltipTrigger asChild>
-                          <TabsTrigger 
+                          <TabsTrigger
                             value="batch"
                             className="
                               inline-flex items-center justify-center 
@@ -992,7 +992,7 @@ const FormPrefillGuide = () => {
                               hover:bg-green-500/10
                               hover:text-green-500
                             "
-                          > 
+                          >
                             <span className="flex items-center">
                               <FileSpreadsheet className="h-3.5 w-3.5 mr-1.5" />
                               Batch Mode
@@ -1008,7 +1008,7 @@ const FormPrefillGuide = () => {
                     <TooltipProvider>
                       <Tooltip>
                         <TooltipTrigger asChild>
-                          <TabsTrigger 
+                          <TabsTrigger
                             value="letterMode"
                             className="
                               inline-flex items-center justify-center 
@@ -1028,8 +1028,8 @@ const FormPrefillGuide = () => {
                           >
                             <span className="flex items-center">
                               <svg className="h-3.5 w-3.5 mr-1.5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
-                            </svg>
+                                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+                              </svg>
                               Letter Generator
                             </span>
                           </TabsTrigger>
@@ -1043,7 +1043,7 @@ const FormPrefillGuide = () => {
                     <TooltipProvider>
                       <Tooltip>
                         <TooltipTrigger asChild>
-                          <TabsTrigger 
+                          <TabsTrigger
                             value="transform"
                             className="
                               inline-flex items-center justify-center 
@@ -1130,11 +1130,11 @@ const FormPrefillGuide = () => {
                         </div>
                         <h3 className="font-medium text-lg text-foreground">Enter Form URL</h3>
                       </div>
-                      
+
                       <div className="space-y-3 ml-11">
                         <div className="relative">
                           <label htmlFor="formUrl" className="block text-sm font-medium mb-1 flex items-center text-foreground">
-                            <span>Form URL</span> 
+                            <span>Form URL</span>
                             <span className="text-destructive ml-1">*</span>
                             <TooltipProvider>
                               <Tooltip>
@@ -1161,8 +1161,8 @@ const FormPrefillGuide = () => {
                                 <LinkIcon className="h-4 w-4 text-muted-foreground" />
                               </div>
                             </div>
-                            <Button 
-                              variant="outline" 
+                            <Button
+                              variant="outline"
                               className="border-primary/20 hover:bg-primary/5"
                               onClick={() => {
                                 // Add paste functionality if needed
@@ -1194,8 +1194,8 @@ const FormPrefillGuide = () => {
                           <TooltipProvider>
                             <Tooltip>
                               <TooltipTrigger asChild>
-                                <Button 
-                                  variant="outline" 
+                                <Button
+                                  variant="outline"
                                   size="sm"
                                   onClick={clearAllFields}
                                   className="h-8 text-xs border-destructive/20 hover:bg-destructive/10 text-destructive"
@@ -1261,7 +1261,7 @@ const FormPrefillGuide = () => {
                             <FileSpreadsheet className="h-10 w-10 text-muted-foreground mb-2 opacity-70" />
                             <h4 className="text-base font-medium text-foreground mb-1">No Fields Added Yet</h4>
                             <p className="text-sm text-muted-foreground mb-3">Add fields to pre-fill in your form</p>
-                            <Button 
+                            <Button
                               onClick={addField}
                               size="sm"
                               className="bg-primary hover:bg-primary/90"
@@ -1272,8 +1272,8 @@ const FormPrefillGuide = () => {
                           </div>
                         ) : (
                           fields.map((field, index) => (
-                            <div 
-                              key={index} 
+                            <div
+                              key={index}
                               className="grid grid-cols-12 gap-3 p-4 rounded-md border bg-card hover:bg-accent transition-colors relative group shadow-sm"
                             >
                               <div className="absolute -top-2.5 -left-1 bg-primary text-primary-foreground text-xs rounded-full px-2 py-0.5 font-medium shadow-sm">
@@ -1367,9 +1367,9 @@ const FormPrefillGuide = () => {
                         )}
 
                         {fields.length > 0 && (
-                          <Button 
-                            onClick={addField} 
-                            variant="outline" 
+                          <Button
+                            onClick={addField}
+                            variant="outline"
                             className="w-full border-dashed border-primary/40 hover:bg-primary/5 mt-3"
                           >
                             <Plus className="h-4 w-4 mr-2 text-primary" />
@@ -1400,7 +1400,7 @@ const FormPrefillGuide = () => {
                             <p className="text-sm mb-1">Ready to create your pre-filled form link?</p>
                             <p className="text-xs text-muted-foreground">Click the button below to generate a URL with all your field values</p>
                           </div>
-                          
+
                           <Button
                             onClick={generateUrl}
                             disabled={!formUrl.trim() || fields.length === 0 || fields.some(f => !f.id.trim() || !f.value.trim())}
@@ -1409,14 +1409,14 @@ const FormPrefillGuide = () => {
                             <ExternalLink className="h-4 w-4 mr-2" />
                             Generate Pre-filled URL
                           </Button>
-                          
+
                           {(!formUrl.trim() || fields.length === 0 || fields.some(f => !f.id.trim() || !f.value.trim())) && (
                             <div className="mt-3 bg-warning/10 border border-warning/20 rounded-md p-2 text-xs text-warning max-w-md text-center">
                               <AlertTriangle className="h-3.5 w-3.5 inline-block mr-1 text-warning" />
-                              {!formUrl.trim() 
-                                ? "Please enter a form URL first" 
-                                : fields.length === 0 
-                                  ? "Add at least one field to pre-fill" 
+                              {!formUrl.trim()
+                                ? "Please enter a form URL first"
+                                : fields.length === 0
+                                  ? "Add at least one field to pre-fill"
                                   : "Make sure all fields have both ID and value"}
                             </div>
                           )}
@@ -1455,12 +1455,12 @@ const FormPrefillGuide = () => {
                                     </TooltipContent>
                                   </Tooltip>
                                 </TooltipProvider>
-                                
+
                                 <TooltipProvider>
                                   <Tooltip>
                                     <TooltipTrigger asChild>
-                                      <Button 
-                                        size="sm" 
+                                      <Button
+                                        size="sm"
                                         variant="outline"
                                         onClick={(e) => {
                                           e.stopPropagation();
@@ -1485,7 +1485,7 @@ const FormPrefillGuide = () => {
                               </div>
                               <p className="pr-8 pt-2">{generatedUrl}</p>
                             </div>
-                            
+
                             <div className="mt-4 bg-info/10 p-3 rounded-md border border-info/20 text-xs">
                               <div className="flex items-start">
                                 <Info className="h-4 w-4 text-info mt-0.5 mr-2 flex-shrink-0" />
@@ -1534,8 +1534,8 @@ const FormPrefillGuide = () => {
                           {savedUrls.length > 0 && (
                             <AlertDialog>
                               <AlertDialogTrigger asChild>
-                                <Button 
-                                  variant="outline" 
+                                <Button
+                                  variant="outline"
                                   size="sm"
                                   title="Clear all saved URLs"
                                   className="text-xs h-8 text-destructive border-destructive/20 hover:bg-destructive/10"
@@ -1593,7 +1593,7 @@ const FormPrefillGuide = () => {
                             <TooltipProvider>
                               <Tooltip>
                                 <TooltipTrigger asChild>
-                                  <Button 
+                                  <Button
                                     onClick={() => {
                                       saveGeneratedUrl();
                                     }}
@@ -1650,18 +1650,18 @@ const FormPrefillGuide = () => {
                                     Click to review
                                   </div>
                                 </div>
-                                
+
                                 <div className="space-y-1 flex-1 mr-4">
                                   <div className="font-medium flex items-center text-primary">
                                     <FileSpreadsheet className="h-3.5 w-3.5 mr-1.5 text-primary" />
                                     {savedUrl.name}
                                   </div>
-                                  <div 
+                                  <div
                                     className="text-sm text-muted-foreground truncate max-w-full"
                                     title={savedUrl.url}
                                   >
-                                    {savedUrl.url.length > 50 
-                                      ? `${savedUrl.url.slice(0, 25)}...${savedUrl.url.slice(-25)}` 
+                                    {savedUrl.url.length > 50
+                                      ? `${savedUrl.url.slice(0, 25)}...${savedUrl.url.slice(-25)}`
                                       : savedUrl.url}
                                   </div>
                                   <div className="text-xs text-muted-foreground">
@@ -1725,7 +1725,7 @@ const FormPrefillGuide = () => {
                                       </AlertDialogHeader>
                                       <AlertDialogFooter>
                                         <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                        <AlertDialogAction 
+                                        <AlertDialogAction
                                           onClick={() => {
                                             deleteSavedUrl(index);
                                             setSelectedUrlIndex(null);
@@ -1778,7 +1778,7 @@ const FormPrefillGuide = () => {
                       </h4>
                       <div className="bg-card p-3 rounded border border-primary/20 text-xs break-all">
                         <p className="font-medium text-primary mb-1">Try this example:</p>
-                        <a 
+                        <a
                           href="https://form.gov.sg/67488b8b1210a416d2d7cb5b?67488bb37e8c75e33b9f9191=Tan%20Ah%20Kow&67488f8e088e833537af24aa=Tan_ah_kow%40agency.gov.sg&67488f2425bc895113f36755=H123456&67488f4706223a28046116b7=Human%20Resource&67488fa4961741ba92f3d064=Artificial%20Intelligence%20%231&674890985ff109b4e0969bfd=%241234.00&6748910f1210a416d2d81521=09%2F12%2F24&6748918845919bff0a00bcb6=10%2F12%2F24"
                           className="text-primary hover:text-primary/80 hover:underline flex items-center"
                           target="_blank"
@@ -1823,11 +1823,11 @@ const FormPrefillGuide = () => {
                   </TabsContent>
 
                   <TabsContent value="batch" className="space-y-4">
-                  <BatchFormPrefill />
+                    <BatchFormPrefill />
                   </TabsContent>
                   <TabsContent value="letterMode" className="space-y-4">
-                  <LetterMode />
-                  </TabsContent> 
+                    <LetterMode />
+                  </TabsContent>
                   <TabsContent value="transform" className="space-y-4">
                     {/* Mode description and explanatory panel */}
                     <div className="bg-gradient-to-r from-purple-50/80 to-pink-50 p-4 rounded-lg border border-purple-100 mb-4 shadow-sm">
@@ -1843,7 +1843,7 @@ const FormPrefillGuide = () => {
                         <div>
                           <h3 className="font-medium text-purple-800 mb-1 text-base">Data Format Transformer</h3>
                           <p className="text-sm text-purple-700">
-                            Transform your data between column and row formats. Use Column → Row to combine multiple lines into a single delimited row, 
+                            Transform your data between column and row formats. Use Column → Row to combine multiple lines into a single delimited row,
                             or Row → Column to split a delimited row into separate lines.
                           </p>
                         </div>
@@ -1871,7 +1871,7 @@ const FormPrefillGuide = () => {
                     Review the details of your saved URL
                   </DialogDescription>
                 </DialogHeader>
-                
+
                 <div className="space-y-4 py-2">
                   <div className="space-y-1">
                     <div className="text-sm font-medium flex items-center">
@@ -1879,9 +1879,9 @@ const FormPrefillGuide = () => {
                       URL Details
                     </div>
                     <div className="p-3 bg-card rounded border text-sm break-all">
-                      <a 
-                        href={savedUrls[selectedUrlIndex].url} 
-                        target="_blank" 
+                      <a
+                        href={savedUrls[selectedUrlIndex].url}
+                        target="_blank"
                         rel="noopener noreferrer"
                         className="text-primary hover:text-primary/80 hover:underline flex items-center"
                       >
@@ -1890,7 +1890,7 @@ const FormPrefillGuide = () => {
                       </a>
                     </div>
                   </div>
-                  
+
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <div className="text-sm font-medium flex items-center">
@@ -1903,13 +1903,13 @@ const FormPrefillGuide = () => {
                     </div>
                     <div>
                       <div className="text-sm font-medium flex items-center">
-                        <CheckCircle className="h-4 w-4 mr-1.5 text-primary" /> 
+                        <CheckCircle className="h-4 w-4 mr-1.5 text-primary" />
                         Actions
                       </div>
                       <div className="flex gap-2 mt-1">
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
+                        <Button
+                          variant="outline"
+                          size="sm"
                           className="h-8"
                           onClick={(e) => {
                             e.stopPropagation();
@@ -1922,9 +1922,9 @@ const FormPrefillGuide = () => {
                           <Copy className="h-3.5 w-3.5 mr-1.5" />
                           Copy URL
                         </Button>
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
+                        <Button
+                          variant="outline"
+                          size="sm"
                           className="h-8"
                           onClick={(e) => {
                             e.stopPropagation();
@@ -1937,7 +1937,7 @@ const FormPrefillGuide = () => {
                       </div>
                     </div>
                   </div>
-                  
+
                   <div className="pt-3 border-t mt-3">
                     <div className="text-sm font-medium flex items-center text-destructive">
                       <AlertTriangle className="h-4 w-4 mr-1.5" />
@@ -1946,7 +1946,7 @@ const FormPrefillGuide = () => {
                     <p className="text-xs text-muted-foreground mb-2 mt-1">
                       Once deleted, this URL will be removed from your collection and cannot be recovered.
                     </p>
-                    
+
                     <AlertDialog>
                       <AlertDialogTrigger asChild>
                         <Button variant="destructive" size="sm" className="mt-1">
@@ -1963,7 +1963,7 @@ const FormPrefillGuide = () => {
                         </AlertDialogHeader>
                         <AlertDialogFooter>
                           <AlertDialogCancel>Cancel</AlertDialogCancel>
-                          <AlertDialogAction 
+                          <AlertDialogAction
                             onClick={() => {
                               if (selectedUrlIndex !== null) {
                                 deleteSavedUrl(selectedUrlIndex);
@@ -1988,8 +1988,8 @@ const FormPrefillGuide = () => {
                   </DialogDescription>
                 </DialogHeader>
                 <div className="flex justify-end mt-4">
-                  <Button 
-                    variant="outline" 
+                  <Button
+                    variant="outline"
                     onClick={() => setSelectedUrlIndex(null)}
                   >
                     Close
@@ -1998,7 +1998,7 @@ const FormPrefillGuide = () => {
               </DialogContent>
             )}
           </Dialog>
-          
+
           {/* Add the export dialog near the end of the component */}
           <Dialog open={showExportDialog} onOpenChange={setShowExportDialog}>
             <DialogContent className="sm:max-w-[425px]">
@@ -2035,7 +2035,7 @@ const FormPrefillGuide = () => {
                 <Button variant="outline" onClick={() => setShowExportDialog(false)}>
                   Cancel
                 </Button>
-                <Button 
+                <Button
                   onClick={() => {
                     if (exportFilename.trim()) {
                       setShowExportDialog(false);

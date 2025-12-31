@@ -29,6 +29,12 @@ import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@
 import debounce from 'lodash.debounce';
 import RecipientsImportDialog from './RecipientsImportDialog';
 import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 interface LetterParams {
   [key: string]: string;
@@ -136,7 +142,7 @@ const CSVImportDialog: React.FC<CSVImportDialogProps> = ({ templateFields, onImp
   const [csvText, setCsvText] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [currentMappingIndex, setCurrentMappingIndex] = useState(0);
-  
+
   // New state for recipient column mapping
   const [recipientColumnHeader, setRecipientColumnHeader] = useState<string | null>(null);
 
@@ -154,12 +160,12 @@ const CSVImportDialog: React.FC<CSVImportDialogProps> = ({ templateFields, onImp
     setCsvText(null);
     setCurrentMappingIndex(0);
     setRecipientColumnHeader(null); // Reset recipient mapping
-    
+
     // Reset file input
     if (fileInputRef.current) {
       // Create a new file input to ensure it's completely reset
       fileInputRef.current.value = '';
-      
+
       // This triggers a reset in some browsers that don't properly clear the file input
       try {
         const form = fileInputRef.current.form;
@@ -183,31 +189,31 @@ const CSVImportDialog: React.FC<CSVImportDialogProps> = ({ templateFields, onImp
   useEffect(() => {
     if (templateFields.length > 0 && csvHeaders.length > 0) {
       const initialMapping: { [key: string]: string } = {};
-      
+
       // Try to match template fields with CSV headers
       templateFields.forEach(field => {
         if (!field.name) return;
-        
+
         // Look for exact matches first
-        const exactMatch = csvHeaders.find(header => 
+        const exactMatch = csvHeaders.find(header =>
           header.toLowerCase() === field.name.toLowerCase()
         );
-        
+
         if (exactMatch) {
           initialMapping[field.name] = exactMatch;
         } else {
           // Look for partial matches
-          const partialMatch = csvHeaders.find(header => 
-            header.toLowerCase().includes(field.name.toLowerCase()) || 
+          const partialMatch = csvHeaders.find(header =>
+            header.toLowerCase().includes(field.name.toLowerCase()) ||
             field.name.toLowerCase().includes(header.toLowerCase())
           );
-          
+
           if (partialMatch) {
             initialMapping[field.name] = partialMatch;
           }
         }
       });
-      
+
       setFieldMapping(initialMapping);
     }
   }, [templateFields, csvHeaders]);
@@ -218,7 +224,7 @@ const CSVImportDialog: React.FC<CSVImportDialogProps> = ({ templateFields, onImp
     setError(null);
     setSelectedFile(null);
     setCsvText(null);
-    
+
     // Check file type
     if (!file.name.toLowerCase().endsWith('.csv')) {
       toast({
@@ -249,7 +255,7 @@ const CSVImportDialog: React.FC<CSVImportDialogProps> = ({ templateFields, onImp
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     // Reset error state
     setError(null);
-    
+
     // Get the file from the input
     const file = event.target.files?.[0];
     if (!file) {
@@ -306,7 +312,7 @@ const CSVImportDialog: React.FC<CSVImportDialogProps> = ({ templateFields, onImp
       const headers = results.meta.fields
         .filter(header => header && typeof header === 'string' && header.trim() !== '')
         .map(header => header.trim());
-      
+
       if (headers.length === 0) {
         toast({
           title: 'Invalid CSV Headers',
@@ -316,7 +322,7 @@ const CSVImportDialog: React.FC<CSVImportDialogProps> = ({ templateFields, onImp
         setImportProgress(0);
         return;
       }
-      
+
       // Check for duplicate headers after trimming
       const uniqueHeaders = new Set(headers);
       if (uniqueHeaders.size !== headers.length) {
@@ -328,43 +334,43 @@ const CSVImportDialog: React.FC<CSVImportDialogProps> = ({ templateFields, onImp
         setImportProgress(0);
         return;
       }
-      
+
       setCsvHeaders(headers);
       setPreviewData(results.data.slice(0, 5)); // Store first 5 rows for preview
-      
+
       // Auto-map fields based on name similarity
       const initialMapping: { [key: string]: string } = {};
       templateFields.forEach(field => {
         if (!field.name) return;
-        
+
         // Look for exact matches first
-        const exactMatch = headers.find(header => 
+        const exactMatch = headers.find(header =>
           header.toLowerCase() === field.name.toLowerCase()
         );
-        
+
         if (exactMatch) {
           initialMapping[field.name] = exactMatch;
         } else {
           // Look for partial matches
-          const partialMatch = headers.find(header => 
-            header.toLowerCase().includes(field.name.toLowerCase()) || 
+          const partialMatch = headers.find(header =>
+            header.toLowerCase().includes(field.name.toLowerCase()) ||
             field.name.toLowerCase().includes(header.toLowerCase())
           );
-          
+
           if (partialMatch) {
             initialMapping[field.name] = partialMatch;
           }
         }
       });
-      
+
       setFieldMapping(initialMapping);
       setImportProgress(100);
-      
+
       // Reset progress after a delay
       setTimeout(() => {
         setImportProgress(0);
       }, 1000);
-      
+
     } catch (error) {
       console.error('Error handling file:', error);
       setImportProgress(0);
@@ -373,7 +379,7 @@ const CSVImportDialog: React.FC<CSVImportDialogProps> = ({ templateFields, onImp
         description: 'There was an error processing the file. Please try again with a different file.',
         variant: 'destructive',
       });
-      
+
       // Reset the file input
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
@@ -386,7 +392,7 @@ const CSVImportDialog: React.FC<CSVImportDialogProps> = ({ templateFields, onImp
     const mappedFields = templateFields
       .filter(field => field.name && fieldMapping[field.name] && fieldMapping[field.name] !== '__placeholder__')
       .map(field => field.name);
-    
+
     if (mappedFields.length === 0) {
       toast({
         title: 'No Fields Mapped',
@@ -399,7 +405,7 @@ const CSVImportDialog: React.FC<CSVImportDialogProps> = ({ templateFields, onImp
     // Create a preview of the mapped data (first 5 rows)
     const previewRows = previewData.map((row: any) => {
       const mappedRow: LetterParams = {};
-      
+
       // For each template field that has a mapping
       mappedFields.forEach(fieldName => {
         if (!fieldName) return;
@@ -408,7 +414,7 @@ const CSVImportDialog: React.FC<CSVImportDialogProps> = ({ templateFields, onImp
           mappedRow[fieldName] = row[csvHeader] || '';
         }
       });
-      
+
       return mappedRow;
     });
 
@@ -422,7 +428,7 @@ const CSVImportDialog: React.FC<CSVImportDialogProps> = ({ templateFields, onImp
     const mappedTemplateFields = templateFields
       .filter(field => field.name && fieldMapping[field.name] && fieldMapping[field.name] !== '__placeholder__')
       .map(field => field.name);
-      
+
     // Check if at least one template field OR a recipient column is mapped
     if (mappedTemplateFields.length === 0 && !recipientColumnHeader) {
       toast({
@@ -447,10 +453,10 @@ const CSVImportDialog: React.FC<CSVImportDialogProps> = ({ templateFields, onImp
           skipEmptyLines: true,
         });
         setImportProgress(40);
-        
+
         // Store all parsed data
         allParsedData = results.data;
-      } 
+      }
       // Fallback to re-parsing the selected file
       else if (selectedFile) {
         const text = await readFileAsText(selectedFile);
@@ -459,13 +465,13 @@ const CSVImportDialog: React.FC<CSVImportDialogProps> = ({ templateFields, onImp
           skipEmptyLines: true,
         });
         setImportProgress(40);
-        
+
         // Store all parsed data
         allParsedData = results.data;
       } else {
         throw new Error('No data available for import');
       }
-      
+
       // --- Map Letter Parameters --- 
       const mappedLetterParamsData = allParsedData.map((row: any) => {
         const mappedRow: LetterParams = {};
@@ -492,12 +498,12 @@ const CSVImportDialog: React.FC<CSVImportDialogProps> = ({ templateFields, onImp
 
       // --- Filter out empty rows (based on mapped letter params only) ---
       // An empty recipient is valid, but a row with no letter params is not.
-      const combinedData = mappedLetterParamsData.map((params, index) => ({ 
+      const combinedData = mappedLetterParamsData.map((params, index) => ({
         params,
-        recipient: mappedRecipients?.[index] 
+        recipient: mappedRecipients?.[index]
       }));
-      
-      const nonEmptyCombinedData = combinedData.filter(item => 
+
+      const nonEmptyCombinedData = combinedData.filter(item =>
         Object.values(item.params).some(value => value.trim() !== '')
       );
 
@@ -517,22 +523,22 @@ const CSVImportDialog: React.FC<CSVImportDialogProps> = ({ templateFields, onImp
       const finalRecipients = mappedRecipients ? nonEmptyCombinedData.map(item => item.recipient || '') : undefined;
 
       // --- Perform Import --- 
-      onImport({ 
+      onImport({
         letterParams: finalLetterParams,
-        recipients: finalRecipients 
+        recipients: finalRecipients
       });
-      
+
       setImportProgress(100);
-      
+
       // Reset loading state
       setTimeout(() => {
         setIsImporting(false);
         setImportProgress(0);
-        
+
         // Close the dialog after successful import
         setOpen(false);
       }, 500);
-      
+
       toast({
         description: `Successfully imported ${finalLetterParams.length} letter records`,
       });
@@ -562,7 +568,7 @@ const CSVImportDialog: React.FC<CSVImportDialogProps> = ({ templateFields, onImp
         [templateField]: csvHeader,
       }));
     }
-    
+
     // Reset the preview when mapping changes
     setShowMappedPreview(false);
   };
@@ -572,7 +578,7 @@ const CSVImportDialog: React.FC<CSVImportDialogProps> = ({ templateFields, onImp
     const headers = templateFields
       .filter(field => field.name) // Filter out fields without names
       .map((field) => field.name);
-    
+
     if (headers.length === 0) {
       toast({
         title: 'No Template Fields',
@@ -581,29 +587,29 @@ const CSVImportDialog: React.FC<CSVImportDialogProps> = ({ templateFields, onImp
       });
       return;
     }
-    
+
     // Create example rows with placeholder values
     const exampleRows: string[][] = [];
-    
+
     // No need to reference letterDetails here since we're using templateFields directly
     // which is already passed to this component as a prop
     const hasImportedData = previewData.length > 0 && csvHeaders.length > 0;
-    
+
     if (hasImportedData) {
       // Use actual imported data for the example (up to 3 rows)
       const sampleSize = Math.min(3, previewData.length);
-      
+
       for (let i = 0; i < sampleSize; i++) {
         const rowData = previewData[i];
         const exampleRow = headers.map(fieldName => {
           // Try to find mapped CSV header for this field
           const mappedHeader = Object.entries(fieldMapping).find(([key]) => key === fieldName)?.[1];
           // Use the actual value if available through mapping, otherwise use a placeholder
-          return (mappedHeader && rowData[mappedHeader]) || `Example ${i+1}`;
+          return (mappedHeader && rowData[mappedHeader]) || `Example ${i + 1}`;
         });
         exampleRows.push(exampleRow);
       }
-      
+
       // Add placeholders if we have fewer than 3 imported rows
       while (exampleRows.length < 3) {
         const rowIndex = exampleRows.length;
@@ -637,9 +643,9 @@ const CSVImportDialog: React.FC<CSVImportDialogProps> = ({ templateFields, onImp
             const amounts = ['1000.00', '2500.50', '750.25'];
             return amounts[rowIndex % amounts.length];
           }
-          
+
           // Default example value
-          return `Example ${rowIndex+1}`;
+          return `Example ${rowIndex + 1}`;
         });
         exampleRows.push(placeholderRow);
       }
@@ -650,7 +656,7 @@ const CSVImportDialog: React.FC<CSVImportDialogProps> = ({ templateFields, onImp
           .filter(field => field.name) // Filter out fields without names
           .map((field) => {
             const fieldName = field.name.toLowerCase();
-            
+
             // Generate appropriate example values based on field name
             if (fieldName.includes('name')) {
               const names = ['John Doe', 'Jane Smith', 'Alex Johnson'];
@@ -679,21 +685,21 @@ const CSVImportDialog: React.FC<CSVImportDialogProps> = ({ templateFields, onImp
               const amounts = ['1000.00', '2500.50', '750.25'];
               return amounts[i % amounts.length];
             }
-            
+
             // Default example value
-            return `Example ${i+1}`;
+            return `Example ${i + 1}`;
           });
-        
+
         exampleRows.push(exampleRow);
       }
     }
-    
+
     // Create CSV content with headers and example rows
     const csvContent = [
       headers.join(','),
       ...exampleRows.map(row => row.join(','))
     ].join('\n');
-    
+
     // Create and download the file
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
@@ -703,11 +709,11 @@ const CSVImportDialog: React.FC<CSVImportDialogProps> = ({ templateFields, onImp
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-    
+
     // Show different toast message based on whether we used actual data
     toast({
-      description: hasImportedData 
-        ? 'Example template with imported data downloaded successfully.' 
+      description: hasImportedData
+        ? 'Example template with imported data downloaded successfully.'
         : 'Example template downloaded successfully.',
     });
   };
@@ -729,7 +735,7 @@ const CSVImportDialog: React.FC<CSVImportDialogProps> = ({ templateFields, onImp
     e.preventDefault();
     e.stopPropagation();
     setIsDragging(false);
-    
+
     const files = e.dataTransfer.files;
     if (files.length > 0) {
       // Create a synthetic event to reuse the existing file upload handler
@@ -738,7 +744,7 @@ const CSVImportDialog: React.FC<CSVImportDialogProps> = ({ templateFields, onImp
           files: files
         }
       } as unknown as React.ChangeEvent<HTMLInputElement>;
-      
+
       handleFileUpload(syntheticEvent);
     }
   };
@@ -749,7 +755,7 @@ const CSVImportDialog: React.FC<CSVImportDialogProps> = ({ templateFields, onImp
         <Button
           variant="outline"
           onClick={() => setOpen(true)}
-          className="bg-gradient-to-r from-amber-50 to-orange-50 text-amber-600 hover:text-amber-700 hover:bg-gradient-to-r hover:from-amber-100 hover:to-orange-100 border-amber-200 transition-all duration-200 py-5 px-6 text-base font-medium rounded-xl shadow-sm hover:shadow flex items-center"
+          className="bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-900/30 dark:to-orange-900/30 text-amber-600 dark:text-amber-400 hover:text-amber-700 dark:hover:text-amber-300 hover:bg-gradient-to-r hover:from-amber-100 hover:to-orange-100 dark:hover:from-amber-900/50 dark:hover:to-orange-900/50 border-amber-200 dark:border-amber-700 transition-all duration-200 py-5 px-6 text-base font-medium rounded-xl shadow-sm hover:shadow flex items-center"
         >
           <FileSpreadsheet className="mr-3 h-5 w-5" />
           Import CSV Data
@@ -757,15 +763,15 @@ const CSVImportDialog: React.FC<CSVImportDialogProps> = ({ templateFields, onImp
       </DialogTrigger>
       <DialogContent className="sm:max-w-[1200px] max-h-[90vh] overflow-y-auto">
         <DialogHeader className="border-b pb-4">
-          <DialogTitle className="text-2xl font-bold text-amber-800">Import Letter Parameters from CSV</DialogTitle>
-          <DialogDescription className="text-base text-amber-600">Map CSV columns to letter template fields for batch processing</DialogDescription>
+          <DialogTitle className="text-2xl font-bold text-amber-800 dark:text-amber-300">Import Letter Parameters from CSV</DialogTitle>
+          <DialogDescription className="text-base text-amber-600 dark:text-amber-400">Map CSV columns to letter template fields for batch processing</DialogDescription>
         </DialogHeader>
 
         {/* Progress indicator */}
         {importProgress > 0 && (
-          <div className="w-full bg-gray-200 rounded-full h-2 mb-4 overflow-hidden">
-            <div 
-              className="bg-amber-500 h-2 rounded-full transition-all duration-300" 
+          <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 mb-4 overflow-hidden">
+            <div
+              className="bg-amber-500 h-2 rounded-full transition-all duration-300"
               style={{ width: `${importProgress}%` }}
             ></div>
           </div>
@@ -774,10 +780,9 @@ const CSVImportDialog: React.FC<CSVImportDialogProps> = ({ templateFields, onImp
         <div className="space-y-5 py-2">
           {/* File upload section */}
           {!csvHeaders.length && (
-            <div 
-              className={`border-2 border-dashed rounded-lg p-10 text-center transition-colors ${
-                isDragging ? 'border-primary bg-primary/10' : 'border-gray-300'
-              }`}
+            <div
+              className={`border-2 border-dashed rounded-lg p-10 text-center transition-colors ${isDragging ? 'border-primary bg-primary/10' : 'border-gray-300 dark:border-gray-600'
+                }`}
               onDragOver={handleDragOver}
               onDragLeave={handleDragLeave}
               onDrop={handleDrop}
@@ -793,11 +798,11 @@ const CSVImportDialog: React.FC<CSVImportDialogProps> = ({ templateFields, onImp
                 }}
                 className="hidden"
               />
-              <Upload className="mx-auto h-16 w-16 text-gray-400" />
+              <Upload className="mx-auto h-16 w-16 text-gray-400 dark:text-gray-500" />
               <p className="mt-3 text-base font-medium">
                 Drag and drop your CSV file here, or click to browse
               </p>
-              <p className="mt-2 text-sm text-gray-500">
+              <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
                 CSV files only, max 5MB
               </p>
             </div>
@@ -805,10 +810,10 @@ const CSVImportDialog: React.FC<CSVImportDialogProps> = ({ templateFields, onImp
 
           {/* CSV Preview */}
           {previewData.length > 0 && (
-            <div className="border rounded-lg p-5 bg-slate-50">
+            <div className="border rounded-lg p-5 bg-slate-50 dark:bg-slate-800/50 dark:border-slate-700">
               <div className="flex items-center justify-between mb-3">
                 <h4 className="text-base font-semibold">CSV Preview</h4>
-                <p className="text-sm text-gray-500">Showing first 5 rows</p>
+                <p className="text-sm text-gray-500 dark:text-gray-400">Showing first 5 rows</p>
               </div>
               <div className="max-h-48 overflow-y-auto">
                 <Table className="text-sm">
@@ -840,9 +845,9 @@ const CSVImportDialog: React.FC<CSVImportDialogProps> = ({ templateFields, onImp
             <div className="space-y-5">
               <div className="flex items-center justify-between">
                 <h4 className="text-base font-semibold">Map CSV Headers to Template Fields</h4>
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
+                <Button
+                  variant="ghost"
+                  size="sm"
                   onClick={() => {
                     setCsvHeaders([]);
                     setPreviewData([]);
@@ -855,22 +860,21 @@ const CSVImportDialog: React.FC<CSVImportDialogProps> = ({ templateFields, onImp
                   Change File
                 </Button>
               </div>
-              
+
               {/* Field Mapping Grid */}
-              <div className="max-h-[500px] overflow-y-auto border rounded-lg p-4 bg-slate-50">
+              <div className="max-h-[500px] overflow-y-auto border rounded-lg p-4 bg-slate-50 dark:bg-slate-800/50 dark:border-slate-700">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {templateFields.map((field) => (
-                    <div 
+                    <div
                       key={field.name}
-                      className={`p-4 border rounded-lg ${
-                        field.required ? 'border-red-200 bg-red-50' : 'border-gray-200'
-                      }`}
+                      className={`p-4 border rounded-lg ${field.required ? 'border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-900/20' : 'border-gray-200 dark:border-gray-700'
+                        }`}
                     >
                       <div className="flex items-center mb-3">
                         <span className="text-base font-medium">{field.name}</span>
                         {field.required && <span className="ml-2 text-red-500">*</span>}
                       </div>
-                      
+
                       <Select
                         value={fieldMapping[field.name] || '__placeholder__'}
                         onValueChange={(value) => updateFieldMapping(field.name, value)}
@@ -885,7 +889,7 @@ const CSVImportDialog: React.FC<CSVImportDialogProps> = ({ templateFields, onImp
                               <div className="flex items-center">
                                 <span>{header}</span>
                                 {previewData[0] && (
-                                  <span className="ml-2 text-xs text-gray-500 truncate max-w-[180px]">
+                                  <span className="ml-2 text-xs text-gray-500 dark:text-gray-400 truncate max-w-[180px]">
                                     (e.g., {previewData[0][header]})
                                   </span>
                                 )}
@@ -898,11 +902,11 @@ const CSVImportDialog: React.FC<CSVImportDialogProps> = ({ templateFields, onImp
                   ))}
                 </div>
               </div>
-              
+
               {/* ---- NEW: Recipient Column Mapping ---- */}
-              <div className="mt-5 border-t pt-5 border-gray-200">
+              <div className="mt-5 border-t pt-5 border-gray-200 dark:border-gray-700">
                 <h4 className="text-base font-semibold mb-3">Map Recipient Data (Optional)</h4>
-                <p className="text-sm text-gray-500 mb-3">
+                <p className="text-sm text-gray-500 dark:text-gray-400 mb-3">
                   Select the CSV column containing recipient emails or phone numbers.
                   Ensure the column matches the 'Notification Method' you select later.
                 </p>
@@ -933,11 +937,11 @@ const CSVImportDialog: React.FC<CSVImportDialogProps> = ({ templateFields, onImp
               {/* ---- END: Recipient Column Mapping ---- */}
               {/* Preview and Import Buttons */}
               <div className="mt-8 flex flex-col sm:flex-row justify-center gap-4">
-                <Button 
-                  variant="outline" 
+                <Button
+                  variant="outline"
                   onClick={previewMappedData}
                   disabled={isImporting}
-                  className="flex-1 max-w-sm bg-blue-50 text-blue-600 hover:bg-blue-100 border-blue-200 py-6 text-base"
+                  className="flex-1 max-w-sm bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/50 border-blue-200 dark:border-blue-700 py-6 text-base"
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -945,7 +949,7 @@ const CSVImportDialog: React.FC<CSVImportDialogProps> = ({ templateFields, onImp
                   </svg>
                   Preview Mapping
                 </Button>
-                <Button 
+                <Button
                   onClick={processImport}
                   className="flex-1 max-w-sm bg-green-600 hover:bg-green-700 transition-all duration-200 shadow-sm hover:shadow font-medium text-base py-6"
                   disabled={isImporting}
@@ -968,14 +972,14 @@ const CSVImportDialog: React.FC<CSVImportDialogProps> = ({ templateFields, onImp
 
           {/* Mapped Data Preview - Make it larger */}
           {showMappedPreview && mappedPreview.length > 0 && (
-            <div className="border rounded-lg p-5 bg-slate-50 mt-5">
+            <div className="border rounded-lg p-5 bg-slate-50 dark:bg-slate-800/50 dark:border-slate-700 mt-5">
               <div className="flex items-center justify-between mb-3">
                 <h4 className="text-base font-semibold">Mapped Data Preview</h4>
-                <p className="text-sm text-gray-500">
+                <p className="text-sm text-gray-500 dark:text-gray-400">
                   Showing {mappedPreview.length} of {previewData.length} rows
                 </p>
               </div>
-              <p className="text-sm text-slate-600 mb-3">
+              <p className="text-sm text-slate-600 dark:text-slate-400 mb-3">
                 This is how your CSV data will be mapped to the template fields. Please verify before importing.
               </p>
               <div className="max-h-80 overflow-y-auto">
@@ -996,13 +1000,12 @@ const CSVImportDialog: React.FC<CSVImportDialogProps> = ({ templateFields, onImp
                     {mappedPreview.map((row, idx) => (
                       <TableRow key={idx}>
                         {templateFields.map(field => (
-                          <TableCell 
-                            key={`${idx}-${field.name}`} 
-                            className={`px-3 py-2 truncate max-w-[180px] ${
-                              field.required && (!row[field.name] || row[field.name].trim() === '') 
-                                ? 'bg-red-100' 
-                                : ''
-                            }`}
+                          <TableCell
+                            key={`${idx}-${field.name}`}
+                            className={`px-3 py-2 truncate max-w-[180px] ${field.required && (!row[field.name] || row[field.name].trim() === '')
+                              ? 'bg-red-100'
+                              : ''
+                              }`}
                           >
                             {row[field.name] || '-'}
                           </TableCell>
@@ -1012,29 +1015,29 @@ const CSVImportDialog: React.FC<CSVImportDialogProps> = ({ templateFields, onImp
                   </TableBody>
                 </Table>
               </div>
-              
+
               {/* Missing required fields warning */}
-              {mappedPreview.some(row => 
+              {mappedPreview.some(row =>
                 templateFields
                   .filter(field => field.required)
                   .some(field => !row[field.name] || row[field.name].trim() === '')
               ) && (
-                <Alert variant="destructive" className="mt-3">
-                  <AlertCircle className="h-5 w-5" />
-                  <AlertDescription className="text-sm">
-                    Some required fields are missing values. These rows may not import correctly.
-                  </AlertDescription>
-                </Alert>
-              )}
+                  <Alert variant="destructive" className="mt-3">
+                    <AlertCircle className="h-5 w-5" />
+                    <AlertDescription className="text-sm">
+                      Some required fields are missing values. These rows may not import correctly.
+                    </AlertDescription>
+                  </Alert>
+                )}
             </div>
           )}
 
           {/* Example template download button */}
           <div className="flex justify-center mt-5">
-            <Button 
-              variant="outline" 
-              onClick={generateExampleTemplate} 
-              size="sm" 
+            <Button
+              variant="outline"
+              onClick={generateExampleTemplate}
+              size="sm"
               className="text-teal-600 border-teal-200 hover:bg-teal-50 transition-all duration-200"
             >
               <Download className="mr-2 h-4 w-4" />
@@ -1064,8 +1067,8 @@ const LetterMode: React.FC = () => {
   const [isTemplateLoading, setIsTemplateLoading] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
-  const [templateCache, setTemplateCache] = useState<{[key: number]: TemplateField[]}>({});
-  
+  const [templateCache, setTemplateCache] = useState<{ [key: number]: TemplateField[] }>({});
+
   // Add state for template selection dialog
   const [templates, setTemplates] = useState<{ id: number; name: string; fields: string[] }[]>([]);
   const [filteredTemplates, setFilteredTemplates] = useState<{ id: number; name: string; fields: string[] }[]>([]);
@@ -1091,7 +1094,7 @@ const LetterMode: React.FC = () => {
     if (letterDetails.templateId && letterDetails.templateId > 0) {
       // We don't need to reset parameters here since we'll do it in fetchTemplateDetails
       // or when templateFields change
-      
+
       // Check if we already have this template in cache
       if (templateCache[letterDetails.templateId]) {
         setTemplateFields(templateCache[letterDetails.templateId]);
@@ -1105,17 +1108,17 @@ const LetterMode: React.FC = () => {
   useEffect(() => {
     if (templateFields.length > 0) {
       // Add this section to initialize letter params with required fields
-      const hasRecipientName = templateFields.some((field: TemplateField) => 
+      const hasRecipientName = templateFields.some((field: TemplateField) =>
         field.name === 'recipient_name'
       );
-      
+
       const requiredFieldsCopy = [...templateFields];
-      
+
       // If recipient_name isn't in the template fields but is required by the API, add it
       if (!hasRecipientName) {
         requiredFieldsCopy.push({ name: 'recipient_name', required: true });
       }
-      
+
       // Create default letter params with all required fields
       const defaultParams: LetterParams = {};
       requiredFieldsCopy.forEach((field: TemplateField) => {
@@ -1124,16 +1127,16 @@ const LetterMode: React.FC = () => {
           defaultParams[field.name] = '';
         }
       });
-      
+
       // Always initialize with the new default parameters
       setLetterDetails(prev => ({
         ...prev,
         lettersParams: [defaultParams]
       }));
-      
+
       // Reset currentLetterIndex to the first letter when loading a new template
       setCurrentLetterIndex(0);
-      
+
       // Show toast notification when template is loaded
       toast({
         description: `Template loaded successfully with ${templateFields.length} fields`,
@@ -1159,11 +1162,11 @@ const LetterMode: React.FC = () => {
 
   const fetchTemplateDetails = async (templateId: number) => {
     if (!letterDetails.apiKey || !templateId) return;
-    
+
     setIsTemplateLoading(true);
     setApiError(null);
     setIsLoading(true);
-  
+
     try {
       // Using proxy endpoint to avoid exposing API key in frontend
       const response = await fetch(`/api/letters/templates/${templateId}`, {
@@ -1173,11 +1176,11 @@ const LetterMode: React.FC = () => {
           'X-API-Key': letterDetails.apiKey,
         },
       });
-  
+
       if (!response.ok) {
         const errorData = await response.json();
         console.error('Template API error:', errorData);
-        
+
         // Handle specific error cases
         if (response.status === 401) {
           throw new Error('Invalid API key. Please check your API key and try again.');
@@ -1189,42 +1192,42 @@ const LetterMode: React.FC = () => {
           throw new Error(errorData.message || `Failed to fetch template: ${response.status}`);
         }
       }
-  
+
       const templateData = await response.json();
-      
+
       // Validate template data structure
       if (!templateData || !templateData.fields) {
         throw new Error('Invalid template data received from the API');
       }
-      
+
       // Handle both array of strings and array of objects
-      const requiredFields: TemplateField[] = Array.isArray(templateData.fields) 
+      const requiredFields: TemplateField[] = Array.isArray(templateData.fields)
         ? templateData.fields.map((field: any) => {
-            // If field is a string, convert to object
-            if (typeof field === 'string') {
-              return {
-                name: field,
-                required: true // Assume all fields are required by default
-              };
-            }
-            // If field is already an object with name and required properties
-            else if (field && typeof field === 'object' && 'name' in field) {
-              return {
-                name: field.name,
-                required: field.required !== false // Default to true if not specified
-              };
-            }
-            // Fallback for unexpected data
-            return null;
-          }).filter(Boolean) // Remove any null values
+          // If field is a string, convert to object
+          if (typeof field === 'string') {
+            return {
+              name: field,
+              required: true // Assume all fields are required by default
+            };
+          }
+          // If field is already an object with name and required properties
+          else if (field && typeof field === 'object' && 'name' in field) {
+            return {
+              name: field.name,
+              required: field.required !== false // Default to true if not specified
+            };
+          }
+          // Fallback for unexpected data
+          return null;
+        }).filter(Boolean) // Remove any null values
         : [];
-  
+
       console.log('Processed template fields:', requiredFields);
-      
+
       if (requiredFields.length === 0) {
         throw new Error('No valid fields found in the template');
       }
-      
+
       // Reset letter parameters when loading a template directly
       const defaultParams: LetterParams = {};
       requiredFields.forEach((field: TemplateField) => {
@@ -1232,39 +1235,39 @@ const LetterMode: React.FC = () => {
           defaultParams[field.name] = '';
         }
       });
-      
+
       // Update letterDetails with reset parameters and fields
       setLetterDetails(prev => ({
         ...prev,
         lettersParams: [defaultParams]
       }));
-      
+
       // Reset carousel position
       setCurrentLetterIndex(0);
-      
+
       // Update the template fields
       setTemplateFields(requiredFields);
-      
+
       // Cache the template fields for future use
       setTemplateCache(prev => ({
         ...prev,
         [templateId]: requiredFields
       }));
-      
+
     } catch (error) {
       console.error('Error fetching template:', error);
       setApiError(error instanceof Error ? error.message : 'Failed to fetch template details');
-      
+
       // Show error toast with more specific error message
       toast({
         title: 'Error Loading Template',
         description: error instanceof Error ? error.message : 'Failed to fetch template',
         variant: 'destructive',
       });
-      
+
       // Clear template fields on error
       setTemplateFields([]);
-      
+
       // Reset template ID if it's an invalid template
       if (error instanceof Error && error.message.includes('not found')) {
         setLetterDetails(prev => ({
@@ -1283,7 +1286,7 @@ const LetterMode: React.FC = () => {
       ...prev,
       [key]: value,
     }));
-    
+
     // Save API key to localStorage when it's updated
     if (key === 'apiKey' && typeof value === 'string') {
       localStorage.setItem('lettersGovSgApiKey', value);
@@ -1307,19 +1310,19 @@ const LetterMode: React.FC = () => {
   const addLetterParams = useCallback(() => {
     // Create new params object with default value for recipient_name
     const newParams: LetterParams = {};
-    
+
     // Add any other required fields from templateFields
     templateFields.forEach(field => {
       if (field.name && field.required) {
         newParams[field.name] = '';
       }
     });
-    
+
     // Ensure recipient_name is included if it's required
     if (!newParams.recipient_name && templateFields.some(field => field.name === 'recipient_name')) {
       newParams.recipient_name = '';
     }
-    
+
     setLetterDetails((prev) => ({
       ...prev,
       lettersParams: [...prev.lettersParams, newParams],
@@ -1328,16 +1331,16 @@ const LetterMode: React.FC = () => {
 
   const removeLetterParams = useCallback((index: number) => {
     if (letterDetails.lettersParams.length <= 1) return;
-    
+
     setLetterDetails((prev) => ({
       ...prev,
       lettersParams: prev.lettersParams.filter((_, i) => i !== index),
       // Also remove the corresponding recipient if recipients array exists
-      recipients: prev.recipients 
-        ? prev.recipients.filter((_, i) => i !== index) 
+      recipients: prev.recipients
+        ? prev.recipients.filter((_, i) => i !== index)
         : prev.recipients
     }));
-    
+
     // Show a toast notification to confirm deletion
     toast({
       description: "Letter and associated recipient removed.",
@@ -1348,7 +1351,7 @@ const LetterMode: React.FC = () => {
   // Updated to handle new import data structure { letterParams, recipients? }
   const handleCSVImport = useCallback((data: { letterParams: LetterParams[]; recipients?: string[] }) => {
     const { letterParams: importedParams, recipients: importedRecipients } = data;
-    
+
     // Ensure each imported params has all required fields from the template
     const updatedParams = importedParams.map(params => {
       const filteredParams: LetterParams = {};
@@ -1387,7 +1390,7 @@ const LetterMode: React.FC = () => {
       lettersParams: updatedParams,
       recipients: finalRecipients, // Update recipients state
     }));
-    
+
     setCurrentLetterIndex(0); // Go back to the first letter after import
 
     toast({
@@ -1399,7 +1402,7 @@ const LetterMode: React.FC = () => {
   const validatePayload = useCallback(() => {
     console.log('validatePayload called', { letterDetails });
     const { apiKey, templateId, lettersParams, notificationMethod, recipients } = letterDetails;
-    
+
     // Check for required fields
     if (!apiKey) {
       toast({
@@ -1487,7 +1490,7 @@ const LetterMode: React.FC = () => {
         // Support both local SG format (8/9XXXXXXX) and international format (+XX...)
         return !phone.match(/^[89]\d{7}$/) && !phone.match(/^\+\d{6,15}$/);
       });
-      
+
       if (invalidPhones.length > 0) {
         toast({
           title: 'Invalid Phone Numbers',
@@ -1599,12 +1602,12 @@ const LetterMode: React.FC = () => {
         console.log('validatePayload failed, exiting generateBulkLetters');
         return;
       }
-      
+
       setIsSending(true);
       setApiError(null);
-  
+
       const { apiKey, templateId, lettersParams, notificationMethod, recipients } = letterDetails;
-  
+
       const payload: any = {
         templateId,
         lettersParams,
@@ -1612,13 +1615,13 @@ const LetterMode: React.FC = () => {
         notificationMethod,
         recipients,
       };
-  
+
       console.log('Sending payload:', JSON.stringify(payload, null, 2));
-  
+
       // Using proxy endpoint to avoid exposing API key in frontend
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
-      
+
       const response = await fetch(`${API_PROXY_URL}/bulks`, {
         method: 'POST',
         headers: {
@@ -1628,33 +1631,33 @@ const LetterMode: React.FC = () => {
         body: JSON.stringify(payload),
         signal: controller.signal
       });
-      
+
       clearTimeout(timeoutId);
-  
+
       if (!response.ok) {
         const errorData = await response.json();
         console.log("API error details:", errorData);
-        
+
         // Check for rate limit errors
         if (response.status === 429) {
           throw new Error("Rate limit exceeded. Please wait a moment before trying again.");
         }
-        
+
         // Handle specific error messages from the API
         if (errorData.errors && Array.isArray(errorData.errors)) {
-          const errorMessages = errorData.errors.map((err: any) => 
+          const errorMessages = errorData.errors.map((err: any) =>
             `${err.id !== undefined ? `Item ${err.id}: ` : ''}${err.message}`
           ).join('\n');
-          
+
           throw new Error(`${errorData.message}\n${errorMessages}`);
         }
-        
+
         throw new Error(errorData.message || `Request failed with status ${response.status}`);
       }
-  
+
       const { batchId } = await response.json();
       console.log('Success response:', { batchId });
-  
+
       toast({
         title: lettersParams.length === 1 ? 'Letter Successfully Generated' : 'Letters Successfully Generated',
         description: `Batch ID: ${batchId}. ${lettersParams.length} ${lettersParams.length === 1 ? 'letter' : 'letters'} generated successfully.`,
@@ -1664,24 +1667,24 @@ const LetterMode: React.FC = () => {
       });
     } catch (error) {
       console.error('Error generating bulk letters:', error);
-      
+
       let errorMessage = 'Failed to generate letters';
       let errorTitle = 'Error';
-      
+
       if (error instanceof Error) {
         errorMessage = error.message;
-        
+
         if (error.name === 'AbortError') {
           errorMessage = 'Request timed out. Please try again.';
         }
-        
+
         // Check for common error patterns in the message
         if (errorMessage.toLowerCase().includes('rate limit')) {
           errorTitle = 'Rate Limit Exceeded';
           errorMessage = 'You have reached the API rate limit. Please wait a moment before trying again.';
         }
       }
-      
+
       setApiError(errorMessage);
       toast({
         title: errorTitle,
@@ -1702,7 +1705,7 @@ const LetterMode: React.FC = () => {
 
   // Add navigation functions for the carousel
   const goToNextLetter = useCallback(() => {
-    setCurrentLetterIndex((prev) => 
+    setCurrentLetterIndex((prev) =>
       prev < letterDetails.lettersParams.length - 1 ? prev + 1 : prev
     );
   }, [letterDetails.lettersParams.length]);
@@ -1740,7 +1743,7 @@ const LetterMode: React.FC = () => {
   // Add a function to delete selected letters
   const deleteSelectedLetters = useCallback(() => {
     if (selectedLetters.length === 0) return;
-    
+
     // Use a Set for O(1) lookups
     const toDelete = new Set(selectedLetters);
     const updatedParams = letterDetails.lettersParams.filter((_, idx) => !toDelete.has(idx));
@@ -1810,7 +1813,7 @@ const LetterMode: React.FC = () => {
     if (e.key === 'Enter') {
       handleGoToLetter();
     }
-  }, [handleGoToLetter]); 
+  }, [handleGoToLetter]);
 
 
 
@@ -1825,7 +1828,7 @@ const LetterMode: React.FC = () => {
     }));
     setTemplateFields([]); // Clear template fields
     setApiError(null); // Clear any API errors
-    
+
     toast({
       description: "Form cleared (API key retained).",
     });
@@ -1844,7 +1847,7 @@ const LetterMode: React.FC = () => {
 
     setIsTemplateListLoading(true);
     setTemplateSearchTerm(''); // Reset search term when fetching new templates
-    
+
     try {
       // Using proxy endpoint to avoid exposing API key in frontend
       const response = await fetch(`${API_PROXY_URL}/templates`, {
@@ -1861,7 +1864,7 @@ const LetterMode: React.FC = () => {
       }
 
       const data = await response.json();
-      
+
       // Handle the response format according to the API documentation
       if (data && Array.isArray(data.templates)) {
         // Map the templates to the format expected by our component
@@ -1870,10 +1873,10 @@ const LetterMode: React.FC = () => {
           name: template.name,
           fields: template.fields
         }));
-        
+
         setTemplates(formattedTemplates);
         setFilteredTemplates(formattedTemplates); // Initialize filtered templates with all templates
-        
+
         if (formattedTemplates.length === 0) {
           toast({
             description: "No templates found for this API key.",
@@ -1911,23 +1914,23 @@ const LetterMode: React.FC = () => {
   // Add function to handle template search
   const handleTemplateSearch = useCallback((searchTerm: string) => {
     setTemplateSearchTerm(searchTerm);
-    
+
     if (!searchTerm.trim()) {
       // If search term is empty, show all templates
       setFilteredTemplates(templates);
       return;
     }
-    
+
     // Filter templates based on search term
     const normalizedSearchTerm = searchTerm.toLowerCase().trim();
-    const filtered = templates.filter(template => 
-      template.name.toLowerCase().includes(normalizedSearchTerm) || 
+    const filtered = templates.filter(template =>
+      template.name.toLowerCase().includes(normalizedSearchTerm) ||
       template.id.toString().includes(normalizedSearchTerm) ||
-      (template.fields && template.fields.some(field => 
+      (template.fields && template.fields.some(field =>
         field.toLowerCase().includes(normalizedSearchTerm)
       ))
     );
-    
+
     setFilteredTemplates(filtered);
   }, [templates]);
 
@@ -1979,7 +1982,7 @@ const LetterMode: React.FC = () => {
             <h3 className="text-xl font-semibold text-purple-800">
               {selectionMode ? 'Select Letters to Delete' : 'Letter Management'}
             </h3>
-            
+
             <div className="flex items-center gap-2">
               {selectionMode ? (
                 <>
@@ -2005,7 +2008,7 @@ const LetterMode: React.FC = () => {
                       </>
                     )}
                   </Button>
-                  
+
                   <Button
                     variant="destructive"
                     size="sm"
@@ -2018,12 +2021,12 @@ const LetterMode: React.FC = () => {
                     </svg>
                     Delete ({selectedLetters.length})
                   </Button>
-                  
+
                   <Button
                     variant="ghost"
                     size="sm"
                     onClick={exitSelectionMode}
-                    className="flex items-center text-gray-600"
+                    className="flex items-center text-gray-600 dark:text-gray-400"
                   >
                     Cancel
                   </Button>
@@ -2042,7 +2045,7 @@ const LetterMode: React.FC = () => {
                     </svg>
                     Manage Letters
                   </Button>
-                  
+
                   <Button
                     variant="outline"
                     onClick={addLetterParams}
@@ -2057,50 +2060,50 @@ const LetterMode: React.FC = () => {
               )}
             </div>
           </div>
-          
+
           {/* Letter Count Stats */}
-          <div className="flex items-center justify-between bg-gray-50 p-3 rounded-lg border">
+          <div className="flex items-center justify-between bg-gray-50 dark:bg-gray-800/50 p-3 rounded-lg border dark:border-gray-700">
             <div className="flex items-center gap-3">
-              <div className="p-2 bg-purple-100 rounded-md">
+              <div className="p-2 bg-purple-100 dark:bg-purple-900/40 rounded-md">
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                 </svg>
               </div>
               <div>
-                <div className="text-sm font-medium text-gray-600">Total Letters</div>
-                <div className="text-2xl font-bold text-purple-700">{letterDetails.lettersParams.length}</div>
+                <div className="text-sm font-medium text-gray-600 dark:text-gray-400">Total Letters</div>
+                <div className="text-2xl font-bold text-purple-700 dark:text-purple-400">{letterDetails.lettersParams.length}</div>
               </div>
             </div>
-            
+
             <div className="flex items-center gap-3">
-              <div className="p-2 bg-blue-100 rounded-md">
+              <div className="p-2 bg-blue-100 dark:bg-blue-900/40 rounded-md">
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
                 </svg>
               </div>
               <div>
-                <div className="text-sm font-medium text-gray-600">Recipients</div>
-                <div className="text-2xl font-bold text-blue-700">{letterDetails.recipients?.length || 0}</div>
+                <div className="text-sm font-medium text-gray-600 dark:text-gray-400">Recipients</div>
+                <div className="text-2xl font-bold text-blue-700 dark:text-blue-400">{letterDetails.recipients?.length || 0}</div>
               </div>
             </div>
-            
+
             {currentLetterIndex !== null && (
               <div className="flex items-center gap-3">
-                <div className="p-2 bg-amber-100 rounded-md">
+                <div className="p-2 bg-amber-100 dark:bg-amber-900/40 rounded-md">
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                     <path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                   </svg>
                 </div>
                 <div>
-                  <div className="text-sm font-medium text-gray-600">Current Letter</div>
-                  <div className="text-2xl font-bold text-amber-700">{currentLetterIndex + 1}</div>
+                  <div className="text-sm font-medium text-gray-600 dark:text-gray-400">Current Letter</div>
+                  <div className="text-2xl font-bold text-amber-700 dark:text-amber-400">{currentLetterIndex + 1}</div>
                 </div>
               </div>
             )}
           </div>
         </div>
-        
+
         {/* Carousel Navigation and Counter */}
         <div className="flex items-center justify-between mb-4">
           <Button
@@ -2108,19 +2111,19 @@ const LetterMode: React.FC = () => {
             size="icon"
             onClick={goToPrevLetter}
             disabled={currentLetterIndex === 0 || isLoading || isSending}
-            className="rounded-full w-14 h-14 flex items-center justify-center border-gray-300 hover:bg-gray-100 hover:border-gray-400 transition-all duration-200 shadow-sm hover:shadow-md active:shadow-inner"
+            className="rounded-full w-14 h-14 flex items-center justify-center border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-800 hover:border-gray-400 dark:hover:border-gray-500 transition-all duration-200 shadow-sm hover:shadow-md active:shadow-inner"
           >
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="h-7 w-7 text-gray-600">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="h-7 w-7 text-gray-600 dark:text-gray-400">
               <polyline points="15 18 9 12 15 6" />
             </svg>
           </Button>
-          
+
           {/* Direct Navigation Input */}
-          <div className="flex items-center gap-2 bg-gray-100 px-4 py-2 rounded-full">
+          <div className="flex items-center gap-2 bg-gray-100 dark:bg-gray-800 px-4 py-2 rounded-full">
             <span className="text-base font-medium whitespace-nowrap">
               Letter
             </span>
-            <Input 
+            <Input
               type="number"
               min="1"
               max={letterDetails.lettersParams.length}
@@ -2133,9 +2136,9 @@ const LetterMode: React.FC = () => {
             <span className="text-base font-medium whitespace-nowrap">
               of {letterDetails.lettersParams.length}
             </span>
-            <Button 
-              size="sm" 
-              variant="ghost" 
+            <Button
+              size="sm"
+              variant="ghost"
               onClick={handleGoToLetter}
               className="p-1 h-7 text-purple-600 hover:bg-purple-100"
               disabled={isLoading || isSending || letterDetails.lettersParams.length <= 1}
@@ -2146,37 +2149,36 @@ const LetterMode: React.FC = () => {
               </svg>
             </Button>
           </div>
-          
+
           <Button
             variant="outline"
             size="icon"
             onClick={goToNextLetter}
             disabled={currentLetterIndex === letterDetails.lettersParams.length - 1 || isLoading || isSending}
-            className="rounded-full w-14 h-14 flex items-center justify-center border-gray-300 hover:bg-gray-100 hover:border-gray-400 transition-all duration-200 shadow-sm hover:shadow-md active:shadow-inner"
+            className="rounded-full w-14 h-14 flex items-center justify-center border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-800 hover:border-gray-400 dark:hover:border-gray-500 transition-all duration-200 shadow-sm hover:shadow-md active:shadow-inner"
           >
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="h-7 w-7 text-gray-600">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="h-7 w-7 text-gray-600 dark:text-gray-400">
               <polyline points="9 18 15 12 9 6" />
             </svg>
           </Button>
         </div>
-        
+
         {/* Carousel Content - Only display current letter */}
         <div className="carousel-container relative">
           {letterDetails.lettersParams.map((params, index) => (
             <div
               key={`letter-params-${index}`}
-              className={`carousel-item transition-all duration-500 ${
-                index === currentLetterIndex 
-                  ? 'block opacity-100 translate-x-0' 
-                  : 'hidden opacity-0 absolute translate-x-full'
-              }`}
+              className={`carousel-item transition-all duration-500 ${index === currentLetterIndex
+                ? 'block opacity-100 translate-x-0'
+                : 'hidden opacity-0 absolute translate-x-full'
+                }`}
             >
               <Card className={`border ${selectionMode && selectedLetters.includes(index) ? 'border-blue-400 bg-blue-50' : 'border-gray-200'} shadow-lg hover:shadow-xl transition-all duration-300`}>
                 <CardHeader className={`py-4 px-6 flex flex-row items-center justify-between space-y-0 bg-gradient-to-r ${selectionMode && selectedLetters.includes(index) ? 'from-blue-50 to-blue-100' : 'from-purple-50 to-indigo-50'} border-b`}>
                   {selectionMode ? (
                     <div className="flex items-center">
-                      <Checkbox 
-                        checked={selectedLetters.includes(index)} 
+                      <Checkbox
+                        checked={selectedLetters.includes(index)}
                         onCheckedChange={() => toggleLetterSelection(index)}
                         className="mr-3 h-5 w-5"
                       />
@@ -2200,7 +2202,7 @@ const LetterMode: React.FC = () => {
                       {Object.keys(params).filter(key => params[key]).length} / {Object.keys(params).length} fields filled
                     </span>
                     {!selectionMode && (
-                      <div className="flex items-center gap-2"> {/* Encapsulate buttons in a div */} 
+                      <div className="flex items-center gap-2"> {/* Encapsulate buttons in a div */}
                         <Button
                           variant="outline"
                           size="sm"
@@ -2240,9 +2242,9 @@ const LetterMode: React.FC = () => {
                         This letter will be sent to recipient #{index + 1}
                       </span>
                     </div>
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
+                    <Button
+                      variant="ghost"
+                      size="sm"
                       className="p-1 h-7 text-amber-600 hover:text-amber-800 hover:bg-amber-100"
                       onClick={() => {
                         // Scroll to corresponding recipient in the recipients section
@@ -2264,17 +2266,17 @@ const LetterMode: React.FC = () => {
                       View recipient
                     </Button>
                   </div>
-                  
+
                   <div className="grid gap-6">
                     {templateFields.map((field, fieldIndex) => {
                       // Ensure field.name exists and is a string
                       const fieldName = field?.name || '';
                       if (!fieldName) return null;
-                      
+
                       return (
                         <div key={`field-${index}-${fieldIndex}-${fieldName}`} className="space-y-2">
                           <Label htmlFor={`${index}-${fieldName}`} className="flex items-center text-base font-medium">
-                            <span>{fieldName}</span> 
+                            <span>{fieldName}</span>
                             {field.required && <span className="text-red-500 ml-1">*</span>}
                           </Label>
                           <div className="relative">
@@ -2294,7 +2296,7 @@ const LetterMode: React.FC = () => {
                               </div>
                             )}
                             <div className="text-right mt-1">
-                              <span className="text-xs text-gray-500">
+                              <span className="text-xs text-gray-500 dark:text-gray-400">
                                 {(params[fieldName]?.length || 0)} / 1000 characters
                               </span>
                             </div>
@@ -2302,13 +2304,13 @@ const LetterMode: React.FC = () => {
                         </div>
                       );
                     })}
-                    
+
                     {/* Integrated Recipient Input */}
                     <div className="pt-6 mt-6 border-t border-purple-100 bg-purple-50/30 p-5 rounded-b-lg -m-6 mt-6 px-6 pb-6">
                       <Label htmlFor={`recipient-${index}`} className="flex items-center text-base font-semibold text-purple-700 mb-2">
-                        <span>Recipient for Letter {index + 1}</span> 
-                        {letterDetails.notificationMethod && <span className="text-red-500 ml-1">*</span>} 
-                         <span className="ml-2 text-xs font-normal text-gray-500">({letterDetails.notificationMethod || 'Select Method Above'})</span>
+                        <span>Recipient for Letter {index + 1}</span>
+                        {letterDetails.notificationMethod && <span className="text-red-500 ml-1">*</span>}
+                        <span className="ml-2 text-xs font-normal text-gray-500 dark:text-gray-400">({letterDetails.notificationMethod || 'Select Method Above'})</span>
                       </Label>
                       <Input
                         id={`recipient-${index}`}
@@ -2332,22 +2334,22 @@ const LetterMode: React.FC = () => {
                         className={`text-base p-4 transition-all duration-200 ${!letterDetails.recipients?.[index] && letterDetails.notificationMethod ? 'border-red-200 focus:ring-red-500' : 'focus:ring-purple-500'}`}
                         disabled={isLoading || isSending || selectionMode || !letterDetails.notificationMethod}
                       />
-                       {/* Validation/Hint Text */}
+                      {/* Validation/Hint Text */}
                       <div className="mt-1.5 text-xs min-h-[1.25rem]">
                         {!letterDetails.recipients?.[index] && letterDetails.notificationMethod ? (
                           <p className="text-red-600 flex items-center">
-                            <AlertCircle className="h-3.5 w-3.5 mr-1"/> Recipient is required.
+                            <AlertCircle className="h-3.5 w-3.5 mr-1" /> Recipient is required.
                           </p>
                         ) : letterDetails.notificationMethod === 'SMS' ? (
-                          <p className="text-gray-500 flex items-center">
-                            <Info className="h-3.5 w-3.5 mr-1 flex-shrink-0"/> Format: +65XXXXXXXX or 8/9XXXXXXX
+                          <p className="text-gray-500 dark:text-gray-400 flex items-center">
+                            <Info className="h-3.5 w-3.5 mr-1 flex-shrink-0" /> Format: +65XXXXXXXX or 8/9XXXXXXX
                           </p>
                         ) : letterDetails.notificationMethod === 'EMAIL' ? (
-                          <p className="text-gray-500 flex items-center">
-                            <Info className="h-3.5 w-3.5 mr-1 flex-shrink-0"/> Format: user@example.com
+                          <p className="text-gray-500 dark:text-gray-400 flex items-center">
+                            <Info className="h-3.5 w-3.5 mr-1 flex-shrink-0" /> Format: user@example.com
                           </p>
                         ) : (
-                          <p className="text-gray-500">Select notification method above.</p>
+                          <p className="text-gray-500 dark:text-gray-400">Select notification method above.</p>
                         )}
                       </div>
                     </div>
@@ -2357,24 +2359,23 @@ const LetterMode: React.FC = () => {
             </div>
           ))}
         </div>
-        
+
         {/* Carousel Indicators - Pagination Dots */}
         <div className="flex justify-center gap-2 mt-6">
           {letterDetails.lettersParams.map((_, index) => (
             <button
               key={`indicator-${index}`}
-              className={`transition-all duration-300 ${
-                index === currentLetterIndex
-                  ? 'bg-purple-600 w-8 h-2 rounded-full'
-                  : 'bg-gray-300 hover:bg-gray-400 w-2 h-2 rounded-full'
-              }`}
+              className={`transition-all duration-300 ${index === currentLetterIndex
+                ? 'bg-purple-600 w-8 h-2 rounded-full'
+                : 'bg-gray-300 dark:bg-gray-600 hover:bg-gray-400 dark:hover:bg-gray-500 w-2 h-2 rounded-full'
+                }`}
               onClick={() => goToLetter(index)}
               aria-label={`Go to letter ${index + 1}`}
               disabled={isLoading || isSending}
             />
           ))}
         </div>
-        
+
         {/* Add Letter Button - only show when not in selection mode */}
         {!selectionMode && (
           <div className="flex justify-center mt-6">
@@ -2414,11 +2415,11 @@ const LetterMode: React.FC = () => {
             <DialogTitle className="text-2xl font-bold text-blue-800">Letter Preview</DialogTitle>
             <DialogDescription>This is how your letter will look based on the current parameters.</DialogDescription>
           </DialogHeader>
-          <div className="flex-grow overflow-y-auto border rounded-lg my-4 p-2 bg-gray-100">
+          <div className="flex-grow overflow-y-auto border rounded-lg my-4 p-2 bg-gray-100 dark:bg-gray-800/50 dark:border-gray-700">
             {isPreviewLoading ? (
               <div className="flex justify-center items-center h-full">
                 <Loader2 className="animate-spin h-12 w-12 text-blue-500" />
-                <span className="ml-4 text-lg text-gray-600">Generating Preview...</span>
+                <span className="ml-4 text-lg text-gray-600 dark:text-gray-400">Generating Preview...</span>
               </div>
             ) : previewError ? (
               <Alert variant="destructive" className="m-4">
@@ -2429,11 +2430,11 @@ const LetterMode: React.FC = () => {
               <iframe
                 srcDoc={previewHtml}
                 title="Letter Preview"
-                className="w-full h-full min-h-[600px] border-0 bg-white shadow-inner"
+                className="w-full h-full min-h-[600px] border-0 bg-white dark:bg-gray-900 shadow-inner"
                 sandbox="allow-same-origin" // Restrict iframe capabilities for security
               />
             ) : (
-              <div className="flex justify-center items-center h-full text-gray-500">
+              <div className="flex justify-center items-center h-full text-gray-500 dark:text-gray-400">
                 No preview available.
               </div>
             )}
@@ -2445,15 +2446,15 @@ const LetterMode: React.FC = () => {
       <div className="container mx-auto py-12 px-4 max-w-6xl"> {/* Increased max-width */}
         <div className="flex flex-col items-center mb-10"> {/* Increased bottom margin */}
           <h1 className="text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-purple-600 to-blue-600 mb-3">Bulk Letter Generation</h1> {/* Larger text */}
-          <p className="text-lg text-gray-600 max-w-2xl text-center">Streamline your letter sending process with CSV imports and API integration.</p> {/* Larger text */}
+          <p className="text-lg text-gray-600 dark:text-gray-400 max-w-2xl text-center">Streamline your letter sending process with CSV imports and API integration.</p> {/* Larger text */}
         </div>
-        
+
         {apiError && (
           <Alert variant="destructive" className="mb-6 animate-slideDown shadow-md">
             <AlertDescription className="whitespace-pre-line">{apiError}</AlertDescription>
           </Alert>
         )}
-        
+
         <div className="space-y-10"> {/* Increased spacing between sections */}
           {/* Section 1: API Configuration */}
           <Card className="border-gray-200 shadow-lg overflow-hidden transition-all hover:shadow-xl">
@@ -2508,33 +2509,33 @@ const LetterMode: React.FC = () => {
                                 value={templateSearchTerm}
                                 onChange={(e) => handleTemplateSearch(e.target.value)}
                               />
-                              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-400 absolute left-3 top-1/2 transform -translate-y-1/2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-400 dark:text-gray-500 absolute left-3 top-1/2 transform -translate-y-1/2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                               </svg>
                             </div>
-                            
+
                             <div className="max-h-[400px] overflow-y-auto border rounded-md shadow-inner">
                               {filteredTemplates.length > 0 ? (
                                 filteredTemplates.map((template) => (
-                                  <div 
+                                  <div
                                     key={template.id}
                                     className="p-4 border-b last:border-b-0 hover:bg-blue-50 cursor-pointer flex justify-between items-center transition-colors duration-200"
                                     onClick={() => {
                                       const templateId = template.id;
-                                      
+
                                       // Reset state for the new template
                                       setCurrentLetterIndex(0);
                                       setTemplateFields([]); // Clear template fields temporarily
-                                      
+
                                       // Update the template ID
                                       setLetterDetails((prev) => ({
                                         ...prev,
                                         templateId: templateId,
                                         lettersParams: [{}], // Reset to empty parameters
                                       }));
-                                      
+
                                       setIsTemplateDialogOpen(false); // Close dialog after selection
-                                      
+
                                       // Automatically load the template after selection
                                       if (templateId) {
                                         fetchTemplateDetails(templateId);
@@ -2543,9 +2544,9 @@ const LetterMode: React.FC = () => {
                                   >
                                     <div>
                                       <div className="font-semibold text-lg">{template.name}</div>
-                                      <div className="text-sm text-gray-600 mt-1">ID: {template.id}</div>
+                                      <div className="text-sm text-gray-600 dark:text-gray-400 mt-1">ID: {template.id}</div>
                                       {template.fields && template.fields.length > 0 && (
-                                        <div className="text-xs text-gray-500 mt-1 flex items-center">
+                                        <div className="text-xs text-gray-500 dark:text-gray-400 mt-1 flex items-center">
                                           <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                                           </svg>
@@ -2554,8 +2555,8 @@ const LetterMode: React.FC = () => {
                                         </div>
                                       )}
                                     </div>
-                                    <Button 
-                                      variant="default" 
+                                    <Button
+                                      variant="default"
                                       size="sm"
                                       className="bg-blue-500 hover:bg-blue-600 transition-colors duration-200"
                                     >
@@ -2565,26 +2566,26 @@ const LetterMode: React.FC = () => {
                                 ))
                               ) : (
                                 <div className="p-8 text-center">
-                                  <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gray-100 mb-4">
-                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                  <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gray-100 dark:bg-gray-700 mb-4">
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-gray-500 dark:text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                                     </svg>
                                   </div>
-                                  <p className="text-lg font-medium text-gray-900">No templates match your search</p>
-                                  <p className="text-sm text-gray-500 mt-2">Try adjusting your search or check that you have access to templates.</p>
+                                  <p className="text-lg font-medium text-gray-900 dark:text-gray-100">No templates match your search</p>
+                                  <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">Try adjusting your search or check that you have access to templates.</p>
                                 </div>
                               )}
                             </div>
                           </div>
                         ) : (
                           <div className="text-center py-12">
-                            <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-gray-100 mb-4">
-                              <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-gray-100 dark:bg-gray-700 mb-4">
+                              <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10 text-gray-500 dark:text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                               </svg>
                             </div>
-                            <p className="text-xl font-medium text-gray-900">No templates found</p>
-                            <p className="text-base text-gray-500 mt-2 max-w-md mx-auto">
+                            <p className="text-xl font-medium text-gray-900 dark:text-gray-100">No templates found</p>
+                            <p className="text-base text-gray-500 dark:text-gray-400 mt-2 max-w-md mx-auto">
                               Make sure you've entered the correct API key and that you have access to templates.
                             </p>
                           </div>
@@ -2592,12 +2593,12 @@ const LetterMode: React.FC = () => {
                       </div>
                     </DialogContent>
                   </Dialog>
-                  
+
                   <Button
                     variant="outline"
                     onClick={handleClearAll}
                     disabled={isLoading || isSending}
-                    className="border-gray-300 hover:bg-gray-100 transition-all duration-200 flex items-center shadow-sm"
+                    className="border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-800 transition-all duration-200 flex items-center shadow-sm"
                   >
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -2610,9 +2611,36 @@ const LetterMode: React.FC = () => {
             <CardContent className="p-8"> {/* Increased padding */}
               <div className="grid gap-8 md:grid-cols-2"> {/* Increased gap */}
                 <div className="space-y-3"> {/* Increased spacing */}
-                  <Label htmlFor="apiKey" className="text-base font-semibold text-gray-700 flex items-center">
+                  <Label htmlFor="apiKey" className="text-base font-semibold text-gray-700 dark:text-gray-300 flex items-center">
                     <span>API Key</span>
                     <span className="ml-2 inline-flex items-center rounded-md bg-blue-50 px-2 py-1 text-xs font-medium text-blue-700 ring-1 ring-inset ring-blue-700/10">Required</span>
+                    {/* Tooltip to guide users to set API key first */}
+                    <TooltipProvider delayDuration={100}>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <span className="ml-2 inline-flex items-center cursor-help">
+                            <span className="relative flex h-3 w-3">
+                              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                              <span className="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
+                            </span>
+                            <span className="ml-1.5 text-xs font-medium text-green-600 animate-pulse">Start here!</span>
+                          </span>
+                        </TooltipTrigger>
+                        <TooltipContent side="right" className="max-w-xs bg-gradient-to-r from-green-50 to-emerald-50 border-green-200 text-green-800 p-4 shadow-lg">
+                          <div className="flex items-start gap-2">
+                            <div className="p-1 bg-green-100 rounded-full flex-shrink-0">
+                              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
+                              </svg>
+                            </div>
+                            <div>
+                              <p className="font-semibold text-green-800 mb-1">👋 Enter your API key first!</p>
+                              <p className="text-sm text-green-700">Your API key is needed to access templates and generate letters. Get it from LetterSG → API Integration.</p>
+                            </div>
+                          </div>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
                   </Label>
                   <div className="relative">
                     <Input
@@ -2621,10 +2649,10 @@ const LetterMode: React.FC = () => {
                       value={letterDetails.apiKey}
                       onChange={(e) => updateLetterDetail('apiKey', e.target.value)}
                       disabled={isLoading || isSending}
-                      className="pl-10 pr-12 py-6 text-base border-gray-300 hover:bg-gray-50 transition-all duration-200 shadow-sm"
+                      className="pl-10 pr-12 py-6 text-base border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-all duration-200 shadow-sm"
                     />
                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-400 dark:text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
                       </svg>
                     </div>
@@ -2653,10 +2681,10 @@ const LetterMode: React.FC = () => {
                         </li>
                       </ol>
                       <div className="mt-4 pt-3 border-t border-blue-200 flex items-center justify-between">
-                        <a 
-                          href="https://guide.letters.gov.sg/developer-guide/api-documentation" 
-                          target="_blank" 
-                          rel="noopener noreferrer" 
+                        <a
+                          href="https://guide.letters.gov.sg/developer-guide/api-documentation"
+                          target="_blank"
+                          rel="noopener noreferrer"
                           className="inline-flex items-center text-xs font-medium text-blue-700 hover:text-blue-900 hover:underline"
                         >
                           <FileText className="h-3.5 w-3.5 mr-1.5" />
@@ -2668,7 +2696,7 @@ const LetterMode: React.FC = () => {
                   </div>
                 </div>
                 <div className="space-y-3"> {/* Increased spacing */}
-                  <Label htmlFor="templateId" className="text-base font-semibold text-gray-700 flex items-center">
+                  <Label htmlFor="templateId" className="text-base font-semibold text-gray-700 dark:text-gray-300 flex items-center">
                     <span>Template ID</span>
                     <span className="ml-2 inline-flex items-center rounded-md bg-blue-50 px-2 py-1 text-xs font-medium text-blue-700 ring-1 ring-inset ring-blue-700/10">Required</span>
                   </Label>
@@ -2680,7 +2708,7 @@ const LetterMode: React.FC = () => {
                         value={letterDetails.templateId?.toString() || ''}
                         onChange={(e) => updateLetterDetail('templateId', parseInt(e.target.value) || null)}
                         disabled={isLoading || isSending}
-                        className={letterDetails.templateId ? "py-6 text-base bg-green-100 text-green-700 hover:bg-green-200 border-green-300 transition-all duration-200 shadow-sm flex-shrink-0" : "py-6 text-base border-gray-300 hover:bg-gray-50 transition-all duration-200 shadow-sm flex-shrink-0"} /* Adjusted styling */
+                        className={letterDetails.templateId ? "py-6 text-base bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 hover:bg-green-200 dark:hover:bg-green-900/50 border-green-300 dark:border-green-700 transition-all duration-200 shadow-sm flex-shrink-0" : "py-6 text-base border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-all duration-200 shadow-sm flex-shrink-0"} /* Adjusted styling */
                       />
                       {isTemplateLoading && (
                         <div className="absolute inset-y-0 left-0 pl-3 flex items-center">
@@ -2706,20 +2734,20 @@ const LetterMode: React.FC = () => {
                   </div>
                 </div>
               </div>
-              
+
               {/* Add CSV Import functionality here */}
-              <div className="mt-8 border-t pt-6 border-gray-200">
+              <div className="mt-8 border-t pt-6 border-gray-200 dark:border-gray-700">
                 <div className="flex flex-col gap-4">
-                  <h3 className="text-lg font-semibold text-gray-700">Data Import Options</h3>
+                  <h3 className="text-lg font-semibold text-gray-700 dark:text-gray-300">Data Import Options</h3>
                   <div className="flex flex-wrap gap-3">
                     {/* CSV Import Dialog for template fields */}
                     {templateFields.length > 0 && (
-                      <CSVImportDialog 
-                        templateFields={templateFields} 
-                        onImport={handleCSVImport} 
+                      <CSVImportDialog
+                        templateFields={templateFields}
+                        onImport={handleCSVImport}
                       />
                     )}
-                    
+
                     {/* Recipients Import Dialog (if it exists) */}
                     {templateFields.length > 0 && letterDetails.notificationMethod && (
                       <div>
@@ -2732,13 +2760,13 @@ const LetterMode: React.FC = () => {
                             });
                           }}
                         />
-                        <p className="mt-1 text-xs text-gray-500">
+                        <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
                           Import {letterDetails.lettersParams.length} {letterDetails.notificationMethod === 'SMS' ? 'phone numbers' : 'email addresses'} (one for each letter)
                         </p>
                       </div>
                     )}
                   </div>
-                  <p className="text-sm text-gray-500 mt-2">
+                  <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
                     First select a template above, then use these options to bulk import data for your letters.
                   </p>
                 </div>
@@ -2751,9 +2779,9 @@ const LetterMode: React.FC = () => {
             <Card className="border-gray-200 shadow-lg overflow-hidden transition-all hover:shadow-xl">
               <CardHeader className="bg-gradient-to-r from-purple-50 to-pink-50 px-6 py-5 border-b border-purple-100"> {/* Added border */}
                 <h2 className="text-2xl font-semibold text-purple-800 flex items-center">
-                   <span className="mr-3 flex h-8 w-8 items-center justify-center rounded-full bg-purple-600 text-white text-lg font-bold">2</span>
-                   Letter Details & Recipients
-                 </h2>
+                  <span className="mr-3 flex h-8 w-8 items-center justify-center rounded-full bg-purple-600 text-white text-lg font-bold">2</span>
+                  Letter Details & Recipients
+                </h2>
                 <p className="text-purple-600 text-sm mt-1 ml-11">Define parameters and recipient for each letter</p>
               </CardHeader>
               <CardContent className="p-8"> {/* Increased padding */}
@@ -2766,11 +2794,11 @@ const LetterMode: React.FC = () => {
           {templateFields.length > 0 && (
             <Card className="border-gray-200 shadow-lg overflow-hidden transition-all hover:shadow-xl">
               <CardHeader className="bg-gradient-to-r from-teal-50 to-cyan-50 px-6 py-5 border-b border-teal-100"> {/* Added border */}
-                 <h2 className="text-2xl font-semibold text-teal-800 flex items-center">
-                   <span className="mr-3 flex h-8 w-8 items-center justify-center rounded-full bg-teal-600 text-white text-lg font-bold">3</span>
-                   Notification & Sending
-                 </h2>
-                 <p className="text-teal-600 text-sm mt-1 ml-11">Choose notification method and send letters</p>
+                <h2 className="text-2xl font-semibold text-teal-800 flex items-center">
+                  <span className="mr-3 flex h-8 w-8 items-center justify-center rounded-full bg-teal-600 text-white text-lg font-bold">3</span>
+                  Notification & Sending
+                </h2>
+                <p className="text-teal-600 text-sm mt-1 ml-11">Choose notification method and send letters</p>
               </CardHeader>
               <CardContent className="p-8">
                 {/* Notification Method Selection */}
@@ -2786,11 +2814,10 @@ const LetterMode: React.FC = () => {
                         variant={letterDetails.notificationMethod === 'SMS' ? 'default' : 'outline'}
                         onClick={() => updateLetterDetail('notificationMethod', 'SMS')}
                         disabled={isLoading || isSending}
-                        className={`h-auto py-5 text-base flex-1 ${
-                          letterDetails.notificationMethod === 'SMS'
-                            ? 'bg-blue-600 hover:bg-blue-700 text-white ring-2 ring-offset-2 ring-blue-500' /* Added ring for selected */
-                            : 'border-blue-300 text-blue-700 hover:bg-blue-100'
-                        }`}
+                        className={`h-auto py-5 text-base flex-1 ${letterDetails.notificationMethod === 'SMS'
+                          ? 'bg-blue-600 hover:bg-blue-700 text-white ring-2 ring-offset-2 ring-blue-500' /* Added ring for selected */
+                          : 'border-blue-300 text-blue-700 hover:bg-blue-100'
+                          }`}
                       >
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
@@ -2801,11 +2828,10 @@ const LetterMode: React.FC = () => {
                         variant={letterDetails.notificationMethod === 'EMAIL' ? 'default' : 'outline'}
                         onClick={() => updateLetterDetail('notificationMethod', 'EMAIL')}
                         disabled={isLoading || isSending}
-                        className={`h-auto py-5 text-base flex-1 ${
-                          letterDetails.notificationMethod === 'EMAIL'
-                            ? 'bg-blue-600 hover:bg-blue-700 text-white ring-2 ring-offset-2 ring-blue-500' /* Added ring for selected */
-                            : 'border-blue-300 text-blue-700 hover:bg-blue-100'
-                        }`}
+                        className={`h-auto py-5 text-base flex-1 ${letterDetails.notificationMethod === 'EMAIL'
+                          ? 'bg-blue-600 hover:bg-blue-700 text-white ring-2 ring-offset-2 ring-blue-500' /* Added ring for selected */
+                          : 'border-blue-300 text-blue-700 hover:bg-blue-100'
+                          }`}
                       >
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />

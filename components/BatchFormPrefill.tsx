@@ -25,22 +25,22 @@ const Toast: React.FC<ToastProps> = ({ message, type, onClose }) => {
     const timer = setTimeout(() => {
       onClose();
     }, 3000);
-    
+
     return () => clearTimeout(timer);
   }, [onClose]);
-  
+
   const bgColor = {
-    success: 'bg-green-50 border-green-200 text-green-700',
-    error: 'bg-red-50 border-red-200 text-red-700',
-    info: 'bg-blue-50 border-blue-200 text-blue-700'
+    success: 'bg-green-50 dark:bg-green-900/30 border-green-200 dark:border-green-700 text-green-700 dark:text-green-300',
+    error: 'bg-red-50 dark:bg-red-900/30 border-red-200 dark:border-red-700 text-red-700 dark:text-red-300',
+    info: 'bg-blue-50 dark:bg-blue-900/30 border-blue-200 dark:border-blue-700 text-blue-700 dark:text-blue-300'
   };
-  
+
   const iconColor = {
     success: 'text-green-500',
     error: 'text-red-500',
     info: 'text-blue-500'
   };
-  
+
   return (
     <div className={`fixed bottom-4 right-4 z-50 p-4 rounded-md shadow-md border ${bgColor[type]} max-w-md animate-in slide-in-from-right-5`}>
       <div className="flex items-center">
@@ -56,7 +56,7 @@ const Toast: React.FC<ToastProps> = ({ message, type, onClose }) => {
           <Info className={`h-5 w-5 mr-2 ${iconColor[type]}`} />
         )}
         <p className="flex-1">{message}</p>
-        <button onClick={onClose} className="ml-4 text-gray-500 hover:text-gray-700">
+        <button onClick={onClose} className="ml-4 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300">
           <XCircle className="h-4 w-4" />
         </button>
       </div>
@@ -109,22 +109,22 @@ const InstructionalGuide = () => {
       title: 'FormSG Base URL and Field IDs',
       description: 'Share your form to locate Base URL and click on a short answer field to find its unique 24-digit hexadecimal ID',
       placeholder: (
-        <div className="space-y-4 max-h-[400px] overflow-y-auto p-4 bg-gray-50 rounded-lg">
+        <div className="space-y-4 max-h-[400px] overflow-y-auto p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
           <div>
             <img
               src="/FormSG.png"
               alt="Locating Base URL"
-              className="w-full h-48 object-cover bg-gray-100 rounded"
+              className="w-full h-48 object-cover bg-gray-100 dark:bg-gray-700 rounded"
             />
-            <p className="text-sm text-gray-600 mt-2 font-bold">Step 1: Locate your FormSG Base URL and populate under Batch URL Generator & Exporter. The URL should look like: https://form.gov.sg/[24-digit hexadecimal code]</p>
+            <p className="text-sm text-gray-600 dark:text-gray-400 mt-2 font-bold">Step 1: Locate your FormSG Base URL and populate under Batch URL Generator & Exporter. The URL should look like: https://form.gov.sg/[24-digit hexadecimal code]</p>
           </div>
           <div>
             <img
               src="/FormSG2.png"
               alt="Finding Field ID"
-              className="w-full h-48 object-cover bg-gray-100 rounded"
+              className="w-full h-48 object-cover bg-gray-100 dark:bg-gray-700 rounded"
             />
-            <p className="text-sm text-gray-600 mt-2 font-bold">Step 2: Click on a short answer field, Enable PreFill to find its unique 24-digit hexadecimal ID</p>
+            <p className="text-sm text-gray-600 dark:text-gray-400 mt-2 font-bold">Step 2: Click on a short answer field, Enable PreFill to find its unique 24-digit hexadecimal ID</p>
           </div>
         </div>
       )
@@ -133,23 +133,23 @@ const InstructionalGuide = () => {
       title: 'Import CSV Template',
       description: 'Download and Populate a CSV with columns: FieldID, values [In a list format separated by a delimiter e.g Apple,Banana,Cherry. In this case "," is the delimiter], description (optional)',
       placeholder: (
-        <div className="space-y-4 max-h-[400px] overflow-y-auto p-4 bg-gray-50 rounded-lg">
+        <div className="space-y-4 max-h-[400px] overflow-y-auto p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
           <div>
             <img
               src="/FormSG3.png"
               alt="CSV Template Format"
-              className="w-full h-full object-cover bg-gray-100 rounded"
+              className="w-full h-full object-cover bg-gray-100 dark:bg-gray-700 rounded"
             />
-            <p className="text-sm text-gray-600 mt-2 font-bold">Step 3: Download and Prepare your CSV according to the image. Please ensure that you select the correct delimiter according to the delimiter used in your "values" field.</p>
+            <p className="text-sm text-gray-600 dark:text-gray-400 mt-2 font-bold">Step 3: Download and Prepare your CSV according to the image. Please ensure that you select the correct delimiter according to the delimiter used in your "values" field.</p>
           </div>
           <div>
             <img
               src="/FormSG4.png"
               alt="Importing CSV"
-              className="w-full h-full object-cover bg-gray-100 rounded"
+              className="w-full h-full object-cover bg-gray-100 dark:bg-gray-700 rounded"
             />
-            <p className="text-sm text-gray-600 mt-2 font-bold">
-              Step 4: Click "Import CSV" and select your prepared file. Adjust the delimiter if necessary (default: comma).  
+            <p className="text-sm text-gray-600 dark:text-gray-400 mt-2 font-bold">
+              Step 4: Click "Import CSV" and select your prepared file. Adjust the delimiter if necessary (default: comma).
               The app validates and processes your CSV based on the longest list. Fields or rows can vary in length—single values apply to all entries, and shorter lists repeat their last value.
             </p>
           </div>
@@ -166,7 +166,7 @@ const InstructionalGuide = () => {
             alt="Generate Links"
             className="w-full h-full object-cover bg-gray-100 rounded"
           />
-          <p className="text-sm text-gray-600 mt-2 font-bold">Step 4: After verifying your imported fields, click on the "Generate Links" Button</p>
+          <p className="text-sm text-gray-600 dark:text-gray-400 mt-2 font-bold">Step 4: After verifying your imported fields, click on the "Generate Links" Button</p>
         </div>
       )
     },
@@ -174,22 +174,22 @@ const InstructionalGuide = () => {
       title: 'Exporting Prefilled Links',
       description: 'Click "Export Options and Export CSV" to download the csv',
       placeholder: (
-        <div className="space-y-4 max-h-[400px] overflow-y-auto p-4 bg-gray-50 rounded-lg">
+        <div className="space-y-4 max-h-[400px] overflow-y-auto p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
           <div>
             <img
               src="/FormSG6.png"
               alt="Export Options"
-              className="w-full h-full object-cover bg-gray-100 rounded"
+              className="w-full h-full object-cover bg-gray-100 dark:bg-gray-700 rounded"
             />
-            <p className="text-sm text-gray-600 mt-2 font-bold">Step 5: Click on the "Export Options" Button</p>
+            <p className="text-sm text-gray-600 dark:text-gray-400 mt-2 font-bold">Step 5: Click on the "Export Options" Button</p>
           </div>
           <div>
             <img
               src="/FormSG7.png"
               alt="Export CSV"
-              className="w-full h-full object-cover bg-gray-100 rounded"
+              className="w-full h-full object-cover bg-gray-100 dark:bg-gray-700 rounded"
             />
-            <p className="text-sm text-gray-600 mt-2 font-bold">Step 6: Click on the "Export Csv" Button to export csv with primary fields (Default:None) and Additional Fields (Description(Optional) of Fields)</p>
+            <p className="text-sm text-gray-600 dark:text-gray-400 mt-2 font-bold">Step 6: Click on the "Export Csv" Button to export csv with primary fields (Default:None) and Additional Fields (Description(Optional) of Fields)</p>
           </div>
         </div>
       )
@@ -199,22 +199,22 @@ const InstructionalGuide = () => {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h3 className="text-lg font-semibold text-gray-800">
+        <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-200">
           {steps[currentStep].title}
         </h3>
         <div className="flex items-center space-x-2">
-          <Button 
-            variant="outline" 
-            size="icon" 
+          <Button
+            variant="outline"
+            size="icon"
             onClick={() => setCurrentStep(Math.max(0, currentStep - 1))}
             disabled={currentStep === 0}
             aria-label="Previous step"
           >
             <ChevronLeft className="h-4 w-4" />
           </Button>
-          <Button 
-            variant="outline" 
-            size="icon" 
+          <Button
+            variant="outline"
+            size="icon"
             onClick={() => setCurrentStep(Math.min(steps.length - 1, currentStep + 1))}
             disabled={currentStep === steps.length - 1}
             aria-label="Next step"
@@ -223,21 +223,20 @@ const InstructionalGuide = () => {
           </Button>
         </div>
       </div>
-      
-      <p className="text-sm text-gray-600">
+
+      <p className="text-sm text-gray-600 dark:text-gray-400">
         {steps[currentStep].description}
       </p>
-      
+
       {steps[currentStep].placeholder}
-      
+
       <div className="flex justify-center space-x-2 mt-4">
         {steps.map((_, index) => (
           <button
             key={index}
             onClick={() => setCurrentStep(index)}
-            className={`h-2 w-2 rounded-full ${
-              currentStep === index ? 'bg-blue-600' : 'bg-gray-300'
-            }`}
+            className={`h-2 w-2 rounded-full ${currentStep === index ? 'bg-blue-600' : 'bg-gray-300'
+              }`}
             aria-label={`Go to step ${index + 1}`}
           />
         ))}
@@ -259,7 +258,7 @@ const TEMPLATE_STRUCTURE = [
   { FieldID: '67488fa4961741ba92f3d064', values: 'Artificial Intelligence #101;Machine Learning #102', description: 'Course ID' },
   { FieldID: '674890985ff109b4e0969bfd', values: '$1234.00', description: 'Cost' },
   { FieldID: '6748910f1210a416d2d81521', values: '09/10/2025', description: 'Start Date' },
-  { FieldID: '6748918845919bff0a00bcb6', values: '10/10/2025', description: 'End Date'  },
+  { FieldID: '6748918845919bff0a00bcb6', values: '10/10/2025', description: 'End Date' },
 ];
 
 // Add supported delimiters with their display names
@@ -273,18 +272,18 @@ const SUPPORTED_VALUES_DELIMITERS = [
 const detectDelimiter = (csvContent: string): string => {
   // Count occurrences of each delimiter in the first few lines
   const firstFewLines = csvContent.split('\n').slice(0, 5).join('\n');
-  
+
   const counts = SUPPORTED_VALUES_DELIMITERS.map(d => ({
     delimiter: d.value,
     count: (firstFewLines.match(new RegExp(d.value === '\t' ? '\t' : `[${d.value}]`, 'g')) || []).length
   }));
-  
+
   // Find the delimiter with the highest count
-  const mostFrequent = counts.reduce((prev, current) => 
-    (current.count > prev.count) ? current : prev, 
+  const mostFrequent = counts.reduce((prev, current) =>
+    (current.count > prev.count) ? current : prev,
     { delimiter: DEFAULT_VALUES_DELIMITER, count: 0 }
   );
-  
+
   // If no delimiter is found with significant frequency, default to comma
   return mostFrequent.count > 5 ? mostFrequent.delimiter : DEFAULT_VALUES_DELIMITER;
 };
@@ -305,16 +304,16 @@ const ImprovedDialogContent = React.forwardRef<
     '2xl': 'sm:max-w-2xl',
     'full': 'sm:max-w-[90vw] md:max-w-[80vw] lg:max-w-[70vw]'
   };
-  
+
   const positionClasses = {
     center: 'top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2',
     top: 'top-[10%] left-1/2 -translate-x-1/2'
   };
-  
+
   return (
     <DialogContent
       ref={ref}
-      className={`fixed ${positionClasses[position]} ${sizeClasses[size]} max-h-[85vh] overflow-y-auto w-[95vw] rounded-lg bg-white shadow-lg focus:outline-none ${className}`}
+      className={`fixed ${positionClasses[position]} ${sizeClasses[size]} max-h-[85vh] overflow-y-auto w-[95vw] rounded-lg bg-white dark:bg-gray-900 shadow-lg focus:outline-none ${className}`}
       {...props}
     >
       {children}
@@ -360,7 +359,7 @@ const BatchFormPrefill = () => {
   const addToast = useCallback((message: string, type: 'success' | 'error' | 'info' = 'info') => {
     const id = Date.now().toString();
     setToasts(prev => [...prev, { id, message, type }]);
-    
+
     // Auto-remove after 3 seconds
     setTimeout(() => {
       setToasts(prev => prev.filter(toast => toast.id !== id));
@@ -383,7 +382,7 @@ const BatchFormPrefill = () => {
   const handleFileUpload = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
-    
+
     setError('');
     setIsProcessing(true);
     setFields([]);
@@ -394,14 +393,14 @@ const BatchFormPrefill = () => {
       rowCount: 0,
       preview: []
     });
-    
+
     // Helper function to format file size
     function formatFileSize(bytes: number): string {
       if (bytes < 1024) return bytes + ' bytes';
       else if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
       else return (bytes / 1048576).toFixed(1) + ' MB';
     }
-    
+
     Papa.parse<CsvRow>(file, {
       delimiter: DEFAULT_CSV_DELIMITER,  // Use comma to separate columns in the CSV file
       header: true,
@@ -422,10 +421,10 @@ const BatchFormPrefill = () => {
           if (!fieldIdColumn || !valuesColumn) {
             throw new Error('Missing required columns: FieldID and values');
           }
-          
+
           // Create a preview of the first 5 rows
           const preview = results.data.slice(0, 5) as Array<Record<string, string>>;
-          
+
           // Parse and normalize field values
           const parsedFields = results.data
             .filter(row => Object.values(row).some(val => val))
@@ -449,33 +448,33 @@ const BatchFormPrefill = () => {
                 description: description || fieldId
               };
             });
-          
+
           // Find the maximum number of values across all fields
           const maxValues = Math.max(...parsedFields.map(field => field.values.length));
-          
+
           // Normalize all fields to match the maximum length
           const normalizedFields = parsedFields.map(field => {
             const values = field.values;
             // If field has only one value, repeat it to match maxValues
             // If field has multiple values but less than maxValues, repeat the last value
-            const normalizedValues = values.length === 1 
+            const normalizedValues = values.length === 1
               ? Array(maxValues).fill(values[0])
               : [...values, ...Array(maxValues - values.length).fill(values[values.length - 1])];
-            
+
             return {
               ...field,
               values: normalizedValues,
               isSingleValue: values.length === 1
             };
           });
-          
+
           setCsvUploadState(prev => ({
             ...prev,
             status: 'success',
             rowCount: normalizedFields.length,
             preview
           }));
-          
+
           setFields(normalizedFields);
           showSuccess(`CSV imported successfully! Found ${normalizedFields.length} fields with ${maxValues} values each.`);
           setShowCsvPreview(true);
@@ -562,14 +561,14 @@ const BatchFormPrefill = () => {
   const generateLinks = useCallback(() => {
     setIsProcessing(true);
     setError('');
-    
+
     try {
       validateFormUrl(formUrl);
       if (fields.length === 0) throw new Error('No fields imported');
-      
+
       // Get the number of entries (should be the same for all multi-value fields after normalization)
       const numEntries = fields[0].values.length;
-      
+
       // Generate matched combinations
       const links: GeneratedLink[] = [];
       for (let i = 0; i < numEntries; i++) {
@@ -579,11 +578,11 @@ const BatchFormPrefill = () => {
           description: field.description,
           isSingleValue: field.isSingleValue
         }));
-        
+
         const queryParams = combination
           .map(({ id, value }) => `${id}=${encodeURIComponent(value)}`)
           .join('&');
-          
+
         links.push({
           url: `${formUrl}?${queryParams}`,
           fields: combination.reduce((acc, { id, value, description, isSingleValue }) => ({
@@ -595,7 +594,7 @@ const BatchFormPrefill = () => {
           label: i + 1
         });
       }
-      
+
       setGeneratedLinks(links);
       showSuccess(`Generated ${links.length} matched links successfully!`);
       setCurrentStep('export');
@@ -621,15 +620,15 @@ const BatchFormPrefill = () => {
   // Add back the exportLinks function with proper types
   const exportLinks = useCallback(() => {
     if (generatedLinks.length === 0) return;
-    
+
     // Generate a default filename with date
     const now = new Date();
     const dateStr = `${now.getFullYear()}-${(now.getMonth() + 1).toString().padStart(2, '0')}-${now.getDate().toString().padStart(2, '0')}`;
     setExportFilename(`batch-links-${dateStr}.csv`);
-    
+
     // Show the export dialog
     setShowExportDialog(true);
-    
+
     // Focus the filename input after dialog appears
     setTimeout(() => {
       if (exportFileInputRef.current) {
@@ -654,14 +653,14 @@ const BatchFormPrefill = () => {
         headers.push(field.description || FieldID);
       }
     });
-    
+
     const csv = Papa.unparse({
       fields: headers,
       data: generatedLinks.map((link, index) => {
         const row: string[] = [];
         if (exportConfig.labelField !== 'none') {
-          row.push(exportConfig.labelField === 'index' 
-            ? `Entry ${index + 1}` 
+          row.push(exportConfig.labelField === 'index'
+            ? `Entry ${index + 1}`
             : (link.fields[exportConfig.labelField] as string || ''));
         }
         if (exportConfig.includeUrl) {
@@ -673,7 +672,7 @@ const BatchFormPrefill = () => {
         return row;
       })
     });
-    
+
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
@@ -691,43 +690,43 @@ const BatchFormPrefill = () => {
     if (csvUploadState.status !== 'success' || csvUploadState.preview.length === 0) {
       return null;
     }
-    
+
     const headers = Object.keys(csvUploadState.preview[0]);
-    
+
     return (
       <div className="mt-6 border rounded-md overflow-hidden shadow-sm">
-        <div className="bg-gray-50 p-3 border-b flex justify-between items-center">
-          <h4 className="font-medium text-gray-700">CSV Preview</h4>
-          <div className="text-xs text-gray-500 flex items-center">
+        <div className="bg-gray-50 dark:bg-gray-800 p-3 border-b dark:border-gray-700 flex justify-between items-center">
+          <h4 className="font-medium text-gray-700 dark:text-gray-300">CSV Preview</h4>
+          <div className="text-xs text-gray-500 dark:text-gray-400 flex items-center">
             <span className="mr-1">Detected delimiter:</span>
-            <span className="font-mono bg-gray-200 px-1.5 py-0.5 rounded text-gray-700">
-              {valuesDelimiter === '\t' ? '\\t (Tab)' : 
-               valuesDelimiter === ' ' ? '␣ (Space)' : 
-               valuesDelimiter}
+            <span className="font-mono bg-gray-200 dark:bg-gray-700 px-1.5 py-0.5 rounded text-gray-700 dark:text-gray-300">
+              {valuesDelimiter === '\t' ? '\\t (Tab)' :
+                valuesDelimiter === ' ' ? '␣ (Space)' :
+                  valuesDelimiter}
             </span>
           </div>
         </div>
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
+            <thead className="bg-gray-50 dark:bg-gray-800">
               <tr>
                 {headers.map((header, index) => (
-                  <th 
+                  <th
                     key={index}
-                    className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                    className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
                   >
                     {header}
                   </th>
                 ))}
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
+            <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
               {csvUploadState.preview.map((row, rowIndex) => (
-                <tr key={rowIndex} className={rowIndex % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                <tr key={rowIndex} className={rowIndex % 2 === 0 ? 'bg-white dark:bg-gray-900' : 'bg-gray-50 dark:bg-gray-800'}>
                   {headers.map((header, cellIndex) => (
-                    <td 
+                    <td
                       key={cellIndex}
-                      className="px-3 py-2 whitespace-nowrap text-sm text-gray-500"
+                      className="px-3 py-2 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400"
                     >
                       {row[header]}
                     </td>
@@ -738,7 +737,7 @@ const BatchFormPrefill = () => {
           </table>
         </div>
         {csvUploadState.rowCount > 5 && (
-          <div className="bg-gray-50 p-2 text-center text-sm text-gray-500 border-t">
+          <div className="bg-gray-50 dark:bg-gray-800 p-2 text-center text-sm text-gray-500 dark:text-gray-400 border-t dark:border-gray-700">
             Showing 5 of {csvUploadState.rowCount} rows
           </div>
         )}
@@ -754,20 +753,19 @@ const BatchFormPrefill = () => {
       { key: 'generate', label: 'Generate Links' },
       { key: 'export', label: 'Export Results' }
     ];
-    
+
     return (
       <div className="flex items-center justify-between mb-8 px-2">
         {steps.map((step, index) => (
           <React.Fragment key={step.key}>
             <div className="flex flex-col items-center relative">
-              <div 
-                className={`w-12 h-12 rounded-full flex items-center justify-center border-2 transition-all duration-300 ${
-                  currentStep === step.key 
-                    ? 'border-blue-600 bg-blue-50 text-blue-600 font-bold scale-110 shadow-md' 
-                    : currentStep === steps[index + 1]?.key || currentStep === steps[index + 2]?.key || currentStep === steps[index + 3]?.key
-                      ? 'border-green-500 bg-green-50 text-green-500' 
-                      : 'border-gray-300 bg-gray-50'
-                }`}
+              <div
+                className={`w-12 h-12 rounded-full flex items-center justify-center border-2 transition-all duration-300 ${currentStep === step.key
+                  ? 'border-blue-600 bg-blue-50 text-blue-600 font-bold scale-110 shadow-md'
+                  : currentStep === steps[index + 1]?.key || currentStep === steps[index + 2]?.key || currentStep === steps[index + 3]?.key
+                    ? 'border-green-500 bg-green-50 text-green-500'
+                    : 'border-gray-300 bg-gray-50'
+                  }`}
               >
                 {currentStep === steps[index + 1]?.key || currentStep === steps[index + 2]?.key || currentStep === steps[index + 3]?.key ? (
                   <CheckCircle className="w-6 h-6 text-green-500" />
@@ -775,23 +773,21 @@ const BatchFormPrefill = () => {
                   <span className="text-lg font-semibold">{index + 1}</span>
                 )}
               </div>
-              <span className={`text-sm mt-2 font-medium transition-all duration-300 ${
-                currentStep === step.key ? 'text-blue-600' : 'text-gray-500'
-              }`}>
+              <span className={`text-sm mt-2 font-medium transition-all duration-300 ${currentStep === step.key ? 'text-blue-600' : 'text-gray-500'
+                }`}>
                 {step.label}
               </span>
               {currentStep === step.key && (
                 <div className="absolute -bottom-1 left-1/2 transform -translate-x-1/2 w-16 h-1 bg-blue-600 rounded-full" />
               )}
             </div>
-            
+
             {index < steps.length - 1 && (
               <div className="flex-1 relative">
-                <div className={`h-0.5 mx-1 transition-all duration-500 ${
-                  currentStep === steps[index + 1]?.key || currentStep === steps[index + 2]?.key || currentStep === steps[index + 3]?.key
-                    ? 'bg-green-500' 
-                    : 'bg-gray-300'
-                }`} />
+                <div className={`h-0.5 mx-1 transition-all duration-500 ${currentStep === steps[index + 1]?.key || currentStep === steps[index + 2]?.key || currentStep === steps[index + 3]?.key
+                  ? 'bg-green-500'
+                  : 'bg-gray-300'
+                  }`} />
               </div>
             )}
           </React.Fragment>
@@ -811,7 +807,7 @@ const BatchFormPrefill = () => {
           onClose={() => removeToast(toast.id)}
         />
       ))}
-      
+
       <Card className="w-full max-w-4xl mx-auto shadow-lg border border-blue-100">
         <CardHeader className="flex flex-row items-center justify-between bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-t-lg">
           <CardTitle className="text-2xl flex items-center">
@@ -821,9 +817,9 @@ const BatchFormPrefill = () => {
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
+                <Button
+                  variant="ghost"
+                  size="icon"
                   onClick={() => setShowHelpDialog(true)}
                   className="hover:bg-blue-500 text-white"
                   aria-label="Help"
@@ -837,11 +833,11 @@ const BatchFormPrefill = () => {
             </Tooltip>
           </TooltipProvider>
         </CardHeader>
-        
+
         <CardContent className="space-y-6 p-6">
           {/* Add step indicator */}
           {renderStepIndicator()}
-          
+
           {successMessage && (
             <Alert className="bg-green-50 border-green-200 animate-fadeIn">
               <AlertDescription className="text-green-700 flex items-center">
@@ -863,7 +859,7 @@ const BatchFormPrefill = () => {
           {/* Only show the URL section for steps after formUrl */}
           {(currentStep === 'upload' || currentStep === 'generate' || currentStep === 'export') && (
             <div className="space-y-2 py-2 animate-fadeIn mb-6">
-              <h3 className="text-lg font-medium text-gray-700 flex items-center">
+              <h3 className="text-lg font-medium text-gray-700 dark:text-gray-300 flex items-center">
                 <LinkIcon className="h-5 w-5 mr-2 text-blue-600" />
                 FormSG URL
               </h3>
@@ -871,9 +867,9 @@ const BatchFormPrefill = () => {
                 <div className="flex-1 bg-blue-50 p-3 rounded-md border border-blue-200 text-blue-800 font-mono text-sm truncate">
                   {formUrl}
                 </div>
-                <Button 
-                  variant="outline" 
-                  size="sm" 
+                <Button
+                  variant="outline"
+                  size="sm"
                   className="ml-2 border-blue-200 hover:bg-blue-50"
                   onClick={() => setCurrentStep('formUrl')}
                 >
@@ -893,7 +889,7 @@ const BatchFormPrefill = () => {
                   </div>
                   <div className="ml-3">
                     <h3 className="font-semibold text-lg">FormSG URL</h3>
-                    <p className="text-sm text-gray-500">Enter your form URL</p>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">Enter your form URL</p>
                   </div>
                 </div>
                 <div className="flex items-center text-sm text-gray-500">
@@ -902,14 +898,14 @@ const BatchFormPrefill = () => {
                   <span>4</span>
                 </div>
               </div>
-              
+
               <div className="bg-blue-50 p-5 rounded-lg border border-blue-200 mb-6">
                 <div className="flex items-start">
                   <Info className="h-10 w-10 text-blue-500 mr-4 flex-shrink-0 mt-1" />
                   <div>
                     <h3 className="font-semibold text-blue-800 text-lg mb-2">Step 1: Enter Your FormSG URL</h3>
                     <p className="text-blue-700">
-                      Enter the URL of your FormSG form. This is the base URL you'll use to create 
+                      Enter the URL of your FormSG form. This is the base URL you'll use to create
                       prefilled links. It should be in the format: <span className="font-mono bg-blue-100 px-1 rounded">https://form.gov.sg/[24-digit code]</span>
                     </p>
                   </div>
@@ -917,16 +913,15 @@ const BatchFormPrefill = () => {
               </div>
 
               <div className="space-y-4">
-                <Label htmlFor="form-url" className="text-lg font-medium text-gray-700 flex items-center">
+                <Label htmlFor="form-url" className="text-lg font-medium text-gray-700 dark:text-gray-300 flex items-center">
                   <LinkIcon className="h-5 w-5 mr-2 text-blue-600" />
                   FormSG URL
                 </Label>
                 <div className="relative">
                   <Input
                     id="form-url"
-                    className={`border-2 focus:ring-2 focus:ring-blue-500 pr-10 text-base h-12 ${
-                      urlValidated ? 'border-green-500 bg-green-50' : 'border-blue-200'
-                    }`}
+                    className={`border-2 focus:ring-2 focus:ring-blue-500 pr-10 text-base h-12 ${urlValidated ? 'border-green-500 bg-green-50' : 'border-blue-200'
+                      }`}
                     placeholder="https://form.gov.sg/67488b8b1210a416d2d7cb5b"
                     value={formUrl}
                     onChange={(e) => {
@@ -943,14 +938,14 @@ const BatchFormPrefill = () => {
                     </div>
                   )}
                 </div>
-                <p id="form-url-format" className="text-sm text-gray-500 flex items-center">
+                <p id="form-url-format" className="text-sm text-gray-500 dark:text-gray-400 flex items-center">
                   <Info className="h-4 w-4 mr-1 text-blue-500" />
                   URL format: https://form.gov.sg/ followed by a 24-character hexadecimal code
                 </p>
 
                 <div className="pt-8">
-                  <Button 
-                    onClick={proceedToUpload} 
+                  <Button
+                    onClick={proceedToUpload}
                     className="w-full bg-blue-600 hover:bg-blue-700 text-lg h-12 font-medium transition-all duration-200 shadow-md hover:shadow-lg flex items-center justify-center"
                     disabled={!formUrl.trim()}
                   >
@@ -981,7 +976,7 @@ const BatchFormPrefill = () => {
                   </div>
                   <div className="ml-3">
                     <h3 className="font-semibold text-lg">CSV Upload</h3>
-                    <p className="text-sm text-gray-500">Import your data</p>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">Import your data</p>
                   </div>
                 </div>
                 <div className="flex items-center text-sm text-gray-500">
@@ -990,7 +985,7 @@ const BatchFormPrefill = () => {
                   <span>4</span>
                 </div>
               </div>
-              
+
               <div className="bg-blue-50 p-5 rounded-lg border border-blue-200 mb-6">
                 <div className="flex items-start">
                   <Info className="h-10 w-10 text-blue-500 mr-4 flex-shrink-0 mt-1" />
@@ -1021,24 +1016,24 @@ const BatchFormPrefill = () => {
                             <tr>
                               <td className="p-1 border border-blue-100 font-mono">Apple;Orange;Banana</td>
                               <td className="p-1 border border-blue-100">
-                                1: Apple<br/>
-                                2: Orange<br/>
+                                1: Apple<br />
+                                2: Orange<br />
                                 3: Banana
                               </td>
                             </tr>
                             <tr>
                               <td className="p-1 border border-blue-100 font-mono">Red;Blue</td>
                               <td className="p-1 border border-blue-100">
-                                1: Red<br/>
-                                2: Blue<br/>
+                                1: Red<br />
+                                2: Blue<br />
                                 3: Blue <span className="text-blue-500">(last value repeated)</span>
                               </td>
                             </tr>
                             <tr>
                               <td className="p-1 border border-blue-100 font-mono">First</td>
                               <td className="p-1 border border-blue-100">
-                                1: First<br/>
-                                2: First<br/>
+                                1: First<br />
+                                2: First<br />
                                 3: First <span className="text-blue-500">(single value repeated)</span>
                               </td>
                             </tr>
@@ -1047,9 +1042,9 @@ const BatchFormPrefill = () => {
                       </div>
                     </div>
                     <div className="flex items-center mt-3">
-                      <Button 
-                        onClick={downloadTemplate} 
-                        variant="outline" 
+                      <Button
+                        onClick={downloadTemplate}
+                        variant="outline"
                         size="sm"
                         className="text-blue-600 border-blue-300 hover:bg-blue-100"
                       >
@@ -1064,9 +1059,9 @@ const BatchFormPrefill = () => {
 
               <div className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="delimiter" className="text-gray-700">Value Delimiter</Label>
-                  <Select 
-                    value={valuesDelimiter} 
+                  <Label htmlFor="delimiter" className="text-gray-700 dark:text-gray-300">Value Delimiter</Label>
+                  <Select
+                    value={valuesDelimiter}
                     onValueChange={setValuesDelimiter}
                   >
                     <SelectTrigger className="w-full border-2 border-blue-200 h-12">
@@ -1084,7 +1079,7 @@ const BatchFormPrefill = () => {
                 </div>
 
                 <div className="space-y-2 mt-4">
-                  <Label htmlFor="csv-file" className="text-gray-700">CSV File</Label>
+                  <Label htmlFor="csv-file" className="text-gray-700 dark:text-gray-300">CSV File</Label>
                   <div className="border-2 border-dashed border-blue-200 rounded-lg p-6 text-center hover:bg-blue-50 transition-colors cursor-pointer">
                     <Input
                       id="csv-file"
@@ -1100,33 +1095,33 @@ const BatchFormPrefill = () => {
                     </label>
                   </div>
                 </div>
-                
+
                 {/* CSV Upload Status */}
                 {csvUploadState.status !== 'idle' && (
-                  <div className="mt-4 p-4 bg-white rounded-lg border border-gray-200 shadow-sm">
+                  <div className="mt-4 p-4 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm">
                     <div className="flex items-center justify-between">
-                      <span className="font-medium text-gray-700">
+                      <span className="font-medium text-gray-700 dark:text-gray-300">
                         {csvUploadState.fileName}
                       </span>
-                      <span className="text-gray-500 text-sm">
+                      <span className="text-gray-500 dark:text-gray-400 text-sm">
                         {csvUploadState.fileSize}
                       </span>
                     </div>
-                    
+
                     {csvUploadState.status === 'uploading' && (
                       <div className="flex items-center mt-2 text-blue-600">
                         <Loader2 className="animate-spin h-4 w-4 mr-2" />
                         <span>Uploading file...</span>
                       </div>
                     )}
-                    
+
                     {csvUploadState.status === 'processing' && (
                       <div className="flex items-center mt-2 text-blue-600">
                         <Loader2 className="animate-spin h-4 w-4 mr-2" />
                         <span>Processing CSV data...</span>
                       </div>
                     )}
-                    
+
                     {csvUploadState.status === 'success' && (
                       <div className="mt-2 text-green-600">
                         <div className="flex items-center">
@@ -1137,17 +1132,17 @@ const BatchFormPrefill = () => {
                     )}
                   </div>
                 )}
-                
+
                 <div className="pt-8 flex space-x-4">
-                  <Button 
-                    onClick={() => setCurrentStep('formUrl')} 
+                  <Button
+                    onClick={() => setCurrentStep('formUrl')}
                     variant="outline"
                     className="flex-1 h-12"
                   >
                     <ChevronLeft className="mr-2 h-5 w-5" />
                     Back
                   </Button>
-                  <Button 
+                  <Button
                     onClick={() => {
                       if (fields.length > 0) {
                         setCurrentStep('generate');
@@ -1155,7 +1150,7 @@ const BatchFormPrefill = () => {
                       } else {
                         setError('Please upload a CSV file first');
                       }
-                    }} 
+                    }}
                     className="flex-1 bg-blue-600 hover:bg-blue-700 h-12 font-medium"
                     disabled={fields.length === 0}
                   >
@@ -1177,7 +1172,7 @@ const BatchFormPrefill = () => {
                   </div>
                   <div className="ml-3">
                     <h3 className="font-semibold text-lg">Generate Links</h3>
-                    <p className="text-sm text-gray-500">Create prefilled form links</p>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">Create prefilled form links</p>
                   </div>
                 </div>
                 <div className="flex items-center text-sm text-gray-500">
@@ -1186,7 +1181,7 @@ const BatchFormPrefill = () => {
                   <span>4</span>
                 </div>
               </div>
-              
+
               <div className="bg-blue-50 p-5 rounded-lg border border-blue-200 mb-6">
                 <div className="flex items-start">
                   <Info className="h-10 w-10 text-blue-500 mr-4 flex-shrink-0 mt-1" />
@@ -1203,10 +1198,10 @@ const BatchFormPrefill = () => {
               <div className="space-y-6">
                 {fields.length > 0 && (
                   <div className="space-y-4">
-                    <h3 className="text-lg font-medium text-gray-700">Imported Fields ({fields.length})</h3>
+                    <h3 className="text-lg font-medium text-gray-700 dark:text-gray-300">Imported Fields ({fields.length})</h3>
                     <div className="grid gap-4 max-h-60 overflow-y-auto pr-2">
                       {fields.slice(0, showAllFields ? fields.length : 3).map((field, index) => (
-                        <div key={index} className="p-4 bg-gray-50 rounded-lg border hover:border-blue-300 transition-colors">
+                        <div key={index} className="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border dark:border-gray-700 hover:border-blue-300 transition-colors">
                           <div className="flex justify-between items-start">
                             <div>
                               <h4 className="font-medium text-gray-900">{field.description || field.FieldID}</h4>
@@ -1221,9 +1216,9 @@ const BatchFormPrefill = () => {
                               <span className="font-medium">Sample values:</span> {field.values.slice(0, 3).join(', ')}
                               {field.values.length > 3 && '...'}
                             </p>
-                            <Button 
-                              variant="ghost" 
-                              size="sm" 
+                            <Button
+                              variant="ghost"
+                              size="sm"
                               className="mt-1 h-6 px-2 text-blue-600 text-xs hover:bg-blue-50"
                               onClick={() => {
                                 setShowValueDetails(field.FieldID);
@@ -1236,9 +1231,9 @@ const BatchFormPrefill = () => {
                       ))}
                     </div>
                     {fields.length > 3 && (
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
+                      <Button
+                        variant="outline"
+                        size="sm"
                         onClick={() => setShowAllFields(!showAllFields)}
                         className="text-blue-600 border-blue-200"
                       >
@@ -1249,16 +1244,16 @@ const BatchFormPrefill = () => {
                 )}
 
                 <div className="pt-4 flex space-x-4">
-                  <Button 
-                    onClick={() => setCurrentStep('upload')} 
+                  <Button
+                    onClick={() => setCurrentStep('upload')}
                     variant="outline"
                     className="flex-1 h-12"
                   >
                     <ChevronLeft className="mr-2 h-5 w-5" />
                     Back
                   </Button>
-                  <Button 
-                    onClick={generateLinks} 
+                  <Button
+                    onClick={generateLinks}
                     className="flex-1 bg-blue-600 hover:bg-blue-700 h-12 font-medium"
                     disabled={fields.length === 0 || isProcessing}
                   >
@@ -1298,7 +1293,7 @@ const BatchFormPrefill = () => {
                   <span>4</span>
                 </div>
               </div>
-              
+
               <div className="bg-blue-50 p-5 rounded-lg border border-blue-200 mb-6">
                 <div className="flex items-start">
                   <Info className="h-10 w-10 text-blue-500 mr-4 flex-shrink-0 mt-1" />
@@ -1314,7 +1309,7 @@ const BatchFormPrefill = () => {
               <div className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="label-field">Primary Label Field (Optional)</Label>
-                  <Select 
+                  <Select
                     value={exportConfig.labelField}
                     onValueChange={(value) => setExportConfig(prev => ({
                       ...prev,
@@ -1398,9 +1393,9 @@ const BatchFormPrefill = () => {
                           <div className="flex justify-between items-center mb-1">
                             <span className="text-xs text-gray-500">Link {index + 1}</span>
                             <div className="flex space-x-2">
-                              <Button 
-                                variant="ghost" 
-                                size="sm" 
+                              <Button
+                                variant="ghost"
+                                size="sm"
                                 className="h-6 px-2 text-blue-600"
                                 onClick={() => {
                                   navigator.clipboard.writeText(link.url);
@@ -1410,10 +1405,10 @@ const BatchFormPrefill = () => {
                                 <Copy className="h-3 w-3 mr-1" />
                                 <span className="text-xs">Copy</span>
                               </Button>
-                              <a 
-                                href={link.url} 
-                                target="_blank" 
-                                rel="noopener noreferrer" 
+                              <a
+                                href={link.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
                                 className="inline-flex items-center h-6 px-2 text-xs text-blue-600 hover:underline"
                               >
                                 <ExternalLink className="h-3 w-3 mr-1" />
@@ -1437,16 +1432,16 @@ const BatchFormPrefill = () => {
               </div>
 
               <div className="pt-8 flex space-x-4">
-                <Button 
-                  onClick={() => setCurrentStep('generate')} 
+                <Button
+                  onClick={() => setCurrentStep('generate')}
                   variant="outline"
                   className="flex-1 h-12"
                 >
                   <ChevronLeft className="mr-2 h-5 w-5" />
                   Back
                 </Button>
-                <Button 
-                  onClick={exportLinks} 
+                <Button
+                  onClick={exportLinks}
                   className="flex-1 bg-blue-600 hover:bg-blue-700 h-12 font-medium"
                   disabled={generatedLinks.length === 0}
                 >
@@ -1474,7 +1469,7 @@ const BatchFormPrefill = () => {
                 All values for this field
               </DialogDescription>
             </DialogHeader>
-            
+
             <div className="max-h-80 overflow-y-auto mt-4">
               <div className="bg-gray-50 p-4 rounded-lg mb-4">
                 {fields.find(f => f.FieldID === showValueDetails)?.description && (
@@ -1500,7 +1495,7 @@ const BatchFormPrefill = () => {
                 </div>
               </div>
             </div>
-            
+
             <DialogFooter>
               <Button variant="outline" onClick={() => setShowValueDetails(null)}>
                 Close
@@ -1523,9 +1518,9 @@ const BatchFormPrefill = () => {
               Step-by-step visual guide to generate prefilled FormSG URLs in bulk
             </DialogDescription>
           </DialogHeader>
-          
+
           <InstructionalGuide />
-          
+
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowHelpDialog(false)}>
               Close
@@ -1533,7 +1528,7 @@ const BatchFormPrefill = () => {
           </DialogFooter>
         </ImprovedDialogContent>
       </Dialog>
-      
+
       {/* Add the export filename dialog */}
       <Dialog open={showExportDialog} onOpenChange={setShowExportDialog}>
         <DialogContent className="sm:max-w-[425px]">
@@ -1570,7 +1565,7 @@ const BatchFormPrefill = () => {
             <Button variant="outline" onClick={() => setShowExportDialog(false)}>
               Cancel
             </Button>
-            <Button 
+            <Button
               onClick={() => {
                 if (exportFilename.trim()) {
                   setShowExportDialog(false);

@@ -1815,20 +1815,20 @@ ${markdownHtmlOutput}
       {transformDirection !== 'nameMatcher' && (
         <>
           <Card>
-            <CardHeader className="bg-gradient-to-r from-purple-50/50 to-pink-50/50 border-b border-purple-100/50">
-              <CardTitle className="text-lg font-semibold text-purple-800">
+            <CardHeader className="bg-gradient-to-r from-purple-50/50 to-pink-50/50 dark:from-purple-950/30 dark:to-pink-950/30 border-b border-purple-100/50 dark:border-purple-800/50">
+              <CardTitle className="text-lg font-semibold text-purple-800 dark:text-purple-200">
                 Data Format Transformer
               </CardTitle>
             </CardHeader>
 
             {/* Add direction selection toggle */}
             <div className="px-6 pt-6 pb-2">
-              <div className="bg-purple-50/70 rounded-lg p-1 flex">
+              <div className="bg-purple-50/70 dark:bg-purple-900/20 rounded-lg p-1 flex">
                 <button
                   onClick={() => setTransformDirection('columnToRow')}
                   className={`flex-1 py-2 rounded-md text-sm font-medium transition-colors ${transformDirection === 'columnToRow'
-                    ? 'bg-white shadow-sm text-purple-700'
-                    : 'text-purple-600 hover:bg-white/60'
+                    ? 'bg-white dark:bg-gray-800 shadow-sm text-purple-700 dark:text-purple-300'
+                    : 'text-purple-600 dark:text-purple-400 hover:bg-white/60 dark:hover:bg-gray-800/60'
                     }`}
                 >
                   <span className="flex items-center justify-center">
@@ -1896,14 +1896,14 @@ ${markdownHtmlOutput}
             {/* Add output format and styling options for markdown mode */}
             {transformDirection === 'markdown' && (
               <div className="px-6 pb-2 pt-2">
-                <div className="bg-purple-50/60 rounded-lg p-3 flex flex-wrap gap-4 items-center justify-between">
+                <div className="bg-purple-50/60 dark:bg-purple-900/20 rounded-lg p-3 flex flex-wrap gap-4 items-center justify-between">
                   <div className="flex items-center space-x-3">
                     <Label htmlFor="markdownOutputType" className="text-sm">Output Format:</Label>
                     <Select
                       value={markdownOutputType}
                       onValueChange={(value: 'plainText' | 'richText') => setMarkdownOutputType(value)}
                     >
-                      <SelectTrigger id="markdownOutputType" className="h-8 w-[140px] border-purple-200">
+                      <SelectTrigger id="markdownOutputType" className="h-8 w-[140px] border-purple-200 dark:border-purple-800">
                         <SelectValue placeholder="Select format" />
                       </SelectTrigger>
                       <SelectContent>
@@ -1920,7 +1920,7 @@ ${markdownHtmlOutput}
                         value={htmlStyleLevel}
                         onValueChange={(value: 'minimal' | 'basic' | 'full') => setHtmlStyleLevel(value as 'minimal' | 'basic' | 'full')}
                       >
-                        <SelectTrigger id="htmlStyleLevel" className="h-8 w-[140px] border-purple-200">
+                        <SelectTrigger id="htmlStyleLevel" className="h-8 w-[140px] border-purple-200 dark:border-purple-800">
                           <SelectValue placeholder="Select style" />
                         </SelectTrigger>
                         <SelectContent>
@@ -1932,7 +1932,7 @@ ${markdownHtmlOutput}
                     </div>
                   )}
 
-                  <div className="w-full text-xs text-purple-600">
+                  <div className="w-full text-xs text-purple-600 dark:text-purple-400">
                     <Info className="h-3 w-3 inline-block mr-1" />
                     {markdownOutputType === 'plainText'
                       ? "Plain Text converts LLM Output to clean text for simple emails or plain text fields."
@@ -1960,7 +1960,7 @@ ${markdownHtmlOutput}
                               variant="outline"
                               size="sm"
                               onClick={loadSampleData}
-                              className="h-8 text-xs border-purple-200 hover:bg-purple-50 text-purple-700"
+                              className="h-8 text-xs border-purple-200 dark:border-purple-800 hover:bg-purple-50 dark:hover:bg-purple-900/30 text-purple-700 dark:text-purple-300"
                               disabled={isSampleLoaded}
                             >
                               <Lightbulb className="h-3.5 w-3.5 mr-1.5" />
@@ -1980,7 +1980,7 @@ ${markdownHtmlOutput}
                               variant="outline"
                               size="sm"
                               onClick={clearAll}
-                              className="h-8 text-xs border-red-200 hover:bg-red-50 text-red-500"
+                              className="h-8 text-xs border-red-200 dark:border-red-900 hover:bg-red-50 dark:hover:bg-red-900/20 text-red-500 dark:text-red-400"
                             >
                               <Trash2 className="h-3.5 w-3.5 mr-1.5" />
                               Clear All
@@ -2010,7 +2010,7 @@ ${markdownHtmlOutput}
                               ? "Paste your delimited data here (items separated by delimiter)..."
                               : "Paste your LLM Output text here..."
                         }
-                        className="min-h-[200px] font-mono text-sm border-purple-200"
+                        className="min-h-[200px] font-mono text-sm border-purple-200 dark:border-purple-800 dark:bg-gray-900"
                         value={inputText}
                         onChange={(e) => setInputText(e.target.value)}
                       />
@@ -2021,8 +2021,8 @@ ${markdownHtmlOutput}
                         className={`
                           border-2 border-dashed rounded-md p-6 text-center
                           ${isDragging
-                            ? 'border-purple-400 bg-purple-100/70'
-                            : 'border-purple-200 bg-purple-50/50'
+                            ? 'border-purple-400 bg-purple-100/70 dark:bg-purple-900/40'
+                            : 'border-purple-200 dark:border-purple-800 bg-purple-50/50 dark:bg-purple-900/10'
                           }
                           transition-colors duration-200
                         `}
@@ -2039,13 +2039,13 @@ ${markdownHtmlOutput}
                           className="hidden"
                         />
                         <div className="flex flex-col items-center justify-center space-y-2">
-                          <div className={`rounded-full p-3 ${isDragging ? 'bg-purple-200' : 'bg-purple-100'}`}>
-                            <FileUp className={`h-6 w-6 ${isDragging ? 'text-purple-700' : 'text-purple-600'}`} />
+                          <div className={`rounded-full p-3 ${isDragging ? 'bg-purple-200 dark:bg-purple-800' : 'bg-purple-100 dark:bg-purple-900'}`}>
+                            <FileUp className={`h-6 w-6 ${isDragging ? 'text-purple-700 dark:text-purple-300' : 'text-purple-600 dark:text-purple-400'}`} />
                           </div>
-                          <h4 className="font-medium text-purple-800">
+                          <h4 className="font-medium text-purple-800 dark:text-purple-200">
                             {isDragging ? 'Drop File Here' : 'Upload a Text File'}
                           </h4>
-                          <p className="text-xs text-purple-600 max-w-xs">
+                          <p className="text-xs text-purple-600 dark:text-purple-400 max-w-xs">
                             {isDragging
                               ? 'Release to upload your file'
                               : 'Drag & drop your file here or click the button below'
@@ -2055,8 +2055,8 @@ ${markdownHtmlOutput}
                             variant="outline"
                             onClick={() => fileInputRef.current?.click()}
                             className={`mt-2 ${isDragging
-                              ? 'border-purple-400 bg-purple-200 hover:bg-purple-300 text-purple-800'
-                              : 'border-purple-300 hover:bg-purple-100 text-purple-700'
+                              ? 'border-purple-400 bg-purple-200 dark:bg-purple-800 hover:bg-purple-300 dark:hover:bg-purple-700 text-purple-800 dark:text-purple-200'
+                              : 'border-purple-300 dark:border-purple-700 hover:bg-purple-100 dark:hover:bg-purple-900 text-purple-700 dark:text-purple-300'
                               }`}
                           >
                             Choose File
@@ -2066,9 +2066,9 @@ ${markdownHtmlOutput}
                     </TabsContent>
                   </Tabs>
 
-                  <Alert className="bg-purple-50 border-purple-100">
+                  <Alert className="bg-purple-50 dark:bg-purple-900/20 border-purple-100 dark:border-purple-900">
                     <Info className="h-4 w-4 text-purple-600" />
-                    <AlertDescription className="text-purple-700 text-sm">
+                    <AlertDescription className="text-purple-700 dark:text-purple-300 text-sm">
                       {transformDirection === 'columnToRow'
                         ? "Enter data with one item per line. The transformer will combine all lines into a single row."
                         : transformDirection === 'rowToColumn'
@@ -2095,7 +2095,7 @@ ${markdownHtmlOutput}
                                 value={delimiter}
                                 onValueChange={(value) => setDelimiter(value)}
                               >
-                                <SelectTrigger id="delimiter" className="border-purple-200">
+                                <SelectTrigger id="delimiter" className="border-purple-200 dark:border-purple-800">
                                   <SelectValue placeholder="Select delimiter" />
                                 </SelectTrigger>
                                 <SelectContent>
@@ -2119,7 +2119,7 @@ ${markdownHtmlOutput}
                                   placeholder="Enter custom delimiter"
                                   value={customDelimiter}
                                   onChange={(e) => setCustomDelimiter(e.target.value)}
-                                  className="border-purple-200"
+                                  className="border-purple-200 dark:border-purple-800"
                                 />
                               </div>
                             )}
@@ -2156,7 +2156,7 @@ ${markdownHtmlOutput}
                     {transformDirection !== 'markdown' && (
                       <div>
                         <h3 className="text-base font-medium mb-2 flex items-center">
-                          <svg className="h-4 w-4 mr-1.5 text-purple-600" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <svg className="h-4 w-4 mr-1.5 text-purple-600 dark:text-purple-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                             <path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z" />
                             <path d="M12 18a3 3 0 1 0 0-6 3 3 0 0 0 0 6z" />
                           </svg>
@@ -2169,7 +2169,7 @@ ${markdownHtmlOutput}
                               type="checkbox"
                               checked={cleaningOptions.trimWhitespace}
                               onChange={() => toggleCleaningOption('trimWhitespace')}
-                              className="h-4 w-4 rounded border-purple-300 text-purple-600 focus:ring-purple-500"
+                              className="h-4 w-4 rounded border-purple-300 dark:border-purple-700 text-purple-600 dark:text-purple-400 focus:ring-purple-500"
                             />
                             <span>Trim whitespace</span>
                           </label>
@@ -2277,9 +2277,9 @@ ${markdownHtmlOutput}
 
                         {/* Smart Cleaning Section */}
                         <div className="mt-4 border-t border-purple-100 pt-3">
-                          <h4 className="text-sm font-medium mb-2 text-purple-800 flex items-center">
+                          <h4 className="text-sm font-medium mb-2 text-purple-800 dark:text-purple-200 flex items-center">
                             <span className="bg-purple-100 p-1 rounded mr-2">
-                              <svg className="h-3 w-3 text-purple-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <svg className="h-3 w-3 text-purple-600 dark:text-purple-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                 <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
                               </svg>
                             </span>
@@ -2289,8 +2289,8 @@ ${markdownHtmlOutput}
                             <label className={`
                                 flex flex-col items-center justify-center p-3 rounded-lg border cursor-pointer transition-all
                                 ${cleaningOptions.smartEmail
-                                ? 'bg-purple-50 border-purple-300 ring-1 ring-purple-300'
-                                : 'bg-white border-gray-200 hover:border-purple-200 hover:bg-purple-50/30'}
+                                ? 'bg-purple-50 dark:bg-purple-900/20 border-purple-300 dark:border-purple-700 ring-1 ring-purple-300 dark:ring-purple-700'
+                                : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 hover:border-purple-200 dark:hover:border-purple-800 hover:bg-purple-50/30 dark:hover:bg-purple-900/10'}
                               `}>
                               <input
                                 type="checkbox"
@@ -2299,7 +2299,7 @@ ${markdownHtmlOutput}
                                 onChange={() => toggleCleaningOption('smartEmail')}
                               />
                               <span className="font-medium text-sm text-purple-900 mb-1">Email Cleaner</span>
-                              <span className="text-[10px] text-center text-gray-500 leading-tight">Extracts & lowercases emails</span>
+                              <span className="text-[10px] text-center text-gray-500 dark:text-gray-400 leading-tight">Extracts & lowercases emails</span>
                             </label>
 
                             <label className={`
@@ -2499,7 +2499,7 @@ ${markdownHtmlOutput}
                               onChange={() => setLiveModeEnabled(!liveModeEnabled)}
                             />
                             <div className="w-9 h-5 bg-gray-200 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-purple-600"></div>
-                            <span className="ml-2 text-xs font-medium text-gray-500">
+                            <span className="ml-2 text-xs font-medium text-gray-500 dark:text-gray-400">
                               {liveModeEnabled ? 'Enabled' : 'Disabled'}
                             </span>
                           </label>
@@ -2508,13 +2508,13 @@ ${markdownHtmlOutput}
 
                       {liveModeEnabled && (
                         <div className="relative">
-                          <div className="p-2 border rounded-md bg-gray-50 border-purple-100 overflow-hidden h-10 flex items-center">
+                          <div className="p-2 border rounded-md bg-gray-50 dark:bg-gray-800 border-purple-100 dark:border-purple-800 overflow-hidden h-10 flex items-center">
                             {livePreview ? (
                               <div className="font-mono text-xs text-purple-700 truncate">
                                 {livePreview}
                               </div>
                             ) : (
-                              <div className="text-xs text-gray-400 italic">
+                              <div className="text-xs text-gray-400 dark:text-gray-500 italic">
                                 Live preview will appear here as you type...
                               </div>
                             )}
@@ -2565,7 +2565,7 @@ ${markdownHtmlOutput}
                       {/* Save Configuration Modal */}
                       {showSaveConfigModal && (
                         <div className="fixed inset-0 bg-black/30 z-50 flex items-center justify-center">
-                          <div className="bg-white rounded-lg shadow-lg p-4 max-w-md w-full mx-4">
+                          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-4 max-w-md w-full mx-4">
                             <h4 className="text-lg font-medium mb-3">Save Configuration</h4>
                             <div className="mb-4">
                               <Label htmlFor="configName" className="block mb-2 text-sm">Configuration Name</Label>
@@ -2577,7 +2577,7 @@ ${markdownHtmlOutput}
                                 className="border-purple-200"
                               />
                             </div>
-                            <div className="mb-4 text-xs text-gray-500">
+                            <div className="mb-4 text-xs text-gray-500 dark:text-gray-400">
                               This will save your current delimiter and all cleaning options.
                             </div>
                             <div className="flex justify-end gap-2">
@@ -2601,7 +2601,7 @@ ${markdownHtmlOutput}
                       {/* Load Configuration Modal */}
                       {showLoadConfigModal && (
                         <div className="fixed inset-0 bg-black/30 z-50 flex items-center justify-center">
-                          <div className="bg-white rounded-lg shadow-lg p-4 max-w-md w-full mx-4">
+                          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-4 max-w-md w-full mx-4">
                             <h4 className="text-lg font-medium mb-3">Load Configuration</h4>
                             {savedConfigs.length > 0 ? (
                               <div className="max-h-60 overflow-auto mb-4">
@@ -2614,7 +2614,7 @@ ${markdownHtmlOutput}
                                     >
                                       <div>
                                         <div className="font-medium">{config.name}</div>
-                                        <div className="text-xs text-gray-500">
+                                        <div className="text-xs text-gray-500 dark:text-gray-400">
                                           {new Date(config.timestamp).toLocaleString()} •
                                           Delimiter: {config.delimiter === 'custom' ? config.customDelimiter : config.delimiter}
                                         </div>
@@ -2633,7 +2633,7 @@ ${markdownHtmlOutput}
                                 </div>
                               </div>
                             ) : (
-                              <div className="py-6 text-center text-gray-500">
+                              <div className="py-6 text-center text-gray-500 dark:text-gray-400">
                                 No saved configurations found.
                               </div>
                             )}
@@ -2717,7 +2717,7 @@ ${markdownHtmlOutput}
                       className={`
                         p-3 border rounded-md min-h-[130px] max-h-[200px] overflow-auto 
                         font-mono text-sm whitespace-pre-wrap break-all
-                        ${outputText ? 'bg-white border-purple-200' : 'bg-gray-50 border-gray-200 text-gray-400'}
+                        ${outputText ? 'bg-white dark:bg-gray-800 border-purple-200 dark:border-purple-800' : 'bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-700 text-gray-400 dark:text-gray-500'}
                       `}
                     >
                       {outputText || "Transformed output will appear here..."}
@@ -2762,9 +2762,9 @@ ${markdownHtmlOutput}
 
                         {/* Expanded preview overlay */}
                         {expandedPreview !== 'none' && (
-                          <div className="fixed inset-0 bg-white z-50 p-4 overflow-auto flex flex-col">
-                            <div className="flex justify-between items-center mb-4 sticky top-0 bg-white py-2 border-b">
-                              <h3 className="font-semibold text-lg text-purple-800">
+                          <div className="fixed inset-0 bg-white dark:bg-gray-900 z-50 p-4 overflow-auto flex flex-col">
+                            <div className="flex justify-between items-center mb-4 sticky top-0 bg-white dark:bg-gray-900 py-2 border-b dark:border-gray-800">
+                              <h3 className="font-semibold text-lg text-purple-800 dark:text-purple-200">
                                 {expandedPreview === 'rich' ? 'Rich Text Preview' : 'Plain Text Preview'}
                               </h3>
                               <div className="flex items-center gap-2">
@@ -2803,7 +2803,7 @@ ${markdownHtmlOutput}
                               </div>
                             </div>
 
-                            <div className="flex-grow overflow-auto p-4 border rounded bg-white">
+                            <div className="flex-grow overflow-auto p-4 border rounded bg-white dark:bg-gray-800 dark:border-gray-700">
                               {expandedPreview === 'rich' ? (
                                 <div dangerouslySetInnerHTML={{ __html: markdownHtmlOutput }} />
                               ) : (
@@ -2816,7 +2816,7 @@ ${markdownHtmlOutput}
                         {/* Restructure the grid to have previews stacked vertically instead of side by side */}
                         <div className="flex flex-col gap-6">
                           <div>
-                            <div className="font-semibold text-xs text-purple-700 mb-1 flex justify-between items-center">
+                            <div className="font-semibold text-xs text-purple-700 dark:text-purple-300 mb-1 flex justify-between items-center">
                               <span>Rich Text Preview (for Word/Email)</span>
                               <div className="flex items-center gap-2">
                                 <Button
@@ -2839,7 +2839,7 @@ ${markdownHtmlOutput}
                                 </Button>
                               </div>
                             </div>
-                            <div className="p-4 border rounded bg-white border-purple-100 min-h-[300px] relative overflow-auto" style={{ maxHeight: '400px' }}>
+                            <div className="p-4 border rounded bg-white dark:bg-gray-800 border-purple-100 dark:border-purple-900 min-h-[300px] relative overflow-auto" style={{ maxHeight: '400px' }}>
                               <div dangerouslySetInnerHTML={{ __html: markdownHtmlOutput }} />
                             </div>
                           </div>
@@ -2867,13 +2867,13 @@ ${markdownHtmlOutput}
                                 </Button>
                               </div>
                             </div>
-                            <div className="p-4 border rounded bg-white border-purple-100 min-h-[300px] font-mono text-sm whitespace-pre-wrap overflow-auto" style={{ maxHeight: '400px' }}>
+                            <div className="p-4 border rounded bg-white dark:bg-gray-800 border-purple-100 dark:border-purple-900 min-h-[300px] font-mono text-sm whitespace-pre-wrap overflow-auto" style={{ maxHeight: '400px' }}>
                               {markdownPlainTextOutput}
                             </div>
                           </div>
                         </div>
 
-                        <div className="mt-2 bg-purple-50 rounded-md p-2 border border-purple-100">
+                        <div className="mt-2 bg-purple-50 dark:bg-purple-900/20 rounded-md p-2 border border-purple-100 dark:border-purple-900">
                           <div className="flex items-start">
                             <Info className="h-3.5 w-3.5 text-purple-600 mt-0.5 mr-1.5 flex-shrink-0" />
                             <span className="text-xs text-purple-700">
@@ -2885,7 +2885,7 @@ ${markdownHtmlOutput}
                     )}
 
                     {isTransformed && (
-                      <div className="mt-2 text-xs text-purple-600 flex items-center">
+                      <div className="mt-2 text-xs text-purple-600 dark:text-purple-400 flex items-center">
                         <CheckCircle className="h-3.5 w-3.5 mr-1.5" />
                         {(transformDirection as string) === 'columnToRow'
                           ? `Successfully transformed ${totalItems} items into a single row`
@@ -2898,9 +2898,9 @@ ${markdownHtmlOutput}
                 </div>
               </div>
             </CardContent>
-            <CardFooter className="bg-purple-50/50 border-t border-purple-100/50 flex justify-between">
+            <CardFooter className="bg-purple-50/50 dark:bg-purple-900/10 border-t border-purple-100/50 dark:border-purple-900/50 flex justify-between">
               <div className="text-xs text-purple-700">
-                <Info className="h-3.5 w-3.5 inline-block mr-1 text-purple-600" />
+                <Info className="h-3.5 w-3.5 inline-block mr-1 text-purple-600 dark:text-purple-400" />
                 {(transformDirection as string) === 'columnToRow'
                   ? "This tool converts column data into a single row with your chosen delimiter"
                   : (transformDirection as string) === 'rowToColumn'
@@ -2910,7 +2910,7 @@ ${markdownHtmlOutput}
                       : "This tool converts LLM Output to rich text, retaining basic styling for emails/docs."}
               </div>
               {isTransformed && totalItems > 0 && (
-                <div className="text-xs font-medium text-purple-700">
+                <div className="text-xs font-medium text-purple-700 dark:text-purple-300">
                   {(transformDirection as string) === 'columnToRow'
                     ? `${totalItems} items → 1 row`
                     : (transformDirection as string) === 'rowToColumn'
@@ -2922,54 +2922,54 @@ ${markdownHtmlOutput}
           </Card>
 
           <Card>
-            <CardHeader className="bg-gradient-to-r from-purple-50/50 to-pink-50/50 border-b border-purple-100/50">
-              <CardTitle className="text-lg font-semibold text-purple-800">How to Use Transform Mode</CardTitle>
+            <CardHeader className="bg-gradient-to-r from-purple-50/50 to-pink-50/50 dark:from-purple-900/20 dark:to-pink-900/20 border-b border-purple-100/50 dark:border-purple-800/50">
+              <CardTitle className="text-lg font-semibold text-purple-800 dark:text-purple-200">How to Use Transform Mode</CardTitle>
             </CardHeader>
             <CardContent className="pt-4">
               <div className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
-                    <h4 className="text-sm font-medium text-purple-700 mb-2">Input Options</h4>
+                    <h4 className="text-sm font-medium text-purple-700 dark:text-purple-300 mb-2">Input Options</h4>
                     <ul className="space-y-1.5 text-sm">
                       <li className="flex items-start">
-                        <span className="bg-purple-100 text-purple-800 rounded-full h-5 w-5 flex items-center justify-center text-xs mr-2 mt-0.5 font-medium">1</span>
+                        <span className="bg-purple-100 dark:bg-purple-800 text-purple-800 dark:text-purple-100 rounded-full h-5 w-5 flex items-center justify-center text-xs mr-2 mt-0.5 font-medium">1</span>
                         <span>Paste your data with one item per line in the text area</span>
                       </li>
                       <li className="flex items-start">
-                        <span className="bg-purple-100 text-purple-800 rounded-full h-5 w-5 flex items-center justify-center text-xs mr-2 mt-0.5 font-medium">2</span>
+                        <span className="bg-purple-100 dark:bg-purple-800 text-purple-800 dark:text-purple-100 rounded-full h-5 w-5 flex items-center justify-center text-xs mr-2 mt-0.5 font-medium">2</span>
                         <span>Or upload a text file containing your data (one item per line)</span>
                       </li>
                       <li className="flex items-start">
-                        <span className="bg-purple-100 text-purple-800 rounded-full h-5 w-5 flex items-center justify-center text-xs mr-2 mt-0.5 font-medium">3</span>
+                        <span className="bg-purple-100 dark:bg-purple-800 text-purple-800 dark:text-purple-100 rounded-full h-5 w-5 flex items-center justify-center text-xs mr-2 mt-0.5 font-medium">3</span>
                         <span>Choose data cleaning options to handle messy data</span>
                       </li>
                       <li className="flex items-start">
-                        <span className="bg-purple-100 text-purple-800 rounded-full h-5 w-5 flex items-center justify-center text-xs mr-2 mt-0.5 font-medium">4</span>
+                        <span className="bg-purple-100 dark:bg-purple-800 text-purple-800 dark:text-purple-100 rounded-full h-5 w-5 flex items-center justify-center text-xs mr-2 mt-0.5 font-medium">4</span>
                         <span>Select your preferred delimiter from the dropdown list</span>
                       </li>
                     </ul>
                   </div>
 
                   <div>
-                    <h4 className="text-sm font-medium text-purple-700 mb-2">Output Options</h4>
+                    <h4 className="text-sm font-medium text-purple-700 dark:text-purple-300 mb-2">Output Options</h4>
                     <ul className="space-y-1.5 text-sm">
                       <li className="flex items-start">
-                        <span className="bg-purple-100 text-purple-800 rounded-full h-5 w-5 flex items-center justify-center text-xs mr-2 mt-0.5 font-medium">5</span>
+                        <span className="bg-purple-100 dark:bg-purple-800 text-purple-800 dark:text-purple-100 rounded-full h-5 w-5 flex items-center justify-center text-xs mr-2 mt-0.5 font-medium">5</span>
                         <span>Click the "Transform" button to convert your data</span>
                       </li>
                       <li className="flex items-start">
-                        <span className="bg-purple-100 text-purple-800 rounded-full h-5 w-5 flex items-center justify-center text-xs mr-2 mt-0.5 font-medium">6</span>
+                        <span className="bg-purple-100 dark:bg-purple-800 text-purple-800 dark:text-purple-100 rounded-full h-5 w-5 flex items-center justify-center text-xs mr-2 mt-0.5 font-medium">6</span>
                         <span>Copy the result to clipboard or download as a text file</span>
                       </li>
                       <li className="flex items-start">
-                        <span className="bg-purple-100 text-purple-800 rounded-full h-5 w-5 flex items-center justify-center text-xs mr-2 mt-0.5 font-medium">7</span>
+                        <span className="bg-purple-100 dark:bg-purple-800 text-purple-800 dark:text-purple-100 rounded-full h-5 w-5 flex items-center justify-center text-xs mr-2 mt-0.5 font-medium">7</span>
                         <span>Use "Clear All" to start fresh with new data</span>
                       </li>
                     </ul>
                   </div>
                 </div>
 
-                <Alert className="bg-gradient-to-r from-purple-50 to-pink-50/50 border-purple-100 mt-2">
+                <Alert className="bg-gradient-to-r from-purple-50 to-pink-50/50 dark:from-purple-900/20 dark:to-pink-900/20 border-purple-100 dark:border-purple-900 mt-2">
                   <AlertTriangle className="h-4 w-4 text-purple-600" />
                   <AlertDescription className="text-purple-700 text-sm">
                     <strong>Tips:</strong> Use the cleaning options to handle whitespace, duplicates, and case formatting. For large datasets, consider breaking them into smaller chunks.
@@ -3034,14 +3034,14 @@ ${markdownHtmlOutput}
           </div>
           {/* Help/Info Section */}
           {showNameMatcherHelp ? (
-            <div className="mb-4 bg-purple-50 border border-purple-200 rounded-lg p-4 relative">
+            <div className="mb-4 bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-lg p-4 relative">
               <button className="absolute top-2 right-2 text-purple-400 hover:text-purple-700" onClick={() => setShowNameMatcherHelp(false)} title="Dismiss">✕</button>
               <div className="flex items-start gap-3">
                 <svg className="h-6 w-6 text-purple-600 mt-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 01.88 7.903A5.5 5.5 0 1112 6.5" /></svg>
                 <div>
-                  <div className="font-semibold text-purple-800 mb-1">What is Name Matcher?</div>
-                  <div className="text-sm text-purple-700 mb-2">Compare two lists of names from CSV files, even if the names are in different orders, have typos, or are formatted differently. The matcher uses fuzzy logic to find the best matches and can be tuned for strictness or flexibility.</div>
-                  <ul className="text-xs text-purple-700 list-disc pl-5 space-y-1">
+                  <div className="font-semibold text-purple-800 dark:text-purple-200 mb-1">What is Name Matcher?</div>
+                  <div className="text-sm text-purple-700 dark:text-purple-300 mb-2">Compare two lists of names from CSV files, even if the names are in different orders, have typos, or are formatted differently. The matcher uses fuzzy logic to find the best matches and can be tuned for strictness or flexibility.</div>
+                  <ul className="text-xs text-purple-700 dark:text-purple-300 list-disc pl-5 space-y-1">
                     <li><b>Fuzzy matching</b> finds close matches, not just exact ones. Adjust the threshold for stricter or looser matching.</li>
                     <li>Use <b>"Require same number of words"</b> to avoid matching single names to full names.</li>
                     <li>Enable <b>"Show all matches above threshold"</b> to review possible matches for each name.</li>
@@ -3057,9 +3057,9 @@ ${markdownHtmlOutput}
             </div>
           )}
           {/* User Controls */}
-          <div className="mb-4 bg-purple-50 border border-purple-100 rounded-lg p-4">
+          <div className="mb-4 bg-purple-50 dark:bg-purple-900/20 border border-purple-100 dark:border-purple-800 rounded-lg p-4">
             <div className="font-semibold text-purple-800 mb-2 text-sm flex items-center gap-2">
-              <svg className="h-4 w-4 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 01.88 7.903A5.5 5.5 0 1112 6.5" /></svg>
+              <svg className="h-4 w-4 text-purple-600 dark:text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 01.88 7.903A5.5 5.5 0 1112 6.5" /></svg>
               Matching Options
             </div>
             <div className="flex flex-col gap-3">
@@ -3106,8 +3106,8 @@ ${markdownHtmlOutput}
           {/* ... existing code ... */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* CSV 1 Import */}
-            <div className="bg-white border border-purple-100 rounded-lg p-4 flex flex-col items-start gap-2">
-              <label className="block mb-2 font-medium text-purple-800 flex items-center gap-2">
+            <div className="bg-white dark:bg-gray-800 border border-purple-100 dark:border-purple-800 rounded-lg p-4 flex flex-col items-start gap-2">
+              <label className="block mb-2 font-medium text-purple-800 dark:text-purple-200 flex items-center gap-2">
                 <svg className="h-4 w-4 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5-5m0 0l5 5m-5-5v12" /></svg>
                 CSV 1: Source File
               </label>
@@ -3145,11 +3145,11 @@ ${markdownHtmlOutput}
                           />
                         )}
                         {showNameColPopover1 && (
-                          <div className="absolute z-50 mt-1 w-full bg-white border border-purple-200 rounded shadow-lg p-2 max-h-48 overflow-auto">
+                          <div className="absolute z-50 mt-1 w-full bg-white dark:bg-gray-800 border border-purple-200 dark:border-purple-700 rounded shadow-lg p-2 max-h-48 overflow-auto">
                             {nameMatcherColumns1.map(col => (
                               <div
                                 key={col}
-                                className={`flex items-center gap-2 py-1 px-2 rounded hover:bg-purple-50 cursor-pointer text-xs ${nameMatcherSelectedCol1 === col ? 'bg-purple-100 font-semibold' : ''}`}
+                                className={`flex items-center gap-2 py-1 px-2 rounded hover:bg-purple-50 dark:hover:bg-purple-900/20 cursor-pointer text-xs ${nameMatcherSelectedCol1 === col ? 'bg-purple-100 dark:bg-purple-900/40 font-semibold' : ''}`}
                                 onClick={() => {
                                   setNameMatcherSelectedCol1(col);
                                   setShowNameColPopover1(false);
@@ -3185,9 +3185,9 @@ ${markdownHtmlOutput}
                           <div className="fixed inset-0 z-40" onClick={() => setShowColOfInterestPopover1(false)} style={{ cursor: 'default' }} />
                         )}
                         {showColOfInterestPopover1 && (
-                          <div className="absolute z-50 mt-1 w-full bg-white border border-purple-200 rounded shadow-lg p-2 max-h-48 overflow-auto">
+                          <div className="absolute z-50 mt-1 w-full bg-white dark:bg-gray-800 border border-purple-200 dark:border-purple-700 rounded shadow-lg p-2 max-h-48 overflow-auto">
                             <div
-                              className={`flex items-center gap-2 py-1 px-2 rounded hover:bg-purple-50 cursor-pointer text-xs ${nameMatcherSelectedColsOfInterest.length === 0 ? 'bg-purple-100 font-semibold' : ''}`}
+                              className={`flex items-center gap-2 py-1 px-2 rounded hover:bg-purple-50 dark:hover:bg-purple-900/20 cursor-pointer text-xs ${nameMatcherSelectedColsOfInterest.length === 0 ? 'bg-purple-100 dark:bg-purple-900/40 font-semibold' : ''}`}
                               onClick={() => {
                                 setNameMatcherSelectedColsOfInterest([]);
                                 setShowColOfInterestPopover1(false);
@@ -3199,7 +3199,7 @@ ${markdownHtmlOutput}
                             {nameMatcherColumns1.map(col => (
                               <div
                                 key={col}
-                                className={`flex items-center gap-2 py-1 px-2 rounded hover:bg-purple-50 cursor-pointer text-xs ${nameMatcherSelectedColsOfInterest.includes(col) ? 'bg-purple-100 font-semibold' : ''}`}
+                                className={`flex items-center gap-2 py-1 px-2 rounded hover:bg-purple-50 dark:hover:bg-purple-900/20 cursor-pointer text-xs ${nameMatcherSelectedColsOfInterest.includes(col) ? 'bg-purple-100 dark:bg-purple-900/40 font-semibold' : ''}`}
                                 onClick={() => {
                                   if (nameMatcherSelectedColsOfInterest.includes(col)) {
                                     setNameMatcherSelectedColsOfInterest(nameMatcherSelectedColsOfInterest.filter(c => c !== col));
@@ -3225,17 +3225,17 @@ ${markdownHtmlOutput}
               {nameMatcherData1.length > 1 && nameMatcherSelectedCol1 && (
                 <div className="mt-3 w-full">
                   <div className="text-xs text-purple-700 mb-1">Preview: First 5 values in <span className="font-semibold">{nameMatcherSelectedCol1}</span></div>
-                  <div className="bg-purple-50 border border-purple-100 rounded p-2 text-xs font-mono">
+                  <div className="bg-purple-50 dark:bg-purple-900/20 border border-purple-100 dark:border-purple-800 rounded p-2 text-xs font-mono">
                     {previewColumn(nameMatcherData1, nameMatcherColumns1.indexOf(nameMatcherSelectedCol1)).map((val, i) => (
-                      <div key={i} className="whitespace-pre-wrap break-words max-w-full text-xs font-mono text-gray-700 py-0.5">{val}</div>
+                      <div key={i} className="whitespace-pre-wrap break-words max-w-full text-xs font-mono text-gray-700 dark:text-gray-300 py-0.5">{val}</div>
                     ))}
                   </div>
                 </div>
               )}
             </div>
             {/* CSV 2 Import */}
-            <div className="bg-white border border-purple-100 rounded-lg p-4 flex flex-col items-start gap-2">
-              <label className="block mb-2 font-medium text-purple-800 flex items-center gap-2">
+            <div className="bg-white dark:bg-gray-800 border border-purple-100 dark:border-purple-800 rounded-lg p-4 flex flex-col items-start gap-2">
+              <label className="block mb-2 font-medium text-purple-800 dark:text-purple-200 flex items-center gap-2">
                 <svg className="h-4 w-4 text-pink-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5-5m0 0l5 5m-5-5v12" /></svg>
                 CSV 2: Target File
               </label>
@@ -3269,11 +3269,11 @@ ${markdownHtmlOutput}
                           <div className="fixed inset-0 z-40" onClick={() => setShowColsPopover1(false)} style={{ cursor: 'default' }} />
                         )}
                         {showColsPopover1 && (
-                          <div className="absolute z-50 mt-1 w-full bg-white border border-purple-200 rounded shadow-lg p-2 max-h-48 overflow-auto">
+                          <div className="absolute z-50 mt-1 w-full bg-white dark:bg-gray-800 border border-purple-200 dark:border-purple-700 rounded shadow-lg p-2 max-h-48 overflow-auto">
                             {nameMatcherColumns2.map(col => (
                               <div
                                 key={col}
-                                className={`flex items-center gap-2 py-1 px-2 rounded hover:bg-purple-50 cursor-pointer text-xs ${nameMatcherSelectedCol2 === col ? 'bg-purple-100 font-semibold' : ''}`}
+                                className={`flex items-center gap-2 py-1 px-2 rounded hover:bg-purple-50 dark:hover:bg-purple-900/20 cursor-pointer text-xs ${nameMatcherSelectedCol2 === col ? 'bg-purple-100 dark:bg-purple-900/40 font-semibold' : ''}`}
                                 onClick={() => {
                                   setNameMatcherSelectedCol2(col);
                                   setShowColsPopover1(false);
@@ -3295,9 +3295,9 @@ ${markdownHtmlOutput}
               {nameMatcherData2.length > 1 && nameMatcherSelectedCol2 && (
                 <div className="mt-3 w-full">
                   <div className="text-xs text-purple-700 mb-1">Preview: First 5 values in <span className="font-semibold">{nameMatcherSelectedCol2}</span></div>
-                  <div className="bg-pink-50 border border-pink-100 rounded p-2 text-xs font-mono">
+                  <div className="bg-pink-50 dark:bg-pink-900/20 border border-pink-100 dark:border-pink-800 rounded p-2 text-xs font-mono">
                     {previewColumn(nameMatcherData2, nameMatcherColumns2.indexOf(nameMatcherSelectedCol2)).map((val, i) => (
-                      <div key={i} className="whitespace-pre-wrap break-words max-w-full text-xs font-mono text-gray-700 py-0.5">{val}</div>
+                      <div key={i} className="whitespace-pre-wrap break-words max-w-full text-xs font-mono text-gray-700 dark:text-gray-300 py-0.5">{val}</div>
                     ))}
                   </div>
                 </div>
@@ -3305,10 +3305,10 @@ ${markdownHtmlOutput}
             </div>
           </div>
           {/* Fuzzy matching and download UI */}
-          <div className="mt-6 bg-purple-50 border border-purple-100 rounded-lg p-4">
+          <div className="mt-6 bg-purple-50 dark:bg-purple-900/20 border border-purple-100 dark:border-purple-800 rounded-lg p-4">
             <div className="flex flex-col md:flex-row md:items-center gap-4 mb-4">
               <div className="flex items-center gap-2">
-                <label className="font-medium text-purple-800 text-sm flex items-center gap-1" htmlFor="fuzzy-threshold-slider">
+                <label className="font-medium text-purple-800 dark:text-purple-200 text-sm flex items-center gap-1" htmlFor="fuzzy-threshold-slider">
                   Fuzzy Match Threshold
                   <TooltipProvider>
                     <Tooltip>
@@ -3335,61 +3335,61 @@ ${markdownHtmlOutput}
             </div>
             {nameMatcherResults.length > 0 && (
               <div className="overflow-x-auto custom-scrollbar">
-                <table className="min-w-full border border-purple-200 rounded-lg overflow-hidden">
+                <table className="min-w-full border border-purple-200 dark:border-purple-800 rounded-lg overflow-hidden">
                   <thead>
-                    <tr className="bg-purple-100 text-purple-800">
-                      <th className="border px-2 py-1 text-xs">CSV1 Name</th>
+                    <tr className="bg-purple-100 dark:bg-purple-900/40 text-purple-800 dark:text-purple-200">
+                      <th className="border dark:border-purple-800 px-2 py-1 text-xs">CSV1 Name</th>
                       {nameMatcherSelectedColsOfInterest.map(col => (
-                        <th key={col} className="border px-2 py-1 text-xs">{col}</th>
+                        <th key={col} className="border dark:border-purple-800 px-2 py-1 text-xs">{col}</th>
                       ))}
-                      <th className="border px-2 py-1 text-xs">Best Match in CSV2</th>
-                      <th className="border px-2 py-1 text-xs">Similarity</th>
+                      <th className="border dark:border-purple-800 px-2 py-1 text-xs">Best Match in CSV2</th>
+                      <th className="border dark:border-purple-800 px-2 py-1 text-xs">Similarity</th>
                     </tr>
                   </thead>
                   <tbody>
                     {nameMatcherResults.map((row: NameMatcherResult, idx) => {
                       let color = '';
                       const score = row.score ?? 0;
-                      if (score >= 0.97) color = 'bg-green-50';
-                      else if (score >= fuzzyThreshold) color = 'bg-yellow-50';
-                      else color = 'bg-red-50';
+                      if (score >= 0.97) color = 'bg-green-50 dark:bg-green-900/20';
+                      else if (score >= fuzzyThreshold) color = 'bg-yellow-50 dark:bg-yellow-900/20';
+                      else color = 'bg-red-50 dark:bg-red-900/20';
                       return (
                         <tr key={idx} className={color}>
-                          <td className="border px-2 py-1 text-xs font-mono">{row.name1}</td>
+                          <td className="border dark:border-white/10 px-2 py-1 text-xs font-mono">{row.name1}</td>
                           {nameMatcherSelectedColsOfInterest.map(col => (
-                            <td key={col} className="border px-2 py-1 text-xs font-mono">{row.colsOfInterest?.[col] || ''}</td>
+                            <td key={col} className="border dark:border-white/10 px-2 py-1 text-xs font-mono">{row.colsOfInterest?.[col] || ''}</td>
                           ))}
-                          <td className="border px-2 py-1 text-xs font-mono">
+                          <td className="border dark:border-white/10 px-2 py-1 text-xs font-mono">
                             {showAllMatches && row.allMatches && row.allMatches.length > 0 ? (
                               <details>
-                                <summary className="cursor-pointer">{row.allMatches[0].match} <span className="text-xs text-purple-500">({Math.round(row.allMatches[0].score * 100)}%)</span></summary>
+                                <summary className="cursor-pointer">{row.allMatches[0].match} <span className="text-xs text-purple-500 dark:text-purple-400">({Math.round(row.allMatches[0].score * 100)}%)</span></summary>
                                 <ul className="pl-4 mt-1">
                                   {row.allMatches.map((m: { match: string, score: number }, i: number) => (
-                                    <li key={i} className={m.score >= 0.97 ? 'text-green-700' : m.score >= fuzzyThreshold ? 'text-yellow-700' : 'text-red-500'}>
+                                    <li key={i} className={m.score >= 0.97 ? 'text-green-700 dark:text-green-400' : m.score >= fuzzyThreshold ? 'text-yellow-700 dark:text-yellow-400' : 'text-red-500 dark:text-red-400'}>
                                       {m.match} <span className="text-xs">({Math.round(m.score * 100)}%)</span>
                                     </li>
                                   ))}
                                 </ul>
                               </details>
                             ) : (
-                              row.match || <span className="text-red-500">No Match</span>
+                              row.match || <span className="text-red-500 dark:text-red-400">No Match</span>
                             )}
                           </td>
-                          <td className="border px-2 py-1 text-xs font-mono">
+                          <td className="border dark:border-white/10 px-2 py-1 text-xs font-mono">
                             {`${Math.round(score * 100)}%`}
-                            {score >= 0.97 && <span className="ml-1 text-green-600 font-bold">✔</span>}
-                            {score >= fuzzyThreshold && score < 0.97 && <span className="ml-1 text-yellow-600 font-bold">~</span>}
-                            {score < fuzzyThreshold && <span className="ml-1 text-red-500 font-bold">✗</span>}
+                            {score >= 0.97 && <span className="ml-1 text-green-600 dark:text-green-400 font-bold">✔</span>}
+                            {score >= fuzzyThreshold && score < 0.97 && <span className="ml-1 text-yellow-600 dark:text-yellow-400 font-bold">~</span>}
+                            {score < fuzzyThreshold && <span className="ml-1 text-red-500 dark:text-red-400 font-bold">✗</span>}
                           </td>
                         </tr>
                       );
                     })}
                   </tbody>
                 </table>
-                <div className="text-xs text-purple-600 mt-2">
-                  <span className="inline-block bg-green-50 border border-green-200 rounded px-2 py-0.5 mr-2">✔ Strong Match</span>
-                  <span className="inline-block bg-yellow-50 border border-yellow-200 rounded px-2 py-0.5 mr-2">~ Possible Match</span>
-                  <span className="inline-block bg-red-50 border border-red-200 rounded px-2 py-0.5">✗ No Match</span>
+                <div className="text-xs text-purple-600 dark:text-purple-400 mt-2">
+                  <span className="inline-block bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded px-2 py-0.5 mr-2">✔ Strong Match</span>
+                  <span className="inline-block bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded px-2 py-0.5 mr-2">~ Possible Match</span>
+                  <span className="inline-block bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded px-2 py-0.5">✗ No Match</span>
                 </div>
               </div>
             )}

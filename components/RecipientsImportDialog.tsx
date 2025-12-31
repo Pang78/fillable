@@ -3,12 +3,12 @@ import Papa from 'papaparse';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { 
-  Select, 
-  SelectContent, 
-  SelectItem, 
-  SelectTrigger, 
-  SelectValue 
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
 } from '@/components/ui/select';
 import {
   Dialog,
@@ -19,15 +19,15 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 import { toast } from '@/components/ui/use-toast';
-import { 
-  FileSpreadsheet, 
-  FileUp, 
-  Loader2, 
-  XCircle, 
-  Check, 
+import {
+  FileSpreadsheet,
+  FileUp,
+  Loader2,
+  XCircle,
+  Check,
   CheckCircle
 } from 'lucide-react';
-import { 
+import {
   Table,
   TableHeader,
   TableRow,
@@ -59,15 +59,15 @@ const sanitizeCSVText = (text: string): string => {
   if (text.startsWith(bom)) {
     text = text.substring(1);
   }
-  
+
   // Normalize line endings
   text = text.replace(/\r\n|\r/g, '\n');
-  
+
   // Make sure there's a newline at the end for processing
   if (!text.endsWith('\n')) {
     text += '\n';
   }
-  
+
   return text;
 };
 
@@ -81,10 +81,10 @@ const parseCSVText = (csvText: string, options: any): Promise<{
   return new Promise((resolve, reject) => {
     // Sanitize the CSV text
     const sanitizedText = sanitizeCSVText(csvText);
-    
+
     // Add debug log of the first few characters to help diagnose issues
     console.log('CSV first 100 chars (sanitized):', sanitizedText.slice(0, 100));
-    
+
     // Set sensible defaults for Papa Parse
     const parseOptions = {
       header: true,
@@ -93,7 +93,7 @@ const parseCSVText = (csvText: string, options: any): Promise<{
       delimitersToGuess: [',', '\t', ';', '|'], // Try to guess delimiter if not specified
       error: (error: any) => reject(error),
       complete: (results: any) => {
-        console.log('Papa Parse complete:', { 
+        console.log('Papa Parse complete:', {
           rowCount: results.data.length,
           headers: results.meta.fields,
           errors: results.errors && results.errors.length ? results.errors.length : 0
@@ -102,7 +102,7 @@ const parseCSVText = (csvText: string, options: any): Promise<{
       },
       ...options
     };
-    
+
     try {
       Papa.parse(sanitizedText, parseOptions);
     } catch (err) {
@@ -132,7 +132,7 @@ const RecipientsImportDialog: React.FC<RecipientsImportDialogProps> = ({
   const [isDragging, setIsDragging] = useState(false);
   const [csvText, setCsvText] = useState<string | null>(null);
   const [showPreview, setShowPreview] = useState(false);
-  
+
   // Reset dialog state
   const resetDialogState = useCallback(() => {
     setCsvHeaders([]);
@@ -146,7 +146,7 @@ const RecipientsImportDialog: React.FC<RecipientsImportDialogProps> = ({
     setError(null);
     setCsvText(null);
     setShowPreview(false);
-    
+
     // Reset file input
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
@@ -158,7 +158,7 @@ const RecipientsImportDialog: React.FC<RecipientsImportDialogProps> = ({
       }
     }
   }, []);
-  
+
   // Handle dialog open/close
   const handleOpenChange = useCallback((newOpen: boolean) => {
     setOpen(newOpen);
@@ -166,14 +166,14 @@ const RecipientsImportDialog: React.FC<RecipientsImportDialogProps> = ({
       resetDialogState();
     }
   }, [resetDialogState]);
-  
+
   // File validation
   const validateFile = useCallback((file: File): boolean => {
     // Reset state
     setError(null);
     setSelectedFile(null);
     setCsvText(null);
-    
+
     // Check file type
     if (!file.name.toLowerCase().endsWith('.csv')) {
       toast({
@@ -183,7 +183,7 @@ const RecipientsImportDialog: React.FC<RecipientsImportDialogProps> = ({
       });
       return false;
     }
-    
+
     // Check file size (max 5MB)
     const maxSize = 5 * 1024 * 1024; // 5MB
     if (file.size > maxSize) {
@@ -194,16 +194,16 @@ const RecipientsImportDialog: React.FC<RecipientsImportDialogProps> = ({
       });
       return false;
     }
-    
+
     // File looks good
     setSelectedFile(file);
     return true;
   }, []);
-  
+
   // Handle file upload
   const handleFileUpload = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
     setError(null);
-    
+
     // Get file
     const file = event.target.files?.[0];
     if (!file) {
@@ -214,7 +214,7 @@ const RecipientsImportDialog: React.FC<RecipientsImportDialogProps> = ({
       });
       return;
     }
-    
+
     // Validate file
     if (!validateFile(file)) {
       if (fileInputRef.current) {
@@ -222,27 +222,27 @@ const RecipientsImportDialog: React.FC<RecipientsImportDialogProps> = ({
       }
       return;
     }
-    
+
     // Reset state for new file
     setCsvHeaders([]);
     setSelectedHeader('');
     setPreviewData([]);
     setContacts([]);
     setShowPreview(false);
-    
+
     try {
       setIsLoading(true);
       setImportProgress(20);
-      
+
       console.log('Reading file:', file.name, file.size, file.type);
-      
+
       // Read file as text
       const text = await readFileAsText(file);
       setCsvText(text);
-      
+
       console.log('File read complete. Text length:', text.length);
       setImportProgress(40);
-      
+
       // Parse CSV with a timeout to ensure UI can update
       setTimeout(async () => {
         try {
@@ -252,7 +252,7 @@ const RecipientsImportDialog: React.FC<RecipientsImportDialogProps> = ({
             skipEmptyLines: true,
           });
           setImportProgress(60);
-          
+
           // Check if CSV has data
           if (results.data.length === 0 || !results.meta.fields || results.meta.fields.length === 0) {
             toast({
@@ -264,12 +264,12 @@ const RecipientsImportDialog: React.FC<RecipientsImportDialogProps> = ({
             setImportProgress(0);
             return;
           }
-          
+
           // Filter out empty or invalid headers
           const headers = results.meta.fields
             .filter(header => header && typeof header === 'string' && header.trim() !== '')
             .map(header => header.trim());
-          
+
           if (headers.length === 0) {
             toast({
               title: 'Invalid CSV Headers',
@@ -280,7 +280,7 @@ const RecipientsImportDialog: React.FC<RecipientsImportDialogProps> = ({
             setImportProgress(0);
             return;
           }
-          
+
           // Check for duplicate headers
           const uniqueHeaders = new Set(headers);
           if (uniqueHeaders.size !== headers.length) {
@@ -293,21 +293,21 @@ const RecipientsImportDialog: React.FC<RecipientsImportDialogProps> = ({
             setImportProgress(0);
             return;
           }
-          
+
           // Store headers and preview data
           setCsvHeaders(headers);
           setPreviewData(results.data.slice(0, 5)); // First 5 rows for preview
-          
+
           // Try to auto-detect appropriate column
           let detectedHeader = '';
           if (notificationMethod === 'EMAIL') {
             // Look for email-related headers
-            detectedHeader = headers.find(header => 
-              header.toLowerCase().includes('email') || 
+            detectedHeader = headers.find(header =>
+              header.toLowerCase().includes('email') ||
               header.toLowerCase().includes('mail') ||
               header.toLowerCase().includes('e-mail')
             ) || '';
-            
+
             if (detectedHeader) {
               setSelectedHeader(detectedHeader);
               toast({
@@ -320,14 +320,14 @@ const RecipientsImportDialog: React.FC<RecipientsImportDialogProps> = ({
             }
           } else if (notificationMethod === 'SMS') {
             // Look for phone-related headers
-            detectedHeader = headers.find(header => 
-              header.toLowerCase().includes('phone') || 
-              header.toLowerCase().includes('mobile') || 
+            detectedHeader = headers.find(header =>
+              header.toLowerCase().includes('phone') ||
+              header.toLowerCase().includes('mobile') ||
               header.toLowerCase().includes('cell') ||
               header.toLowerCase().includes('tel') ||
               header.toLowerCase().includes('number')
             ) || '';
-            
+
             if (detectedHeader) {
               setSelectedHeader(detectedHeader);
               toast({
@@ -339,14 +339,14 @@ const RecipientsImportDialog: React.FC<RecipientsImportDialogProps> = ({
               });
             }
           }
-          
+
           // Always set these even if detection fails
           setImportProgress(100);
           setTimeout(() => {
             setImportProgress(0);
             setIsLoading(false);
           }, 500);
-          
+
         } catch (error) {
           console.error('CSV parsing error:', error);
           toast({
@@ -358,24 +358,24 @@ const RecipientsImportDialog: React.FC<RecipientsImportDialogProps> = ({
           setImportProgress(0);
         }
       }, 100); // Short timeout to allow UI to update
-      
+
     } catch (error: unknown) {
       console.error('Error handling file:', error);
       setImportProgress(0);
       setIsLoading(false);
-      
+
       toast({
         title: 'File Error',
         description: 'There was an error processing the file. Please try again with a different file.',
         variant: 'destructive',
       });
-      
+
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
       }
     }
   }, [notificationMethod, validateFile]);
-  
+
   // Preview contacts
   const previewContacts = useCallback(() => {
     if (!selectedHeader) {
@@ -386,7 +386,7 @@ const RecipientsImportDialog: React.FC<RecipientsImportDialogProps> = ({
       });
       return;
     }
-    
+
     if (!csvText) {
       toast({
         title: 'No CSV Data',
@@ -395,9 +395,9 @@ const RecipientsImportDialog: React.FC<RecipientsImportDialogProps> = ({
       });
       return;
     }
-    
+
     setPreviewLoading(true);
-    
+
     try {
       parseCSVText(csvText, {
         header: true,
@@ -409,7 +409,7 @@ const RecipientsImportDialog: React.FC<RecipientsImportDialogProps> = ({
               .map((row: any) => row[selectedHeader])
               .filter(Boolean)
               .map((contact: string) => contact.trim());
-            
+
             if (extractedContacts.length === 0) {
               toast({
                 title: 'No Contacts Found',
@@ -419,15 +419,15 @@ const RecipientsImportDialog: React.FC<RecipientsImportDialogProps> = ({
               setPreviewLoading(false);
               return;
             }
-            
+
             // Validate contacts based on notification method
             let validContacts: string[] = [];
-            
+
             if (notificationMethod === 'EMAIL') {
               // Simple email validation
               const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
               validContacts = extractedContacts.filter((email: string) => emailRegex.test(email));
-              
+
               if (validContacts.length === 0) {
                 toast({
                   title: 'No Valid Email Addresses',
@@ -437,7 +437,7 @@ const RecipientsImportDialog: React.FC<RecipientsImportDialogProps> = ({
                 setPreviewLoading(false);
                 return;
               }
-              
+
               if (validContacts.length < extractedContacts.length) {
                 toast({
                   description: `${extractedContacts.length - validContacts.length} invalid email addresses were removed.`,
@@ -450,7 +450,7 @@ const RecipientsImportDialog: React.FC<RecipientsImportDialogProps> = ({
                 const cleanPhone = phone.replace(/[-()\s]/g, '');
                 return phoneRegex.test(cleanPhone);
               });
-              
+
               if (validContacts.length === 0) {
                 toast({
                   title: 'No Valid Phone Numbers',
@@ -460,14 +460,14 @@ const RecipientsImportDialog: React.FC<RecipientsImportDialogProps> = ({
                 setPreviewLoading(false);
                 return;
               }
-              
+
               if (validContacts.length < extractedContacts.length) {
                 toast({
                   description: `${extractedContacts.length - validContacts.length} invalid phone numbers were removed.`,
                 });
               }
             }
-            
+
             setContacts(validContacts);
             setShowPreview(true);
             setPreviewLoading(false);
@@ -501,7 +501,7 @@ const RecipientsImportDialog: React.FC<RecipientsImportDialogProps> = ({
       setPreviewLoading(false);
     }
   }, [selectedHeader, csvText, notificationMethod]);
-  
+
   // Import contacts
   const importContacts = useCallback(() => {
     if (contacts.length === 0) {
@@ -512,38 +512,38 @@ const RecipientsImportDialog: React.FC<RecipientsImportDialogProps> = ({
       });
       return;
     }
-    
+
     // Call onImport with the contacts
     onImport(contacts);
-    
+
     toast({
       description: `Successfully imported ${contacts.length} ${notificationMethod === 'EMAIL' ? 'email addresses' : 'phone numbers'}.`,
     });
-    
+
     // Close dialog
     setOpen(false);
   }, [contacts, onImport, notificationMethod]);
-  
+
   // Handle file drag over
   const handleDragOver = useCallback((e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     e.stopPropagation();
     setIsDragging(true);
   }, []);
-  
+
   // Handle file drag leave
   const handleDragLeave = useCallback((e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     e.stopPropagation();
     setIsDragging(false);
   }, []);
-  
+
   // Handle file drop
   const handleDrop = useCallback((e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     e.stopPropagation();
     setIsDragging(false);
-    
+
     const files = e.dataTransfer.files;
     if (files.length > 0) {
       // Create a synthetic event
@@ -552,11 +552,11 @@ const RecipientsImportDialog: React.FC<RecipientsImportDialogProps> = ({
           files: files
         }
       } as unknown as React.ChangeEvent<HTMLInputElement>;
-      
+
       handleFileUpload(syntheticEvent);
     }
   }, [handleFileUpload]);
-  
+
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
@@ -573,37 +573,36 @@ const RecipientsImportDialog: React.FC<RecipientsImportDialogProps> = ({
       </DialogTrigger>
       <DialogContent className="sm:max-w-[900px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="text-xl font-bold text-blue-800">
+          <DialogTitle className="text-xl font-bold text-blue-800 dark:text-blue-300">
             Import {notificationMethod === 'SMS' ? 'Phone Numbers' : 'Email Addresses'} from CSV
           </DialogTitle>
           <DialogDescription className="text-base">
             Upload a CSV file and select the column containing your {notificationMethod === 'SMS' ? 'phone numbers' : 'email addresses'}
           </DialogDescription>
         </DialogHeader>
-        
+
         {/* Progress indicator */}
         {importProgress > 0 && (
-          <div className="w-full bg-gray-200 rounded-full h-2 mb-4 overflow-hidden">
-            <div 
-              className="bg-blue-500 h-2 rounded-full transition-all duration-300" 
+          <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 mb-4 overflow-hidden">
+            <div
+              className="bg-blue-500 h-2 rounded-full transition-all duration-300"
               style={{ width: `${importProgress}%` }}
             ></div>
           </div>
         )}
-        
+
         {/* Error message */}
         {error && (
           <div className="mb-4 p-4 border border-red-200 bg-red-50 rounded-md">
             <p className="text-red-700 text-sm">{error}</p>
           </div>
         )}
-        
+
         {/* File upload section (shown when no file is selected) */}
         {!selectedFile ? (
           <div
-            className={`border-2 border-dashed rounded-lg p-8 transition-colors ${
-              isDragging ? 'border-blue-400 bg-blue-50' : 'border-gray-300 hover:border-blue-300'
-            }`}
+            className={`border-2 border-dashed rounded-lg p-8 transition-colors ${isDragging ? 'border-blue-400 bg-blue-50 dark:bg-blue-900/30' : 'border-gray-300 dark:border-gray-600 hover:border-blue-300'
+              }`}
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}
             onDrop={handleDrop}
@@ -616,17 +615,17 @@ const RecipientsImportDialog: React.FC<RecipientsImportDialogProps> = ({
                 </div>
               ) : (
                 <>
-                  <FileUp className="h-10 w-10 text-gray-400 mb-3" />
-                  <h3 className="text-lg font-medium text-gray-700 mb-2">
+                  <FileUp className="h-10 w-10 text-gray-400 dark:text-gray-500 mb-3" />
+                  <h3 className="text-lg font-medium text-gray-700 dark:text-gray-300 mb-2">
                     Upload CSV File
                   </h3>
-                  <p className="text-sm text-gray-500 mb-4 max-w-md">
+                  <p className="text-sm text-gray-500 dark:text-gray-400 mb-4 max-w-md">
                     Drag and drop your CSV file here, or click to browse
                   </p>
-                  <Button 
+                  <Button
                     variant="outline"
                     onClick={() => fileInputRef.current?.click()}
-                    className="bg-white"
+                    className="bg-white dark:bg-gray-800"
                   >
                     <FileSpreadsheet className="mr-2 h-4 w-4" />
                     Select CSV File
@@ -649,7 +648,7 @@ const RecipientsImportDialog: React.FC<RecipientsImportDialogProps> = ({
               <div className="flex items-center">
                 <FileSpreadsheet className="h-5 w-5 text-blue-500 mr-2" />
                 <span className="font-medium">{selectedFile.name}</span>
-                <span className="text-sm text-gray-500 ml-2">
+                <span className="text-sm text-gray-500 dark:text-gray-400 ml-2">
                   ({(selectedFile.size / 1024).toFixed(1)} KB)
                 </span>
               </div>
@@ -671,13 +670,13 @@ const RecipientsImportDialog: React.FC<RecipientsImportDialogProps> = ({
                 <XCircle className="h-4 w-4" />
               </Button>
             </div>
-            
+
             {/* Data preview */}
             {csvHeaders.length > 0 && (
               <div className="space-y-4">
                 <div className="flex justify-between items-center">
                   <h3 className="font-medium text-lg">CSV Preview</h3>
-                  <p className="text-sm text-gray-500">Showing first 5 rows</p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">Showing first 5 rows</p>
                 </div>
                 <div className="max-h-48 overflow-y-auto border rounded-md">
                   <Table className="text-sm">
@@ -701,9 +700,9 @@ const RecipientsImportDialog: React.FC<RecipientsImportDialogProps> = ({
                     </TableBody>
                   </Table>
                 </div>
-                
+
                 {/* Column selection */}
-                <div className={`p-4 border rounded-lg ${!selectedHeader ? 'bg-yellow-50 border-yellow-200' : 'bg-gray-50'}`}>
+                <div className={`p-4 border rounded-lg ${!selectedHeader ? 'bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-700' : 'bg-gray-50 dark:bg-gray-800'}`}>
                   {!selectedHeader && (
                     <div className="mb-3 text-amber-700 text-sm flex items-center p-2 bg-yellow-100 rounded">
                       <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
@@ -728,8 +727,8 @@ const RecipientsImportDialog: React.FC<RecipientsImportDialogProps> = ({
                         ))}
                       </SelectContent>
                     </Select>
-                    <Button 
-                      onClick={previewContacts} 
+                    <Button
+                      onClick={previewContacts}
                       disabled={!selectedHeader || previewLoading}
                       className="whitespace-nowrap"
                     >
@@ -744,7 +743,7 @@ const RecipientsImportDialog: React.FC<RecipientsImportDialogProps> = ({
                     </Button>
                   </div>
                 </div>
-                
+
                 {/* Contacts preview */}
                 {showPreview && contacts.length > 0 && (
                   <div className="border rounded-lg p-4 bg-green-50 border-green-200">
@@ -754,23 +753,23 @@ const RecipientsImportDialog: React.FC<RecipientsImportDialogProps> = ({
                         {contacts.length} valid {notificationMethod === 'SMS' ? 'phone numbers' : 'email addresses'} found
                       </h3>
                     </div>
-                    
-                    <div className="max-h-[200px] overflow-y-auto bg-white border border-green-100 rounded-lg p-2 mb-4">
+
+                    <div className="max-h-[200px] overflow-y-auto bg-white dark:bg-gray-800 border border-green-100 dark:border-green-700 rounded-lg p-2 mb-4">
                       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
                         {contacts.slice(0, 30).map((contact, i) => (
-                          <div key={i} className="text-sm px-2 py-1 rounded odd:bg-gray-50">
+                          <div key={i} className="text-sm px-2 py-1 rounded odd:bg-gray-50 dark:odd:bg-gray-700">
                             {contact}
                           </div>
                         ))}
                       </div>
                       {contacts.length > 30 && (
-                        <p className="text-xs text-center mt-2 text-gray-500">
+                        <p className="text-xs text-center mt-2 text-gray-500 dark:text-gray-400">
                           + {contacts.length - 30} more {notificationMethod === 'SMS' ? 'phone numbers' : 'email addresses'}
                         </p>
                       )}
                     </div>
-                    
-                    <Button 
+
+                    <Button
                       onClick={importContacts}
                       className="w-full bg-green-600 hover:bg-green-700 text-white"
                     >
