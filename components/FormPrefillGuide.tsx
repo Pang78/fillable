@@ -721,7 +721,6 @@ const FormPrefillGuide = () => {
       {/* Hero Section */}
       <HeroSection
         onStart={() => toolRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
-        onHowItWorks={() => setShowHowItWorks(true)}
       />
 
       {/* How It Works Modal (placeholder) */}
