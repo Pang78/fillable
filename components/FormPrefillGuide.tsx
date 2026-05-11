@@ -769,7 +769,7 @@ const FormPrefillGuide = () => {
                 <UsageGuide />
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="outline" size="icon">
+                    <Button variant="outline" size="icon" aria-label="Toggle theme">
                       {theme === 'dark' || (theme === 'system' && getTheme() === 'dark') ? (
                         <Moon className="h-4 w-4" />
                       ) : (
@@ -893,6 +893,7 @@ const FormPrefillGuide = () => {
                     onClick={undo}
                     disabled={historyIndex <= 0}
                     title="Undo last action"
+                    aria-label="Undo last action"
                   >
                     <RotateCcw className="h-4 w-4" />
                   </Button>
@@ -1163,8 +1164,24 @@ const FormPrefillGuide = () => {
                             <Button
                               variant="outline"
                               className="border-primary/20 hover:bg-primary/5"
-                              onClick={() => {
-                                // Add paste functionality if needed
+                              aria-label="Paste URL from clipboard"
+                              onClick={async () => {
+                                try {
+                                  const text = await navigator.clipboard.readText();
+                                  if (text) {
+                                    setFormUrl(text);
+                                    toast({
+                                      description: "URL pasted from clipboard",
+                                    });
+                                  }
+                                } catch (err) {
+                                  console.error('Failed to read clipboard:', err);
+                                  toast({
+                                    title: "Paste Failed",
+                                    description: "Could not access clipboard. Please paste manually.",
+                                    variant: "destructive",
+                                  });
+                                }
                               }}
                               type="button"
                             >
