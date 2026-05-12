@@ -5,22 +5,22 @@ import UsageGuide from '@/components/UsageGuide';
 
 const HeroSection: React.FC<{ onStart: () => void }> = ({ onStart }) => {
   return (
-    <section className="relative min-h-[80vh] flex flex-col items-center justify-center overflow-hidden bg-gradient-to-br from-indigo-700 via-blue-600 to-purple-700 animate-gradient-move">
+    <section className="relative min-h-[80vh] flex flex-col items-center justify-center overflow-hidden bg-gradient-to-br from-indigo-700 via-blue-600 to-purple-700 dark:from-slate-950 dark:via-blue-950 dark:to-slate-900 animate-gradient-move">
       {/* Animated SVG Blobs - Parallax Layers */}
       <div className="absolute inset-0 pointer-events-none z-0">
         <svg width="100%" height="100%" className="absolute top-0 left-0 opacity-30 animate-blob-move" style={{ zIndex: 0 }}>
           <defs>
             <radialGradient id="blobGradient1" cx="50%" cy="50%" r="50%">
-              <stop offset="0%" stopColor="#a5b4fc" stopOpacity="0.7" />
-              <stop offset="100%" stopColor="#818cf8" stopOpacity="0.2" />
+              <stop offset="0%" stopColor="#a5b4fc" stopOpacity="0.7" className="stop-1-1" />
+              <stop offset="100%" stopColor="#818cf8" stopOpacity="0.2" className="stop-1-2" />
             </radialGradient>
             <radialGradient id="blobGradient2" cx="50%" cy="50%" r="50%">
-              <stop offset="0%" stopColor="#f472b6" stopOpacity="0.5" />
-              <stop offset="100%" stopColor="#f472b6" stopOpacity="0.1" />
+              <stop offset="0%" stopColor="#f472b6" stopOpacity="0.5" className="stop-2-1" />
+              <stop offset="100%" stopColor="#f472b6" stopOpacity="0.1" className="stop-2-2" />
             </radialGradient>
           </defs>
-          <ellipse cx="60%" cy="40%" rx="340" ry="180" fill="url(#blobGradient1)" />
-          <ellipse cx="30%" cy="70%" rx="200" ry="120" fill="url(#blobGradient2)" />
+          <ellipse cx="60%" cy="40%" rx="340" ry="180" fill="url(#blobGradient1)" className="opacity-100 dark:opacity-40" />
+          <ellipse cx="30%" cy="70%" rx="200" ry="120" fill="url(#blobGradient2)" className="opacity-100 dark:opacity-30" />
           <ellipse cx="80%" cy="80%" rx="120" ry="80" fill="#fff" fillOpacity="0.08" />
         </svg>
       </div>
@@ -113,6 +113,10 @@ const HeroSection: React.FC<{ onStart: () => void }> = ({ onStart }) => {
           0% { box-shadow: 0 0 0 0 rgba(99,102,241,0.7); }
           100% { box-shadow: 0 0 24px 8px rgba(99,102,241,0.25); }
         }
+        :global(.dark) .stop-1-1 { stop-opacity: 0.3; }
+        :global(.dark) .stop-1-2 { stop-opacity: 0.1; }
+        :global(.dark) .stop-2-1 { stop-opacity: 0.2; }
+        :global(.dark) .stop-2-2 { stop-opacity: 0.05; }
       `}</style>
     </section>
   );
