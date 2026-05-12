@@ -49,7 +49,7 @@ const UsageGuide: React.FC<UsageGuideProps> = ({ large = false }) => (
         </TabsList>
         
         <TabsContent value="construct" className="space-y-4">
-          <div>
+          <div className="text-foreground">
             <h3 className="text-lg font-semibold mb-2">Construct Mode</h3>
             <ol className="list-decimal pl-6 space-y-2">
               <li>Enter your form's base URL in the "Form URL" field</li>
@@ -66,9 +66,9 @@ const UsageGuide: React.FC<UsageGuideProps> = ({ large = false }) => (
               <li>You can then paste this URL into a browser to access the pre-filled form</li>
             </ol>
             
-            <Alert className="mt-4 bg-blue-50">
-              <Info className="h-4 w-4 text-blue-600" />
-              <AlertDescription className="text-blue-800">
+            <Alert className="mt-4 bg-blue-50 dark:bg-blue-900/20 border-blue-100 dark:border-blue-900/30">
+              <Info className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+              <AlertDescription className="text-blue-800 dark:text-blue-300">
                 <strong>Pro Tip:</strong> To find a field's ID in FormSG, click on a field in your form's edit view and look for the "Field ID" value. You'll need to enable pre-fill for the field first.
               </AlertDescription>
             </Alert>
@@ -76,7 +76,7 @@ const UsageGuide: React.FC<UsageGuideProps> = ({ large = false }) => (
         </TabsContent>
         
         <TabsContent value="deconstruct" className="space-y-4">
-          <div>
+          <div className="text-foreground">
             <h3 className="text-lg font-semibold mb-2">Deconstruct Mode</h3>
             <ol className="list-decimal pl-6 space-y-2">
               <li>Switch to the "Deconstruct Mode" tab in the main interface</li>
@@ -93,9 +93,9 @@ const UsageGuide: React.FC<UsageGuideProps> = ({ large = false }) => (
               <li>You can then modify any values as needed and generate a new URL</li>
             </ol>
             
-            <Alert className="mt-4 bg-amber-50">
-              <Info className="h-4 w-4 text-amber-600" />
-              <AlertDescription className="text-amber-800">
+            <Alert className="mt-4 bg-amber-50 dark:bg-amber-900/20 border-amber-100 dark:border-amber-900/30">
+              <Info className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+              <AlertDescription className="text-amber-800 dark:text-amber-300">
                 <strong>Note:</strong> Deconstruct Mode is especially useful when you have a working pre-filled URL and want to make small modifications to it without recreating it from scratch.
               </AlertDescription>
             </Alert>
@@ -103,7 +103,7 @@ const UsageGuide: React.FC<UsageGuideProps> = ({ large = false }) => (
         </TabsContent>
         
         <TabsContent value="batch" className="space-y-4">
-          <div>
+          <div className="text-foreground">
             <h3 className="text-lg font-semibold mb-2">Batch Processing</h3>
             <ol className="list-decimal pl-6 space-y-2">
               <li>Go to the Batch URL Generator & Exporter section</li>
@@ -129,9 +129,9 @@ const UsageGuide: React.FC<UsageGuideProps> = ({ large = false }) => (
               </li>
             </ol>
             
-            <Alert className="mt-4 bg-green-50">
-              <Download className="h-4 w-4 text-green-600" />
-              <AlertDescription className="text-green-800">
+            <Alert className="mt-4 bg-green-50 dark:bg-green-900/20 border-green-100 dark:border-green-900/30">
+              <Download className="h-4 w-4 text-green-600 dark:text-green-400" />
+              <AlertDescription className="text-green-800 dark:text-green-300">
                 <strong>Batch Export Tips:</strong>
                 <ul className="list-disc pl-6 mt-1">
                   <li>Select "Export All Fields" to include all field values in your CSV</li>

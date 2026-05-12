@@ -176,17 +176,17 @@ const CSVImportDialog: React.FC<{
         </DialogHeader>
 
         <div className="space-y-4">
-          <div className="bg-gradient-to-r from-blue-50/80 to-blue-50 p-4 rounded-lg border border-blue-100 mb-2">
+          <div className="bg-gradient-to-r from-blue-50/80 to-blue-50 dark:from-blue-900/20 dark:to-blue-900/10 p-4 rounded-lg border border-blue-100 dark:border-blue-900/30 mb-2">
             <div className="flex items-start">
-              <div className="bg-blue-100 p-2 rounded-full mr-3 flex-shrink-0">
-                <Lightbulb className="h-4 w-4 text-blue-600" />
+              <div className="bg-blue-100 dark:bg-blue-900/40 p-2 rounded-full mr-3 flex-shrink-0">
+                <Lightbulb className="h-4 w-4 text-blue-600 dark:text-blue-400" />
               </div>
               <div>
-                <h3 className="font-medium text-blue-800 mb-1 text-sm">CSV Import Guide</h3>
-                <p className="text-xs text-blue-700">
+                <h3 className="font-medium text-blue-800 dark:text-blue-300 mb-1 text-sm">CSV Import Guide</h3>
+                <p className="text-xs text-blue-700 dark:text-blue-400">
                   Your CSV file should have these columns:
                 </p>
-                <ul className="mt-1 space-y-1 text-xs text-blue-700 list-disc pl-4">
+                <ul className="mt-1 space-y-1 text-xs text-blue-700 dark:text-blue-400 list-disc pl-4">
                   <li><span className="font-semibold">id</span> - The 24 character field ID from FormSG (required)</li>
                   <li><span className="font-semibold">value</span> - The data to pre-fill (required)</li>
                   <li><span className="font-semibold">label</span> - A description of the field (optional)</li>
@@ -1080,40 +1080,40 @@ const FormPrefillGuide = () => {
 
                   <TabsContent value="construct" className="space-y-6">
                     {/* Mode description and explanatory panel */}
-                    <div className="bg-gradient-to-r from-blue-50/80 to-blue-50 p-4 rounded-lg border border-blue-100 mb-2 shadow-sm">
+                    <div className="bg-gradient-to-r from-blue-50/80 to-blue-50 dark:from-blue-900/20 dark:to-blue-900/10 p-4 rounded-lg border border-blue-100 dark:border-blue-900/30 mb-2 shadow-sm">
                       <div className="flex items-start">
-                        <div className="bg-blue-100 p-2 rounded-full mr-3 flex-shrink-0">
-                          <Lightbulb className="h-5 w-5 text-blue-600" />
+                        <div className="bg-blue-100 dark:bg-blue-900/40 p-2 rounded-full mr-3 flex-shrink-0">
+                          <Lightbulb className="h-5 w-5 text-blue-600 dark:text-blue-400" />
                         </div>
                         <div>
-                          <h3 className="font-medium text-blue-800 mb-1 text-base">Construct Mode Guide</h3>
-                          <p className="text-sm text-blue-700">
+                          <h3 className="font-medium text-blue-800 dark:text-blue-300 mb-1 text-base">Construct Mode Guide</h3>
+                          <p className="text-sm text-blue-700 dark:text-blue-400">
                             Create a pre-filled form URL by following these steps:
                           </p>
                           <div className="mt-3 space-y-2">
                             <div className="flex items-center">
-                              <div className="bg-blue-200 rounded-full h-5 w-5 flex items-center justify-center mr-2">
-                                <span className="text-xs font-semibold text-blue-800">1</span>
+                              <div className="bg-blue-200 dark:bg-blue-900/60 rounded-full h-5 w-5 flex items-center justify-center mr-2">
+                                <span className="text-xs font-semibold text-blue-800 dark:text-blue-200">1</span>
                               </div>
-                              <p className="text-xs text-blue-800">Enter your form's base URL</p>
+                              <p className="text-xs text-blue-800 dark:text-blue-300">Enter your form's base URL</p>
                             </div>
                             <div className="flex items-center">
-                              <div className="bg-blue-200 rounded-full h-5 w-5 flex items-center justify-center mr-2">
-                                <span className="text-xs font-semibold text-blue-800">2</span>
+                              <div className="bg-blue-200 dark:bg-blue-900/60 rounded-full h-5 w-5 flex items-center justify-center mr-2">
+                                <span className="text-xs font-semibold text-blue-800 dark:text-blue-200">2</span>
                               </div>
-                              <p className="text-xs text-blue-800">Add form fields with their IDs and values</p>
+                              <p className="text-xs text-blue-800 dark:text-blue-300">Add form fields with their IDs and values</p>
                             </div>
                             <div className="flex items-center">
-                              <div className="bg-blue-200 rounded-full h-5 w-5 flex items-center justify-center mr-2">
-                                <span className="text-xs font-semibold text-blue-800">3</span>
+                              <div className="bg-blue-200 dark:bg-blue-900/60 rounded-full h-5 w-5 flex items-center justify-center mr-2">
+                                <span className="text-xs font-semibold text-blue-800 dark:text-blue-200">3</span>
                               </div>
-                              <p className="text-xs text-blue-800">Generate and use your pre-filled URL</p>
+                              <p className="text-xs text-blue-800 dark:text-blue-300">Generate and use your pre-filled URL</p>
                             </div>
                           </div>
-                          <div className="mt-2 bg-blue-100/60 rounded p-2">
+                          <div className="mt-2 bg-blue-100/60 dark:bg-blue-900/30 rounded p-2">
                             <div className="flex items-start">
-                              <Info className="h-4 w-4 text-blue-600 mt-0.5 mr-2 flex-shrink-0" />
-                              <p className="text-xs text-blue-700">Need field IDs? Use <span className="font-semibold">Deconstruct Mode</span> to extract them from existing forms.</p>
+                              <Info className="h-4 w-4 text-blue-600 dark:text-blue-400 mt-0.5 mr-2 flex-shrink-0" />
+                              <p className="text-xs text-blue-700 dark:text-blue-400">Need field IDs? Use <span className="font-semibold">Deconstruct Mode</span> to extract them from existing forms.</p>
                             </div>
                           </div>
                         </div>
@@ -1745,14 +1745,14 @@ const FormPrefillGuide = () => {
                   </TabsContent>
 
                   <TabsContent value="deconstruct" className="space-y-4">
-                    <div className="bg-gradient-to-r from-blue-50/80 to-blue-50 p-4 rounded-lg border border-blue-100 mb-4">
+                    <div className="bg-gradient-to-r from-blue-50/80 to-blue-50 dark:from-blue-900/20 dark:to-blue-900/10 p-4 rounded-lg border border-blue-100 dark:border-blue-900/30 mb-4">
                       <div className="flex items-start">
-                        <div className="bg-blue-100 p-2 rounded-full mr-3 flex-shrink-0">
-                          <Lightbulb className="h-4 w-4 text-blue-600" />
+                        <div className="bg-blue-100 dark:bg-blue-900/40 p-2 rounded-full mr-3 flex-shrink-0">
+                          <Lightbulb className="h-4 w-4 text-blue-600 dark:text-blue-400" />
                         </div>
                         <div>
-                          <h3 className="font-medium text-blue-800 mb-1 text-sm">Deconstruct Mode Guide</h3>
-                          <p className="text-xs text-blue-700">
+                          <h3 className="font-medium text-blue-800 dark:text-blue-300 mb-1 text-sm">Deconstruct Mode Guide</h3>
+                          <p className="text-xs text-blue-700 dark:text-blue-400">
                             Paste a pre-filled URL to analyze and extract its field IDs and values. This helps you understand how URLs are structured and reuse field IDs.
                           </p>
                         </div>
