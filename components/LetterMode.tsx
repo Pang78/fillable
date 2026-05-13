@@ -1979,7 +1979,7 @@ const LetterMode: React.FC = () => {
         {/* Letter Management Header */}
         <div className="flex flex-col gap-3">
           <div className="flex items-center justify-between mb-2">
-            <h3 className="text-xl font-semibold text-purple-800">
+            <h3 className="text-xl font-semibold text-purple-800 dark:text-purple-300">
               {selectionMode ? 'Select Letters to Delete' : 'Letter Management'}
             </h3>
 
@@ -2062,28 +2062,28 @@ const LetterMode: React.FC = () => {
           </div>
 
           {/* Letter Count Stats */}
-          <div className="flex items-center justify-between bg-gray-50 dark:bg-gray-800/50 p-3 rounded-lg border dark:border-gray-700">
+          <div className="flex items-center justify-between bg-gray-50 dark:bg-slate-900/50 p-3 rounded-lg border dark:border-gray-800">
             <div className="flex items-center gap-3">
               <div className="p-2 bg-purple-100 dark:bg-purple-900/40 rounded-md">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-purple-600 dark:text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                 </svg>
               </div>
               <div>
                 <div className="text-sm font-medium text-gray-600 dark:text-gray-400">Total Letters</div>
-                <div className="text-2xl font-bold text-purple-700 dark:text-purple-400">{letterDetails.lettersParams.length}</div>
+                <div className="text-2xl font-bold text-purple-700 dark:text-purple-300">{letterDetails.lettersParams.length}</div>
               </div>
             </div>
 
             <div className="flex items-center gap-3">
               <div className="p-2 bg-blue-100 dark:bg-blue-900/40 rounded-md">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-blue-600 dark:text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
                 </svg>
               </div>
               <div>
                 <div className="text-sm font-medium text-gray-600 dark:text-gray-400">Recipients</div>
-                <div className="text-2xl font-bold text-blue-700 dark:text-blue-400">{letterDetails.recipients?.length || 0}</div>
+                <div className="text-2xl font-bold text-blue-700 dark:text-blue-300">{letterDetails.recipients?.length || 0}</div>
               </div>
             </div>
 
@@ -2173,8 +2173,8 @@ const LetterMode: React.FC = () => {
                 : 'hidden opacity-0 absolute translate-x-full'
                 }`}
             >
-              <Card className={`border ${selectionMode && selectedLetters.includes(index) ? 'border-blue-400 bg-blue-50' : 'border-gray-200'} shadow-lg hover:shadow-xl transition-all duration-300`}>
-                <CardHeader className={`py-4 px-6 flex flex-row items-center justify-between space-y-0 bg-gradient-to-r ${selectionMode && selectedLetters.includes(index) ? 'from-blue-50 to-blue-100' : 'from-purple-50 to-indigo-50'} border-b`}>
+              <Card className={`border ${selectionMode && selectedLetters.includes(index) ? 'border-blue-400 bg-blue-50 dark:bg-blue-900/20' : 'border-gray-200 dark:border-gray-800'} shadow-lg hover:shadow-xl transition-all duration-300`}>
+                <CardHeader className={`py-4 px-6 flex flex-row items-center justify-between space-y-0 bg-gradient-to-r ${selectionMode && selectedLetters.includes(index) ? 'from-blue-50 to-blue-100 dark:from-blue-900/40 dark:to-blue-800/40' : 'from-purple-50 to-indigo-50 dark:from-purple-900/40 dark:to-indigo-900/40'} border-b dark:border-gray-700`}>
                   {selectionMode ? (
                     <div className="flex items-center">
                       <Checkbox
@@ -2182,23 +2182,23 @@ const LetterMode: React.FC = () => {
                         onCheckedChange={() => toggleLetterSelection(index)}
                         className="mr-3 h-5 w-5"
                       />
-                      <CardTitle className="text-lg font-semibold text-purple-800 flex items-center">
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <CardTitle className="text-lg font-semibold text-purple-800 dark:text-purple-200 flex items-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-purple-600 dark:text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                         </svg>
                         Letter {index + 1}
                       </CardTitle>
                     </div>
                   ) : (
-                    <CardTitle className="text-lg font-semibold text-purple-800 flex items-center">
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <CardTitle className="text-lg font-semibold text-purple-800 dark:text-purple-200 flex items-center">
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-purple-600 dark:text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                       </svg>
                       Letter {index + 1}
                     </CardTitle>
                   )}
                   <div className="flex items-center gap-2">
-                    <span className="text-xs text-purple-600 bg-purple-100 px-2 py-1 rounded-full">
+                    <span className="text-xs text-purple-600 dark:text-purple-300 bg-purple-100 dark:bg-purple-900/60 px-2 py-1 rounded-full">
                       {Object.keys(params).filter(key => params[key]).length} / {Object.keys(params).length} fields filled
                     </span>
                     {!selectionMode && (
@@ -2306,8 +2306,8 @@ const LetterMode: React.FC = () => {
                     })}
 
                     {/* Integrated Recipient Input */}
-                    <div className="pt-6 mt-6 border-t border-purple-100 bg-purple-50/30 p-5 rounded-b-lg -m-6 mt-6 px-6 pb-6">
-                      <Label htmlFor={`recipient-${index}`} className="flex items-center text-base font-semibold text-purple-700 mb-2">
+                    <div className="pt-6 mt-6 border-t border-purple-100 dark:border-purple-900/50 bg-purple-50/30 dark:bg-purple-900/10 p-5 rounded-b-lg -m-6 mt-6 px-6 pb-6">
+                      <Label htmlFor={`recipient-${index}`} className="flex items-center text-base font-semibold text-purple-700 dark:text-purple-300 mb-2">
                         <span>Recipient for Letter {index + 1}</span>
                         {letterDetails.notificationMethod && <span className="text-red-500 ml-1">*</span>}
                         <span className="ml-2 text-xs font-normal text-gray-500 dark:text-gray-400">({letterDetails.notificationMethod || 'Select Method Above'})</span>
@@ -2331,7 +2331,7 @@ const LetterMode: React.FC = () => {
                               ? 'Enter phone (+65... or 9...)'
                               : 'Enter email address'
                         }
-                        className={`text-base p-4 transition-all duration-200 ${!letterDetails.recipients?.[index] && letterDetails.notificationMethod ? 'border-red-200 focus:ring-red-500' : 'focus:ring-purple-500'}`}
+                        className={`text-base p-4 transition-all duration-200 ${!letterDetails.recipients?.[index] && letterDetails.notificationMethod ? 'border-red-200 dark:border-red-900 focus:ring-red-500' : 'focus:ring-purple-500 dark:bg-slate-900 dark:border-slate-800'}`}
                         disabled={isLoading || isSending || selectionMode || !letterDetails.notificationMethod}
                       />
                       {/* Validation/Hint Text */}
@@ -2395,7 +2395,7 @@ const LetterMode: React.FC = () => {
   }, [letterDetails.lettersParams, templateFields, selectionMode, selectedLetters, currentLetterIndex, isLoading, isSending, isPreviewLoading, removeLetterParams, addLetterParams, goToPrevLetter, goToNextLetter, handleDirectNavInputChange, handleDirectNavKeyDown, handleGoToLetter, toggleLetterSelection, selectAllLetters, deleteSelectedLetters, exitSelectionMode, handlePreview]);
 
   return (
-    <div className="bg-gradient-to-b from-white to-gray-50">
+    <div className="bg-gradient-to-b from-white to-gray-50 dark:from-slate-950 dark:to-slate-900 transition-colors duration-300">
       <style jsx global>{`
         @keyframes highlight-pulse {
           0% { background-color: rgba(245, 158, 11, 0.1); }
@@ -2445,7 +2445,7 @@ const LetterMode: React.FC = () => {
 
       <div className="container mx-auto py-12 px-4 max-w-6xl"> {/* Increased max-width */}
         <div className="flex flex-col items-center mb-10"> {/* Increased bottom margin */}
-          <h1 className="text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-purple-600 to-blue-600 mb-3">Bulk Letter Generation</h1> {/* Larger text */}
+          <h1 className="text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-purple-600 to-blue-500 dark:from-purple-400 dark:to-blue-400 mb-3">Bulk Letter Generation</h1> {/* Larger text */}
           <p className="text-lg text-gray-600 dark:text-gray-400 max-w-2xl text-center">Streamline your letter sending process with CSV imports and API integration.</p> {/* Larger text */}
         </div>
 
@@ -2457,15 +2457,15 @@ const LetterMode: React.FC = () => {
 
         <div className="space-y-10"> {/* Increased spacing between sections */}
           {/* Section 1: API Configuration */}
-          <Card className="border-gray-200 shadow-lg overflow-hidden transition-all hover:shadow-xl">
-            <CardHeader className="bg-gradient-to-r from-blue-50 to-indigo-50 px-6 py-5 border-b border-blue-100"> {/* Added border */}
+          <Card className="border-gray-200 dark:border-slate-800 shadow-lg overflow-hidden transition-all hover:shadow-xl bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm">
+            <CardHeader className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/40 dark:to-indigo-900/40 px-6 py-5 border-b border-blue-100 dark:border-slate-800"> {/* Added border */}
               <div className="flex justify-between items-center">
                 <div>
-                  <h2 className="text-2xl font-semibold text-blue-800 flex items-center">
+                  <h2 className="text-2xl font-semibold text-blue-800 dark:text-blue-200 flex items-center">
                     <span className="mr-3 flex h-8 w-8 items-center justify-center rounded-full bg-blue-600 text-white text-lg font-bold">1</span>
                     API Configuration
                   </h2>
-                  <p className="text-blue-600 text-sm mt-1 ml-11">Connect to Letters.gov.sg API</p>
+                  <p className="text-blue-600 dark:text-blue-400 text-sm mt-1 ml-11">Connect to Letters.gov.sg API</p>
                 </div>
                 <div className="flex gap-2">
                   {/* Template Selection Dialog Trigger */}
@@ -2658,39 +2658,39 @@ const LetterMode: React.FC = () => {
                     </div>
                   </div>
                   {/* Enhanced API Key Instructions */}
-                  <div className="mt-4 overflow-hidden rounded-lg border border-blue-200 bg-gradient-to-r from-blue-50 to-indigo-50 shadow-sm">
-                    <div className="border-b border-blue-200 bg-blue-100/50 px-4 py-3">
-                      <h4 className="font-medium text-blue-800 flex items-center">
-                        <Info className="h-4 w-4 mr-2 text-blue-600" />
+                  <div className="mt-4 overflow-hidden rounded-lg border border-blue-200 dark:border-blue-800 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/10 dark:to-indigo-900/10 shadow-sm">
+                    <div className="border-b border-blue-200 dark:border-blue-800 bg-blue-100/50 dark:bg-blue-900/30 px-4 py-3">
+                      <h4 className="font-medium text-blue-800 dark:text-blue-300 flex items-center">
+                        <Info className="h-4 w-4 mr-2 text-blue-600 dark:text-blue-400" />
                         How to Get Your API Key
                       </h4>
                     </div>
                     <div className="px-4 py-4">
-                      <ol className="space-y-3 ml-5 list-decimal text-sm text-blue-800">
+                      <ol className="space-y-3 ml-5 list-decimal text-sm text-blue-800 dark:text-blue-300">
                         <li className="pl-1">
-                          <span className="font-medium">Log in</span> to <a href="https://letters.gov.sg" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-800 hover:underline font-medium">LetterSG</a>
+                          <span className="font-medium">Log in</span> to <a href="https://letters.gov.sg" target="_blank" rel="noopener noreferrer" className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 hover:underline font-medium">LetterSG</a>
                         </li>
                         <li className="pl-1">
-                          Click on <span className="px-2 py-0.5 bg-white rounded text-blue-700 font-medium border border-blue-200">API Integration</span> in the navigation bar
+                          Click on <span className="px-2 py-0.5 bg-white dark:bg-slate-900 rounded text-blue-700 dark:text-blue-400 font-medium border border-blue-200 dark:border-blue-800">API Integration</span> in the navigation bar
                         </li>
                         <li className="pl-1">
-                          Click on <span className="px-2 py-0.5 bg-white rounded text-green-700 font-medium border border-green-200">Generate API key</span> button
+                          Click on <span className="px-2 py-0.5 bg-white dark:bg-slate-900 rounded text-green-700 dark:text-green-400 font-medium border border-green-200 dark:border-green-800">Generate API key</span> button
                         </li>
                         <li className="pl-1">
                           Copy the generated token and paste it here
                         </li>
                       </ol>
-                      <div className="mt-4 pt-3 border-t border-blue-200 flex items-center justify-between">
+                      <div className="mt-4 pt-3 border-t border-blue-200 dark:border-blue-900/50 flex items-center justify-between">
                         <a
                           href="https://guide.letters.gov.sg/developer-guide/api-documentation"
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="inline-flex items-center text-xs font-medium text-blue-700 hover:text-blue-900 hover:underline"
+                          className="inline-flex items-center text-xs font-medium text-blue-700 dark:text-blue-400 hover:text-blue-900 dark:hover:text-blue-300 hover:underline"
                         >
                           <FileText className="h-3.5 w-3.5 mr-1.5" />
                           View complete API documentation
                         </a>
-                        <span className="text-xs text-blue-500">Letters.gov.sg</span>
+                        <span className="text-xs text-blue-500 dark:text-blue-400">Letters.gov.sg</span>
                       </div>
                     </div>
                   </div>
@@ -2776,13 +2776,13 @@ const LetterMode: React.FC = () => {
 
           {/* Section 2: Letter Details & Recipients */}
           {templateFields.length > 0 && (
-            <Card className="border-gray-200 shadow-lg overflow-hidden transition-all hover:shadow-xl">
-              <CardHeader className="bg-gradient-to-r from-purple-50 to-pink-50 px-6 py-5 border-b border-purple-100"> {/* Added border */}
-                <h2 className="text-2xl font-semibold text-purple-800 flex items-center">
+            <Card className="border-gray-200 dark:border-slate-800 shadow-lg overflow-hidden transition-all hover:shadow-xl bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm">
+              <CardHeader className="bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/40 dark:to-pink-900/40 px-6 py-5 border-b border-purple-100 dark:border-slate-800"> {/* Added border */}
+                <h2 className="text-2xl font-semibold text-purple-800 dark:text-purple-200 flex items-center">
                   <span className="mr-3 flex h-8 w-8 items-center justify-center rounded-full bg-purple-600 text-white text-lg font-bold">2</span>
                   Letter Details & Recipients
                 </h2>
-                <p className="text-purple-600 text-sm mt-1 ml-11">Define parameters and recipient for each letter</p>
+                <p className="text-purple-600 dark:text-purple-400 text-sm mt-1 ml-11">Define parameters and recipient for each letter</p>
               </CardHeader>
               <CardContent className="p-8"> {/* Increased padding */}
                 {letterParamsForm} {/* This now contains both params and recipient input */}
@@ -2792,21 +2792,21 @@ const LetterMode: React.FC = () => {
 
           {/* Section 3: Notification Method & Send Action */}
           {templateFields.length > 0 && (
-            <Card className="border-gray-200 shadow-lg overflow-hidden transition-all hover:shadow-xl">
-              <CardHeader className="bg-gradient-to-r from-teal-50 to-cyan-50 px-6 py-5 border-b border-teal-100"> {/* Added border */}
-                <h2 className="text-2xl font-semibold text-teal-800 flex items-center">
+            <Card className="border-gray-200 dark:border-slate-800 shadow-lg overflow-hidden transition-all hover:shadow-xl bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm">
+              <CardHeader className="bg-gradient-to-r from-teal-50 to-cyan-50 dark:from-teal-900/40 dark:to-cyan-900/40 px-6 py-5 border-b border-teal-100 dark:border-slate-800"> {/* Added border */}
+                <h2 className="text-2xl font-semibold text-teal-800 dark:text-teal-200 flex items-center">
                   <span className="mr-3 flex h-8 w-8 items-center justify-center rounded-full bg-teal-600 text-white text-lg font-bold">3</span>
                   Notification & Sending
                 </h2>
-                <p className="text-teal-600 text-sm mt-1 ml-11">Choose notification method and send letters</p>
+                <p className="text-teal-600 dark:text-teal-400 text-sm mt-1 ml-11">Choose notification method and send letters</p>
               </CardHeader>
               <CardContent className="p-8">
                 {/* Notification Method Selection */}
                 <div className="space-y-8"> {/* Increased spacing */}
                   {/* Notification Method Selection */}
-                  <div className="bg-blue-50 p-6 rounded-lg border border-blue-100 shadow-sm"> {/* Increased padding */}
-                    <h3 className="font-semibold text-lg text-blue-800 mb-3">Notification Method</h3> {/* Larger text */}
-                    <p className="text-sm text-blue-600 mb-5"> {/* Increased bottom margin */}
+                  <div className="bg-blue-50 dark:bg-blue-900/20 p-6 rounded-lg border border-blue-100 dark:border-blue-800 shadow-sm"> {/* Increased padding */}
+                    <h3 className="font-semibold text-lg text-blue-800 dark:text-blue-200 mb-3">Notification Method</h3> {/* Larger text */}
+                    <p className="text-sm text-blue-600 dark:text-blue-400 mb-5"> {/* Increased bottom margin */}
                       Select how recipients will be notified (Required)
                     </p>
                     <div className="flex gap-4"> {/* Increased gap */}
@@ -2816,7 +2816,7 @@ const LetterMode: React.FC = () => {
                         disabled={isLoading || isSending}
                         className={`h-auto py-5 text-base flex-1 ${letterDetails.notificationMethod === 'SMS'
                           ? 'bg-blue-600 hover:bg-blue-700 text-white ring-2 ring-offset-2 ring-blue-500' /* Added ring for selected */
-                          : 'border-blue-300 text-blue-700 hover:bg-blue-100'
+                          : 'border-blue-300 dark:border-blue-800 text-blue-700 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/30'
                           }`}
                       >
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">

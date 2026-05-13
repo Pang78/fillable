@@ -797,7 +797,7 @@ const BatchFormPrefill = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-blue-50 to-blue-100 p-6">
+    <div className="min-h-screen bg-gradient-to-b from-blue-50 to-blue-100 dark:from-slate-950 dark:to-slate-900 p-6 transition-colors duration-300">
       {/* Render toast notifications */}
       {toasts.map(toast => (
         <Toast
@@ -808,8 +808,8 @@ const BatchFormPrefill = () => {
         />
       ))}
 
-      <Card className="w-full max-w-4xl mx-auto shadow-lg border border-blue-100">
-        <CardHeader className="flex flex-row items-center justify-between bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-t-lg">
+      <Card className="w-full max-w-4xl mx-auto shadow-lg border border-blue-100 dark:border-slate-800 bg-white dark:bg-slate-900/50 backdrop-blur-sm">
+        <CardHeader className="flex flex-row items-center justify-between bg-gradient-to-r from-blue-600 to-blue-700 dark:from-blue-700 dark:to-indigo-900 text-white rounded-t-lg">
           <CardTitle className="text-2xl flex items-center">
             <FileSpreadsheet className="h-6 w-6 mr-2" />
             FormSG Prefill Batch Generator
@@ -860,17 +860,17 @@ const BatchFormPrefill = () => {
           {(currentStep === 'upload' || currentStep === 'generate' || currentStep === 'export') && (
             <div className="space-y-2 py-2 animate-fadeIn mb-6">
               <h3 className="text-lg font-medium text-gray-700 dark:text-gray-300 flex items-center">
-                <LinkIcon className="h-5 w-5 mr-2 text-blue-600" />
+                <LinkIcon className="h-5 w-5 mr-2 text-blue-600 dark:text-blue-400" />
                 FormSG URL
               </h3>
               <div className="flex items-center">
-                <div className="flex-1 bg-blue-50 p-3 rounded-md border border-blue-200 text-blue-800 font-mono text-sm truncate">
+                <div className="flex-1 bg-blue-50 dark:bg-blue-900/20 p-3 rounded-md border border-blue-200 dark:border-blue-800 text-blue-800 dark:text-blue-200 font-mono text-sm truncate">
                   {formUrl}
                 </div>
                 <Button
                   variant="outline"
                   size="sm"
-                  className="ml-2 border-blue-200 hover:bg-blue-50"
+                  className="ml-2 border-blue-200 dark:border-slate-700 dark:hover:bg-slate-800"
                   onClick={() => setCurrentStep('formUrl')}
                 >
                   Edit
@@ -899,14 +899,14 @@ const BatchFormPrefill = () => {
                 </div>
               </div>
 
-              <div className="bg-blue-50 p-5 rounded-lg border border-blue-200 mb-6">
+              <div className="bg-blue-50 dark:bg-blue-900/20 p-5 rounded-lg border border-blue-200 dark:border-blue-900/30 mb-6">
                 <div className="flex items-start">
-                  <Info className="h-10 w-10 text-blue-500 mr-4 flex-shrink-0 mt-1" />
+                  <Info className="h-10 w-10 text-blue-500 dark:text-blue-400 mr-4 flex-shrink-0 mt-1" />
                   <div>
-                    <h3 className="font-semibold text-blue-800 text-lg mb-2">Step 1: Enter Your FormSG URL</h3>
-                    <p className="text-blue-700">
+                    <h3 className="font-semibold text-blue-800 dark:text-blue-200 text-lg mb-2">Step 1: Enter Your FormSG URL</h3>
+                    <p className="text-blue-700 dark:text-blue-300">
                       Enter the URL of your FormSG form. This is the base URL you'll use to create
-                      prefilled links. It should be in the format: <span className="font-mono bg-blue-100 px-1 rounded">https://form.gov.sg/[24-digit code]</span>
+                      prefilled links. It should be in the format: <span className="font-mono bg-blue-100 dark:bg-blue-900/40 px-1 rounded">https://form.gov.sg/[24-digit code]</span>
                     </p>
                   </div>
                 </div>
@@ -914,13 +914,13 @@ const BatchFormPrefill = () => {
 
               <div className="space-y-4">
                 <Label htmlFor="form-url" className="text-lg font-medium text-gray-700 dark:text-gray-300 flex items-center">
-                  <LinkIcon className="h-5 w-5 mr-2 text-blue-600" />
+                  <LinkIcon className="h-5 w-5 mr-2 text-blue-600 dark:text-blue-400" />
                   FormSG URL
                 </Label>
                 <div className="relative">
                   <Input
                     id="form-url"
-                    className={`border-2 focus:ring-2 focus:ring-blue-500 pr-10 text-base h-12 ${urlValidated ? 'border-green-500 bg-green-50' : 'border-blue-200'
+                    className={`border-2 focus:ring-2 focus:ring-blue-500 pr-10 text-base h-12 dark:bg-slate-900 dark:text-slate-100 ${urlValidated ? 'border-green-500 bg-green-50 dark:bg-emerald-900/20 dark:border-emerald-500' : 'border-blue-200 dark:border-slate-700'
                       }`}
                     placeholder="https://form.gov.sg/67488b8b1210a416d2d7cb5b"
                     value={formUrl}
@@ -986,35 +986,35 @@ const BatchFormPrefill = () => {
                 </div>
               </div>
 
-              <div className="bg-blue-50 p-5 rounded-lg border border-blue-200 mb-6">
+              <div className="bg-blue-50 dark:bg-blue-900/20 p-5 rounded-lg border border-blue-200 dark:border-blue-900/30 mb-6">
                 <div className="flex items-start">
-                  <Info className="h-10 w-10 text-blue-500 mr-4 flex-shrink-0 mt-1" />
+                  <Info className="h-10 w-10 text-blue-500 dark:text-blue-400 mr-4 flex-shrink-0 mt-1" />
                   <div>
-                    <h3 className="font-semibold text-blue-800 text-lg mb-2">Upload Your CSV File</h3>
-                    <p className="text-blue-700 mb-2">
+                    <h3 className="font-semibold text-blue-800 dark:text-blue-200 text-lg mb-2">Upload Your CSV File</h3>
+                    <p className="text-blue-700 dark:text-blue-300 mb-2">
                       Upload a CSV file containing your form field values. Each row will generate a unique prefilled link.
                     </p>
-                    <div className="mt-3 bg-white p-3 rounded border border-blue-100">
-                      <h4 className="font-medium text-blue-800 mb-1">How Values Are Processed</h4>
-                      <p className="text-sm text-blue-700 mb-2">
+                    <div className="mt-3 bg-white dark:bg-slate-900 p-3 rounded border border-blue-100 dark:border-slate-800">
+                      <h4 className="font-medium text-blue-800 dark:text-blue-200 mb-1">How Values Are Processed</h4>
+                      <p className="text-sm text-blue-700 dark:text-blue-300 mb-2">
                         When uploading a CSV with varying numbers of values per field:
                       </p>
-                      <ul className="text-sm text-blue-700 list-disc pl-5 space-y-1">
+                      <ul className="text-sm text-blue-700 dark:text-blue-300 list-disc pl-5 space-y-1">
                         <li>If a field has <strong>multiple values</strong> separated by your chosen delimiter, all values will be used</li>
                         <li>If a field has <strong>fewer values</strong> than others, the last value will be repeated</li>
                         <li>If a field has <strong>only one value</strong>, it will be used for all generated links</li>
                       </ul>
                       <div className="mt-2 overflow-auto text-xs">
-                        <table className="min-w-full border border-blue-100 rounded">
-                          <thead className="bg-blue-50">
+                        <table className="min-w-full border border-blue-100 dark:border-slate-700 rounded">
+                          <thead className="bg-blue-50 dark:bg-slate-800">
                             <tr>
-                              <th className="p-1 border border-blue-100 text-left">Field Values in CSV</th>
-                              <th className="p-1 border border-blue-100 text-left">Generated Links (3 entries)</th>
+                              <th className="p-1 border border-blue-100 dark:border-slate-700 text-left">Field Values in CSV</th>
+                              <th className="p-1 border border-blue-100 dark:border-slate-700 text-left">Generated Links (3 entries)</th>
                             </tr>
                           </thead>
                           <tbody>
                             <tr>
-                              <td className="p-1 border border-blue-100 font-mono">Apple;Orange;Banana</td>
+                              <td className="p-1 border border-blue-100 dark:border-slate-700 font-mono">Apple;Orange;Banana</td>
                               <td className="p-1 border border-blue-100">
                                 1: Apple<br />
                                 2: Orange<br />
@@ -1080,7 +1080,7 @@ const BatchFormPrefill = () => {
 
                 <div className="space-y-2 mt-4">
                   <Label htmlFor="csv-file" className="text-gray-700 dark:text-gray-300">CSV File</Label>
-                  <div className="border-2 border-dashed border-blue-200 rounded-lg p-6 text-center hover:bg-blue-50 transition-colors cursor-pointer">
+                  <div className="border-2 border-dashed border-blue-200 dark:border-slate-700 rounded-lg p-6 text-center hover:bg-blue-50 dark:hover:bg-slate-800 transition-colors cursor-pointer">
                     <Input
                       id="csv-file"
                       type="file"
@@ -1089,9 +1089,9 @@ const BatchFormPrefill = () => {
                       className="hidden"
                     />
                     <label htmlFor="csv-file" className="cursor-pointer flex flex-col items-center">
-                      <FileSpreadsheet className="h-12 w-12 text-blue-500 mb-3" />
-                      <span className="text-blue-700 font-medium mb-1">Click to upload CSV file</span>
-                      <span className="text-sm text-gray-500">or drag and drop</span>
+                      <FileSpreadsheet className="h-12 w-12 text-blue-500 dark:text-blue-400 mb-3" />
+                      <span className="text-blue-700 dark:text-blue-300 font-medium mb-1">Click to upload CSV file</span>
+                      <span className="text-sm text-gray-500 dark:text-gray-400">or drag and drop</span>
                     </label>
                   </div>
                 </div>
@@ -1182,12 +1182,12 @@ const BatchFormPrefill = () => {
                 </div>
               </div>
 
-              <div className="bg-blue-50 p-5 rounded-lg border border-blue-200 mb-6">
+              <div className="bg-blue-50 dark:bg-blue-900/20 p-5 rounded-lg border border-blue-200 dark:border-blue-900/30 mb-6">
                 <div className="flex items-start">
-                  <Info className="h-10 w-10 text-blue-500 mr-4 flex-shrink-0 mt-1" />
+                  <Info className="h-10 w-10 text-blue-500 dark:text-blue-400 mr-4 flex-shrink-0 mt-1" />
                   <div>
-                    <h3 className="font-semibold text-blue-800 text-lg mb-2">Generate Prefilled Links</h3>
-                    <p className="text-blue-700">
+                    <h3 className="font-semibold text-blue-800 dark:text-blue-200 text-lg mb-2">Generate Prefilled Links</h3>
+                    <p className="text-blue-700 dark:text-blue-300">
                       Click the button below to generate prefilled links for each row in your CSV file.
                       Each link will contain the field values from the corresponding row.
                     </p>
@@ -1294,12 +1294,12 @@ const BatchFormPrefill = () => {
                 </div>
               </div>
 
-              <div className="bg-blue-50 p-5 rounded-lg border border-blue-200 mb-6">
+              <div className="bg-blue-50 dark:bg-blue-900/20 p-5 rounded-lg border border-blue-200 dark:border-blue-900/30 mb-6">
                 <div className="flex items-start">
-                  <Info className="h-10 w-10 text-blue-500 mr-4 flex-shrink-0 mt-1" />
+                  <Info className="h-10 w-10 text-blue-500 dark:text-blue-400 mr-4 flex-shrink-0 mt-1" />
                   <div>
-                    <h3 className="font-semibold text-blue-800 text-lg mb-2">Export Prefilled Links</h3>
-                    <p className="text-blue-700">
+                    <h3 className="font-semibold text-blue-800 dark:text-blue-200 text-lg mb-2">Export Prefilled Links</h3>
+                    <p className="text-blue-700 dark:text-blue-300">
                       Click the button below to export your prefilled links as a CSV file.
                     </p>
                   </div>
