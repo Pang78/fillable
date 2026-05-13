@@ -13,15 +13,15 @@ const InstructionalGuide: React.FC = () => {
       title: 'Step 1: Enter Your Form URL',
       description: 'Start by entering the base URL of your FormSG form. This is the URL you see in your browser when viewing the form.',
       content: (
-        <div className="space-y-4 max-h-[400px] overflow-y-auto p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
+        <div className="space-y-4 max-h-[400px] overflow-y-auto p-4 bg-gray-50 dark:bg-slate-900/50 rounded-lg">
           <img
             src="/form-url-guide.png"
             alt="Form URL Example"
-            className="w-full h-auto object-cover bg-gray-100 dark:bg-gray-700 rounded"
+            className="w-full h-auto object-cover bg-gray-100 dark:bg-slate-800 rounded"
           />
-          <Alert className="bg-blue-50 border-blue-100">
-            <Info className="h-4 w-4 text-blue-600" />
-            <AlertDescription className="text-blue-800">
+          <Alert className="bg-blue-50 border-blue-100 dark:bg-blue-900/20 dark:border-blue-900/30">
+            <Info className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+            <AlertDescription className="text-blue-800 dark:text-blue-200">
               <strong>Pro Tip:</strong> The form URL should look like: https://form.gov.sg/1234567890abcdef1234567890
             </AlertDescription>
           </Alert>
@@ -32,10 +32,10 @@ const InstructionalGuide: React.FC = () => {
       title: 'Step 2: Add Form Fields',
       description: 'Add the fields you want to pre-fill. Each field needs an ID, which you can find in your FormSG form settings.',
       content: (
-        <div className="space-y-4 max-h-[400px] overflow-y-auto p-4 bg-gray-50 rounded-lg">
+        <div className="space-y-4 max-h-[400px] overflow-y-auto p-4 bg-gray-50 dark:bg-slate-900/50 rounded-lg">
           <div className="space-y-2">
-            <h4 className="font-medium">How to find Field IDs:</h4>
-            <ol className="list-decimal pl-6 space-y-2">
+            <h4 className="font-medium text-slate-900 dark:text-slate-100">How to find Field IDs:</h4>
+            <ol className="list-decimal pl-6 space-y-2 text-slate-700 dark:text-slate-300">
               <li>Go to your FormSG form in edit mode</li>
               <li>Click on a field you want to pre-fill</li>
               <li>Enable the "Allow pre-fill" option</li>
@@ -43,9 +43,9 @@ const InstructionalGuide: React.FC = () => {
               <li>Copy this ID into the "Field ID" input in Fillable</li>
             </ol>
           </div>
-          <Alert className="bg-amber-50 border-amber-100">
-            <Info className="h-4 w-4 text-amber-600" />
-            <AlertDescription className="text-amber-800">
+          <Alert className="bg-amber-50 border-amber-100 dark:bg-amber-900/20 dark:border-amber-900/30">
+            <Info className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+            <AlertDescription className="text-amber-800 dark:text-amber-200">
               <strong>Important:</strong> Each field must have both an ID and a value. The label is optional but helps you remember what each field is for.
             </AlertDescription>
           </Alert>
@@ -56,19 +56,19 @@ const InstructionalGuide: React.FC = () => {
       title: 'Step 3: Generate Your URL',
       description: 'Click the "Generate URL" button to create your pre-filled form URL.',
       content: (
-        <div className="space-y-4 max-h-[400px] overflow-y-auto p-4 bg-gray-50 rounded-lg">
+        <div className="space-y-4 max-h-[400px] overflow-y-auto p-4 bg-gray-50 dark:bg-slate-900/50 rounded-lg">
           <div className="space-y-2">
-            <h4 className="font-medium">What happens next:</h4>
-            <ul className="list-disc pl-6 space-y-2">
+            <h4 className="font-medium text-slate-900 dark:text-slate-100">What happens next:</h4>
+            <ul className="list-disc pl-6 space-y-2 text-slate-700 dark:text-slate-300">
               <li>Your pre-filled URL will be generated and displayed</li>
               <li>The URL is automatically copied to your clipboard</li>
               <li>You can save the URL with a custom name for future use</li>
               <li>Share the URL with others to give them a pre-filled form</li>
             </ul>
           </div>
-          <Alert className="bg-green-50 border-green-100">
-            <Info className="h-4 w-4 text-green-600" />
-            <AlertDescription className="text-green-800">
+          <Alert className="bg-green-50 border-green-100 dark:bg-emerald-900/20 dark:border-emerald-900/30">
+            <Info className="h-4 w-4 text-green-600 dark:text-emerald-400" />
+            <AlertDescription className="text-green-800 dark:text-emerald-200">
               <strong>Success:</strong> When users open your pre-filled URL, they'll see the form with the fields already filled in with your values.
             </AlertDescription>
           </Alert>
