@@ -176,17 +176,17 @@ const CSVImportDialog: React.FC<{
         </DialogHeader>
 
         <div className="space-y-4">
-          <div className="bg-gradient-to-r from-blue-50/80 to-blue-50 p-4 rounded-lg border border-blue-100 mb-2">
+          <div className="bg-gradient-to-r from-blue-50/80 to-blue-50 dark:from-blue-950/30 dark:to-blue-900/20 p-4 rounded-lg border border-blue-100 dark:border-blue-900/50 mb-2">
             <div className="flex items-start">
-              <div className="bg-blue-100 p-2 rounded-full mr-3 flex-shrink-0">
-                <Lightbulb className="h-4 w-4 text-blue-600" />
+              <div className="bg-blue-100 dark:bg-blue-900/50 p-2 rounded-full mr-3 flex-shrink-0">
+                <Lightbulb className="h-4 w-4 text-blue-600 dark:text-blue-400" />
               </div>
               <div>
-                <h3 className="font-medium text-blue-800 mb-1 text-sm">CSV Import Guide</h3>
-                <p className="text-xs text-blue-700">
+                <h3 className="font-medium text-blue-800 dark:text-blue-200 mb-1 text-sm">CSV Import Guide</h3>
+                <p className="text-xs text-blue-700 dark:text-blue-300">
                   Your CSV file should have these columns:
                 </p>
-                <ul className="mt-1 space-y-1 text-xs text-blue-700 list-disc pl-4">
+                <ul className="mt-1 space-y-1 text-xs text-blue-700 dark:text-blue-300 list-disc pl-4">
                   <li><span className="font-semibold">id</span> - The 24 character field ID from FormSG (required)</li>
                   <li><span className="font-semibold">value</span> - The data to pre-fill (required)</li>
                   <li><span className="font-semibold">label</span> - A description of the field (optional)</li>
@@ -726,7 +726,7 @@ const FormPrefillGuide = () => {
       {/* How It Works Modal (placeholder) */}
       {showHowItWorks && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
-          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl p-8 max-w-lg w-full relative animate-fade-in">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl p-8 max-w-lg w-full relative animate-fade-in border dark:border-slate-800">
             <button
               className="absolute top-3 right-3 text-xl text-muted-foreground hover:text-primary"
               onClick={() => setShowHowItWorks(false)}
@@ -751,7 +751,7 @@ const FormPrefillGuide = () => {
       {/* Main Tool Section */}
       <div ref={toolRef} className="max-w-4xl mx-auto mt-[-60px] md:mt-[-120px] relative z-10">
         {/* Card wrapper for the main tool */}
-        <div className="bg-white/90 dark:bg-gray-800/90 rounded-3xl shadow-2xl p-4 md:p-8 backdrop-blur-lg border border-primary/10 dark:border-primary/20">
+        <div className="bg-white/90 dark:bg-slate-900/90 rounded-3xl shadow-2xl p-4 md:p-8 backdrop-blur-lg border border-primary/10 dark:border-primary/20">
           {/* Existing main tool content below */}
           <div className="max-w-4xl mx-auto">
             <header className="flex justify-between items-center mb-6">
@@ -869,12 +869,12 @@ const FormPrefillGuide = () => {
                   </div>
                 </div>
 
-                <div className="mt-6 bg-blue-50 p-3 rounded-lg border border-blue-100">
+                <div className="mt-6 bg-blue-50 dark:bg-blue-950/20 p-3 rounded-lg border border-blue-100 dark:border-blue-900/50">
                   <div className="flex items-start">
-                    <Info className="h-4 w-4 text-blue-600 mt-0.5 mr-2" />
+                    <Info className="h-4 w-4 text-blue-600 dark:text-blue-400 mt-0.5 mr-2" />
                     <div>
-                      <p className="text-sm text-blue-800 font-medium">How to Get Started</p>
-                      <p className="text-xs text-blue-700 mt-1">
+                      <p className="text-sm text-blue-800 dark:text-blue-200 font-medium">How to Get Started</p>
+                      <p className="text-xs text-blue-700 dark:text-blue-300 mt-1">
                         Choose one of the tabs below to start working with pre-filled forms. Use <span className="font-medium">Construct Mode</span> to create a pre-filled URL, <span className="font-medium">Deconstruct Mode</span> to analyze an existing URL, or <span className="font-medium">Batch Mode</span> for bulk creation.
                       </p>
                     </div>
@@ -1081,40 +1081,40 @@ const FormPrefillGuide = () => {
 
                   <TabsContent value="construct" className="space-y-6">
                     {/* Mode description and explanatory panel */}
-                    <div className="bg-gradient-to-r from-blue-50/80 to-blue-50 p-4 rounded-lg border border-blue-100 mb-2 shadow-sm">
+                    <div className="bg-gradient-to-r from-blue-50/80 to-blue-50 dark:from-blue-950/30 dark:to-blue-900/20 p-4 rounded-lg border border-blue-100 dark:border-blue-900/50 mb-2 shadow-sm">
                       <div className="flex items-start">
-                        <div className="bg-blue-100 p-2 rounded-full mr-3 flex-shrink-0">
-                          <Lightbulb className="h-5 w-5 text-blue-600" />
+                        <div className="bg-blue-100 dark:bg-blue-900/50 p-2 rounded-full mr-3 flex-shrink-0">
+                          <Lightbulb className="h-5 w-5 text-blue-600 dark:text-blue-400" />
                         </div>
                         <div>
-                          <h3 className="font-medium text-blue-800 mb-1 text-base">Construct Mode Guide</h3>
-                          <p className="text-sm text-blue-700">
+                          <h3 className="font-medium text-blue-800 dark:text-blue-200 mb-1 text-base">Construct Mode Guide</h3>
+                          <p className="text-sm text-blue-700 dark:text-blue-300">
                             Create a pre-filled form URL by following these steps:
                           </p>
                           <div className="mt-3 space-y-2">
                             <div className="flex items-center">
-                              <div className="bg-blue-200 rounded-full h-5 w-5 flex items-center justify-center mr-2">
-                                <span className="text-xs font-semibold text-blue-800">1</span>
+                              <div className="bg-blue-200 dark:bg-blue-800 rounded-full h-5 w-5 flex items-center justify-center mr-2">
+                                <span className="text-xs font-semibold text-blue-800 dark:text-blue-100">1</span>
                               </div>
-                              <p className="text-xs text-blue-800">Enter your form's base URL</p>
+                              <p className="text-xs text-blue-800 dark:text-blue-200">Enter your form's base URL</p>
                             </div>
                             <div className="flex items-center">
-                              <div className="bg-blue-200 rounded-full h-5 w-5 flex items-center justify-center mr-2">
-                                <span className="text-xs font-semibold text-blue-800">2</span>
+                              <div className="bg-blue-200 dark:bg-blue-800 rounded-full h-5 w-5 flex items-center justify-center mr-2">
+                                <span className="text-xs font-semibold text-blue-800 dark:text-blue-100">2</span>
                               </div>
-                              <p className="text-xs text-blue-800">Add form fields with their IDs and values</p>
+                              <p className="text-xs text-blue-800 dark:text-blue-200">Add form fields with their IDs and values</p>
                             </div>
                             <div className="flex items-center">
-                              <div className="bg-blue-200 rounded-full h-5 w-5 flex items-center justify-center mr-2">
-                                <span className="text-xs font-semibold text-blue-800">3</span>
+                              <div className="bg-blue-200 dark:bg-blue-800 rounded-full h-5 w-5 flex items-center justify-center mr-2">
+                                <span className="text-xs font-semibold text-blue-800 dark:text-blue-100">3</span>
                               </div>
-                              <p className="text-xs text-blue-800">Generate and use your pre-filled URL</p>
+                              <p className="text-xs text-blue-800 dark:text-blue-200">Generate and use your pre-filled URL</p>
                             </div>
                           </div>
-                          <div className="mt-2 bg-blue-100/60 rounded p-2">
+                          <div className="mt-2 bg-blue-100/60 dark:bg-blue-900/40 rounded p-2">
                             <div className="flex items-start">
-                              <Info className="h-4 w-4 text-blue-600 mt-0.5 mr-2 flex-shrink-0" />
-                              <p className="text-xs text-blue-700">Need field IDs? Use <span className="font-semibold">Deconstruct Mode</span> to extract them from existing forms.</p>
+                              <Info className="h-4 w-4 text-blue-600 dark:text-blue-400 mt-0.5 mr-2 flex-shrink-0" />
+                              <p className="text-xs text-blue-700 dark:text-blue-300">Need field IDs? Use <span className="font-semibold">Deconstruct Mode</span> to extract them from existing forms.</p>
                             </div>
                           </div>
                         </div>
@@ -1762,14 +1762,14 @@ const FormPrefillGuide = () => {
                   </TabsContent>
 
                   <TabsContent value="deconstruct" className="space-y-4">
-                    <div className="bg-gradient-to-r from-blue-50/80 to-blue-50 p-4 rounded-lg border border-blue-100 mb-4">
+                    <div className="bg-gradient-to-r from-blue-50/80 to-blue-50 dark:from-blue-950/30 dark:to-blue-900/20 p-4 rounded-lg border border-blue-100 dark:border-blue-900/50 mb-4">
                       <div className="flex items-start">
-                        <div className="bg-blue-100 p-2 rounded-full mr-3 flex-shrink-0">
-                          <Lightbulb className="h-4 w-4 text-blue-600" />
+                        <div className="bg-blue-100 dark:bg-blue-900/50 p-2 rounded-full mr-3 flex-shrink-0">
+                          <Lightbulb className="h-4 w-4 text-blue-600 dark:text-blue-400" />
                         </div>
                         <div>
-                          <h3 className="font-medium text-blue-800 mb-1 text-sm">Deconstruct Mode Guide</h3>
-                          <p className="text-xs text-blue-700">
+                          <h3 className="font-medium text-blue-800 dark:text-blue-200 mb-1 text-sm">Deconstruct Mode Guide</h3>
+                          <p className="text-xs text-blue-700 dark:text-blue-300">
                             Paste a pre-filled URL to analyze and extract its field IDs and values. This helps you understand how URLs are structured and reuse field IDs.
                           </p>
                         </div>
@@ -1846,10 +1846,10 @@ const FormPrefillGuide = () => {
                   </TabsContent>
                   <TabsContent value="transform" className="space-y-4">
                     {/* Mode description and explanatory panel */}
-                    <div className="bg-gradient-to-r from-purple-50/80 to-pink-50 p-4 rounded-lg border border-purple-100 mb-4 shadow-sm">
+                    <div className="bg-gradient-to-r from-purple-50/80 to-pink-50 dark:from-purple-950/30 dark:to-pink-900/20 p-4 rounded-lg border border-purple-100 dark:border-purple-900/50 mb-4 shadow-sm">
                       <div className="flex items-start">
-                        <div className="bg-purple-100 p-2 rounded-full mr-3 flex-shrink-0">
-                          <svg className="h-5 w-5 text-purple-600" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <div className="bg-purple-100 dark:bg-purple-900/50 p-2 rounded-full mr-3 flex-shrink-0">
+                          <svg className="h-5 w-5 text-purple-600 dark:text-purple-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                             <path d="M2 16C2 13.172 2 11.757 2.879 10.879C3.757 10 5.172 10 8 10H16C18.828 10 20.243 10 21.121 10.879C22 11.757 22 13.172 22 16C22 18.828 22 20.243 21.121 21.121C20.243 22 18.828 22 16 22H8C5.172 22 3.757 22 2.879 21.121C2 20.243 2 18.828 2 16Z"></path>
                             <path d="M8 10V6C8 4.343 9.343 3 11 3H13C14.657 3 16 4.343 16 6V10"></path>
                             <path d="M12 14V18"></path>
@@ -1857,8 +1857,8 @@ const FormPrefillGuide = () => {
                           </svg>
                         </div>
                         <div>
-                          <h3 className="font-medium text-purple-800 mb-1 text-base">Data Format Transformer</h3>
-                          <p className="text-sm text-purple-700">
+                          <h3 className="font-medium text-purple-800 dark:text-purple-200 mb-1 text-base">Data Format Transformer</h3>
+                          <p className="text-sm text-purple-700 dark:text-purple-300">
                             Transform your data between column and row formats. Use Column → Row to combine multiple lines into a single delimited row,
                             or Row → Column to split a delimited row into separate lines.
                           </p>
