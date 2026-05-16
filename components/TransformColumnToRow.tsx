@@ -1815,7 +1815,7 @@ ${markdownHtmlOutput}
       {transformDirection !== 'nameMatcher' && (
         <>
           <Card>
-            <CardHeader className="bg-gradient-to-r from-purple-50/50 to-pink-50/50 dark:from-purple-950/30 dark:to-pink-950/30 border-b border-purple-100/50 dark:border-purple-800/50">
+            <CardHeader className="bg-gradient-to-r from-purple-50/50 to-pink-50/50 dark:from-purple-950/40 dark:to-pink-950/40 border-b border-purple-100/50 dark:border-purple-800/50">
               <CardTitle className="text-lg font-semibold text-purple-800 dark:text-purple-200">
                 Data Format Transformer
               </CardTitle>
@@ -2066,7 +2066,7 @@ ${markdownHtmlOutput}
                     </TabsContent>
                   </Tabs>
 
-                  <Alert className="bg-purple-50 dark:bg-purple-900/20 border-purple-100 dark:border-purple-900">
+                  <Alert className="bg-purple-50 dark:bg-purple-950/20 border-purple-100 dark:border-purple-900/50">
                     <Info className="h-4 w-4 text-purple-600" />
                     <AlertDescription className="text-purple-700 dark:text-purple-300 text-sm">
                       {transformDirection === 'columnToRow'
@@ -2169,7 +2169,7 @@ ${markdownHtmlOutput}
                               type="checkbox"
                               checked={cleaningOptions.trimWhitespace}
                               onChange={() => toggleCleaningOption('trimWhitespace')}
-                              className="h-4 w-4 rounded border-purple-300 dark:border-purple-700 text-purple-600 dark:text-purple-400 focus:ring-purple-500"
+                              className="h-4 w-4 rounded border-purple-300 dark:border-purple-700 text-purple-600 dark:text-purple-400 focus:ring-purple-500 dark:focus:ring-purple-600"
                             />
                             <span>Trim whitespace</span>
                           </label>
@@ -2179,7 +2179,7 @@ ${markdownHtmlOutput}
                               type="checkbox"
                               checked={cleaningOptions.removeEmptyLines}
                               onChange={() => toggleCleaningOption('removeEmptyLines')}
-                              className="h-4 w-4 rounded border-purple-300 text-purple-600 focus:ring-purple-500"
+                              className="h-4 w-4 rounded border-purple-300 dark:border-purple-700 text-purple-600 dark:text-purple-400 focus:ring-purple-500 dark:focus:ring-purple-600"
                             />
                             <span>Remove empty lines</span>
                           </label>
@@ -2189,7 +2189,7 @@ ${markdownHtmlOutput}
                               type="checkbox"
                               checked={cleaningOptions.removeDuplicates}
                               onChange={() => toggleCleaningOption('removeDuplicates')}
-                              className="h-4 w-4 rounded border-purple-300 text-purple-600 focus:ring-purple-500"
+                              className="h-4 w-4 rounded border-purple-300 dark:border-purple-700 text-purple-600 dark:text-purple-400 focus:ring-purple-500 dark:focus:ring-purple-600"
                             />
                             <span>Remove duplicates</span>
                           </label>
@@ -2199,7 +2199,7 @@ ${markdownHtmlOutput}
                               type="checkbox"
                               checked={cleaningOptions.removeSpecialChars}
                               onChange={() => toggleCleaningOption('removeSpecialChars')}
-                              className="h-4 w-4 rounded border-purple-300 text-purple-600 focus:ring-purple-500"
+                              className="h-4 w-4 rounded border-purple-300 dark:border-purple-700 text-purple-600 dark:text-purple-400 focus:ring-purple-500 dark:focus:ring-purple-600"
                             />
                             <span>Remove special characters</span>
                           </label>
@@ -2209,7 +2209,7 @@ ${markdownHtmlOutput}
                               type="checkbox"
                               checked={cleaningOptions.toLowerCase}
                               onChange={() => toggleCleaningOption('toLowerCase')}
-                              className="h-4 w-4 rounded border-purple-300 text-purple-600 focus:ring-purple-500"
+                              className="h-4 w-4 rounded border-purple-300 dark:border-purple-700 text-purple-600 dark:text-purple-400 focus:ring-purple-500 dark:focus:ring-purple-600"
                             />
                             <span>Convert to lowercase</span>
                           </label>
@@ -2219,7 +2219,7 @@ ${markdownHtmlOutput}
                               type="checkbox"
                               checked={cleaningOptions.toUpperCase}
                               onChange={() => toggleCleaningOption('toUpperCase')}
-                              className="h-4 w-4 rounded border-purple-300 text-purple-600 focus:ring-purple-500"
+                              className="h-4 w-4 rounded border-purple-300 dark:border-purple-700 text-purple-600 dark:text-purple-400 focus:ring-purple-500 dark:focus:ring-purple-600"
                             />
                             <span>Convert to UPPERCASE</span>
                           </label>
@@ -2229,7 +2229,7 @@ ${markdownHtmlOutput}
                               type="checkbox"
                               checked={cleaningOptions.replaceMultipleSpaces}
                               onChange={() => toggleCleaningOption('replaceMultipleSpaces')}
-                              className="h-4 w-4 rounded border-purple-300 text-purple-600 focus:ring-purple-500"
+                              className="h-4 w-4 rounded border-purple-300 dark:border-purple-700 text-purple-600 dark:text-purple-400 focus:ring-purple-500 dark:focus:ring-purple-600"
                             />
                             <span>Replace multiple spaces</span>
                           </label>
@@ -2239,7 +2239,7 @@ ${markdownHtmlOutput}
                               type="checkbox"
                               checked={cleaningOptions.removeLeadingNumbers}
                               onChange={() => toggleCleaningOption('removeLeadingNumbers')}
-                              className="h-4 w-4 rounded border-purple-300 text-purple-600 focus:ring-purple-500"
+                              className="h-4 w-4 rounded border-purple-300 dark:border-purple-700 text-purple-600 dark:text-purple-400 focus:ring-purple-500 dark:focus:ring-purple-600"
                             />
                             <span>Remove leading numbers</span>
                           </label>
@@ -2249,7 +2249,7 @@ ${markdownHtmlOutput}
                               type="checkbox"
                               checked={cleaningOptions.removeTrailingNumbers}
                               onChange={() => toggleCleaningOption('removeTrailingNumbers')}
-                              className="h-4 w-4 rounded border-purple-300 text-purple-600 focus:ring-purple-500"
+                              className="h-4 w-4 rounded border-purple-300 dark:border-purple-700 text-purple-600 dark:text-purple-400 focus:ring-purple-500 dark:focus:ring-purple-600"
                             />
                             <span>Remove trailing numbers</span>
                           </label>
@@ -2259,7 +2259,7 @@ ${markdownHtmlOutput}
                               type="checkbox"
                               checked={cleaningOptions.useCustomRegex}
                               onChange={() => toggleCleaningOption('useCustomRegex')}
-                              className="h-4 w-4 rounded border-purple-300 text-purple-600 focus:ring-purple-500"
+                              className="h-4 w-4 rounded border-purple-300 dark:border-purple-700 text-purple-600 dark:text-purple-400 focus:ring-purple-500 dark:focus:ring-purple-600"
                             />
                             <span>Use custom regex pattern</span>
                           </label>
@@ -2269,7 +2269,7 @@ ${markdownHtmlOutput}
                               type="checkbox"
                               checked={cleaningOptions.normalizeWhitespace}
                               onChange={() => toggleCleaningOption('normalizeWhitespace')}
-                              className="h-4 w-4 rounded border-purple-300 text-purple-600 focus:ring-purple-500"
+                              className="h-4 w-4 rounded border-purple-300 dark:border-purple-700 text-purple-600 dark:text-purple-400 focus:ring-purple-500 dark:focus:ring-purple-600"
                             />
                             <span>Normalize Whitespace (Post-Transform)</span>
                           </label>
@@ -2289,8 +2289,8 @@ ${markdownHtmlOutput}
                             <label className={`
                                 flex flex-col items-center justify-center p-3 rounded-lg border cursor-pointer transition-all
                                 ${cleaningOptions.smartEmail
-                                ? 'bg-purple-50 dark:bg-purple-900/20 border-purple-300 dark:border-purple-700 ring-1 ring-purple-300 dark:ring-purple-700'
-                                : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 hover:border-purple-200 dark:hover:border-purple-800 hover:bg-purple-50/30 dark:hover:bg-purple-900/10'}
+                                ? 'bg-purple-50 dark:bg-purple-950/30 border-purple-300 dark:border-purple-700 ring-1 ring-purple-300 dark:ring-purple-700'
+                                : 'bg-white dark:bg-slate-900 border-gray-200 dark:border-slate-800 hover:border-purple-200 dark:hover:border-purple-800 hover:bg-purple-50/30 dark:hover:bg-purple-950/10'}
                               `}>
                               <input
                                 type="checkbox"
@@ -2305,8 +2305,8 @@ ${markdownHtmlOutput}
                             <label className={`
                                 flex flex-col items-center justify-center p-3 rounded-lg border cursor-pointer transition-all
                                 ${cleaningOptions.smartPhone
-                                ? 'bg-purple-50 border-purple-300 ring-1 ring-purple-300'
-                                : 'bg-white border-gray-200 hover:border-purple-200 hover:bg-purple-50/30'}
+                                ? 'bg-purple-50 dark:bg-purple-950/30 border-purple-300 dark:border-purple-800 ring-1 ring-purple-300 dark:ring-purple-800'
+                                : 'bg-white dark:bg-slate-900 border-gray-200 dark:border-slate-800 hover:border-purple-200 hover:bg-purple-50/30'}
                               `}>
                               <input
                                 type="checkbox"
@@ -2321,8 +2321,8 @@ ${markdownHtmlOutput}
                             <label className={`
                                 flex flex-col items-center justify-center p-3 rounded-lg border cursor-pointer transition-all
                                 ${cleaningOptions.smartName
-                                ? 'bg-purple-50 border-purple-300 ring-1 ring-purple-300'
-                                : 'bg-white border-gray-200 hover:border-purple-200 hover:bg-purple-50/30'}
+                                ? 'bg-purple-50 dark:bg-purple-950/30 border-purple-300 dark:border-purple-800 ring-1 ring-purple-300 dark:ring-purple-800'
+                                : 'bg-white dark:bg-slate-900 border-gray-200 dark:border-slate-800 hover:border-purple-200 hover:bg-purple-50/30'}
                               `}>
                               <input
                                 type="checkbox"
@@ -2376,7 +2376,7 @@ ${markdownHtmlOutput}
                         )}
 
                         {previewStats.showPreview && (
-                          <div className="mt-3 bg-purple-50/70 rounded-md p-3 border border-purple-100 text-xs text-purple-700">
+                          <div className="mt-3 bg-purple-50/70 dark:bg-purple-950/30 rounded-md p-3 border border-purple-100 dark:border-purple-900 text-xs text-purple-700 dark:text-purple-300">
                             <h4 className="font-medium mb-1 flex items-center">
                               <CheckCircle className="h-3 w-3 mr-1 text-purple-600" />
                               Data Cleaning Preview
@@ -2468,7 +2468,7 @@ ${markdownHtmlOutput}
                           </div>
                         )}
 
-                        <div className="mt-3 bg-purple-50 rounded-md p-2 border border-purple-100">
+                        <div className="mt-3 bg-purple-50 dark:bg-purple-950/30 rounded-md p-2 border border-purple-100 dark:border-purple-900">
                           <div className="flex items-start">
                             <Info className="h-3.5 w-3.5 text-purple-600 mt-0.5 mr-1.5 flex-shrink-0" />
                             <span className="text-xs text-purple-700">
@@ -2922,7 +2922,7 @@ ${markdownHtmlOutput}
           </Card>
 
           <Card>
-            <CardHeader className="bg-gradient-to-r from-purple-50/50 to-pink-50/50 dark:from-purple-900/20 dark:to-pink-900/20 border-b border-purple-100/50 dark:border-purple-800/50">
+            <CardHeader className="bg-gradient-to-r from-purple-50/50 to-pink-50/50 dark:from-purple-950/40 dark:to-pink-950/40 border-b border-purple-100/50 dark:border-purple-800/50">
               <CardTitle className="text-lg font-semibold text-purple-800 dark:text-purple-200">How to Use Transform Mode</CardTitle>
             </CardHeader>
             <CardContent className="pt-4">
@@ -2969,7 +2969,7 @@ ${markdownHtmlOutput}
                   </div>
                 </div>
 
-                <Alert className="bg-gradient-to-r from-purple-50 to-pink-50/50 dark:from-purple-900/20 dark:to-pink-900/20 border-purple-100 dark:border-purple-900 mt-2">
+                <Alert className="bg-gradient-to-r from-purple-50 to-pink-50/50 dark:from-purple-950/20 dark:to-pink-950/20 border-purple-100 dark:border-purple-900/50 mt-2">
                   <AlertTriangle className="h-4 w-4 text-purple-600" />
                   <AlertDescription className="text-purple-700 text-sm">
                     <strong>Tips:</strong> Use the cleaning options to handle whitespace, duplicates, and case formatting. For large datasets, consider breaking them into smaller chunks.
@@ -3034,7 +3034,7 @@ ${markdownHtmlOutput}
           </div>
           {/* Help/Info Section */}
           {showNameMatcherHelp ? (
-            <div className="mb-4 bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-lg p-4 relative">
+            <div className="mb-4 bg-purple-50 dark:bg-purple-950/20 border border-purple-200 dark:border-purple-900/50 rounded-lg p-4 relative">
               <button className="absolute top-2 right-2 text-purple-400 hover:text-purple-700" onClick={() => setShowNameMatcherHelp(false)} title="Dismiss">✕</button>
               <div className="flex items-start gap-3">
                 <svg className="h-6 w-6 text-purple-600 mt-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 01.88 7.903A5.5 5.5 0 1112 6.5" /></svg>
@@ -3057,7 +3057,7 @@ ${markdownHtmlOutput}
             </div>
           )}
           {/* User Controls */}
-          <div className="mb-4 bg-purple-50 dark:bg-purple-900/20 border border-purple-100 dark:border-purple-800 rounded-lg p-4">
+          <div className="mb-4 bg-purple-50 dark:bg-purple-950/20 border border-purple-100 dark:border-purple-900/50 rounded-lg p-4">
             <div className="font-semibold text-purple-800 mb-2 text-sm flex items-center gap-2">
               <svg className="h-4 w-4 text-purple-600 dark:text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 01.88 7.903A5.5 5.5 0 1112 6.5" /></svg>
               Matching Options
@@ -3305,7 +3305,7 @@ ${markdownHtmlOutput}
             </div>
           </div>
           {/* Fuzzy matching and download UI */}
-          <div className="mt-6 bg-purple-50 dark:bg-purple-900/20 border border-purple-100 dark:border-purple-800 rounded-lg p-4">
+          <div className="mt-6 bg-purple-50 dark:bg-purple-950/20 border border-purple-100 dark:border-purple-900/50 rounded-lg p-4">
             <div className="flex flex-col md:flex-row md:items-center gap-4 mb-4">
               <div className="flex items-center gap-2">
                 <label className="font-medium text-purple-800 dark:text-purple-200 text-sm flex items-center gap-1" htmlFor="fuzzy-threshold-slider">
@@ -3350,9 +3350,9 @@ ${markdownHtmlOutput}
                     {nameMatcherResults.map((row: NameMatcherResult, idx) => {
                       let color = '';
                       const score = row.score ?? 0;
-                      if (score >= 0.97) color = 'bg-green-50 dark:bg-green-900/20';
-                      else if (score >= fuzzyThreshold) color = 'bg-yellow-50 dark:bg-yellow-900/20';
-                      else color = 'bg-red-50 dark:bg-red-900/20';
+                      if (score >= 0.97) color = 'bg-green-50 dark:bg-emerald-950/30';
+                      else if (score >= fuzzyThreshold) color = 'bg-yellow-50 dark:bg-amber-950/30';
+                      else color = 'bg-red-50 dark:bg-red-950/30';
                       return (
                         <tr key={idx} className={color}>
                           <td className="border dark:border-white/10 px-2 py-1 text-xs font-mono">{row.name1}</td>
@@ -3387,9 +3387,9 @@ ${markdownHtmlOutput}
                   </tbody>
                 </table>
                 <div className="text-xs text-purple-600 dark:text-purple-400 mt-2">
-                  <span className="inline-block bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded px-2 py-0.5 mr-2">✔ Strong Match</span>
-                  <span className="inline-block bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded px-2 py-0.5 mr-2">~ Possible Match</span>
-                  <span className="inline-block bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded px-2 py-0.5">✗ No Match</span>
+                  <span className="inline-block bg-green-50 dark:bg-emerald-950/30 border border-green-200 dark:border-emerald-800 rounded px-2 py-0.5 mr-2">✔ Strong Match</span>
+                  <span className="inline-block bg-yellow-50 dark:bg-amber-950/30 border border-yellow-200 dark:border-amber-800 rounded px-2 py-0.5 mr-2">~ Possible Match</span>
+                  <span className="inline-block bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded px-2 py-0.5">✗ No Match</span>
                 </div>
               </div>
             )}

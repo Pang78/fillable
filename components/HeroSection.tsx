@@ -50,7 +50,7 @@ const HeroSection: React.FC<{ onStart: () => void }> = ({ onStart }) => {
             <span className="text-white/80">No more manual entry. No more errors. Just seamless automation.</span>
           </p>
           <div className="flex gap-4 mb-6 animate-fade-in">
-            <Button size="lg" className="bg-white dark:bg-gray-800 dark:text-gray-100 text-primary font-bold px-8 py-3 rounded-full shadow-lg hover:scale-105 hover:shadow-xl transition-transform focus:ring-4 focus:ring-indigo-300 animate-cta-glow" onClick={onStart}>
+            <Button size="lg" className="bg-white dark:bg-slate-900 dark:border-slate-800 dark:text-slate-100 text-primary font-bold px-8 py-3 rounded-full shadow-lg hover:scale-105 hover:shadow-xl transition-transform focus:ring-4 focus:ring-indigo-300 animate-cta-glow border border-transparent" onClick={onStart}>
               Start Prefilling
             </Button>
             {/* See How It Works button as UsageGuide large trigger */}

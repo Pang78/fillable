@@ -2174,7 +2174,7 @@ const LetterMode: React.FC = () => {
                 }`}
             >
               <Card className={`border ${selectionMode && selectedLetters.includes(index) ? 'border-blue-400 bg-blue-50 dark:bg-blue-900/20' : 'border-gray-200 dark:border-gray-800'} shadow-lg hover:shadow-xl transition-all duration-300`}>
-                <CardHeader className={`py-4 px-6 flex flex-row items-center justify-between space-y-0 bg-gradient-to-r ${selectionMode && selectedLetters.includes(index) ? 'from-blue-50 to-blue-100 dark:from-blue-900/40 dark:to-blue-800/40' : 'from-purple-50 to-indigo-50 dark:from-purple-900/40 dark:to-indigo-900/40'} border-b dark:border-gray-700`}>
+                <CardHeader className={`py-4 px-6 flex flex-row items-center justify-between space-y-0 bg-gradient-to-r ${selectionMode && selectedLetters.includes(index) ? 'from-blue-50 to-blue-100 dark:from-blue-950/40 dark:to-blue-900/40' : 'from-purple-50 to-indigo-50 dark:from-purple-950/40 dark:to-indigo-950/40'} border-b dark:border-gray-700`}>
                   {selectionMode ? (
                     <div className="flex items-center">
                       <Checkbox
@@ -2235,7 +2235,7 @@ const LetterMode: React.FC = () => {
                 </CardHeader>
                 <CardContent className="p-6">
                   {/* Add recipient mapping indicator */}
-                  <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-lg flex items-center justify-between">
+                  <div className="mb-4 p-3 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/50 rounded-lg flex items-center justify-between">
                     <div className="flex items-center">
                       <span className="bg-amber-500 text-white font-semibold text-xs w-6 h-6 rounded-full flex items-center justify-center mr-2">{index + 1}</span>
                       <span className="text-sm font-medium text-amber-800">
@@ -2331,7 +2331,7 @@ const LetterMode: React.FC = () => {
                               ? 'Enter phone (+65... or 9...)'
                               : 'Enter email address'
                         }
-                        className={`text-base p-4 transition-all duration-200 ${!letterDetails.recipients?.[index] && letterDetails.notificationMethod ? 'border-red-200 dark:border-red-900 focus:ring-red-500' : 'focus:ring-purple-500 dark:bg-slate-900 dark:border-slate-800'}`}
+                        className={`text-base p-4 transition-all duration-200 ${!letterDetails.recipients?.[index] && letterDetails.notificationMethod ? 'border-red-200 dark:border-red-900 focus:ring-red-500' : 'focus:ring-purple-500 dark:bg-slate-900 dark:border-slate-800 dark:text-slate-100'}`}
                         disabled={isLoading || isSending || selectionMode || !letterDetails.notificationMethod}
                       />
                       {/* Validation/Hint Text */}
@@ -2458,7 +2458,7 @@ const LetterMode: React.FC = () => {
         <div className="space-y-10"> {/* Increased spacing between sections */}
           {/* Section 1: API Configuration */}
           <Card className="border-gray-200 dark:border-slate-800 shadow-lg overflow-hidden transition-all hover:shadow-xl bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm">
-            <CardHeader className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/40 dark:to-indigo-900/40 px-6 py-5 border-b border-blue-100 dark:border-slate-800"> {/* Added border */}
+            <CardHeader className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/40 dark:to-indigo-950/40 px-6 py-5 border-b border-blue-100 dark:border-slate-800"> {/* Added border */}
               <div className="flex justify-between items-center">
                 <div>
                   <h2 className="text-2xl font-semibold text-blue-800 dark:text-blue-200 flex items-center">
@@ -2658,8 +2658,8 @@ const LetterMode: React.FC = () => {
                     </div>
                   </div>
                   {/* Enhanced API Key Instructions */}
-                  <div className="mt-4 overflow-hidden rounded-lg border border-blue-200 dark:border-blue-800 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/10 dark:to-indigo-900/10 shadow-sm">
-                    <div className="border-b border-blue-200 dark:border-blue-800 bg-blue-100/50 dark:bg-blue-900/30 px-4 py-3">
+                  <div className="mt-4 overflow-hidden rounded-lg border border-blue-200 dark:border-blue-800 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/10 dark:to-indigo-950/10 shadow-sm">
+                    <div className="border-b border-blue-200 dark:border-blue-800 bg-blue-100/50 dark:bg-blue-950/50 px-4 py-3">
                       <h4 className="font-medium text-blue-800 dark:text-blue-300 flex items-center">
                         <Info className="h-4 w-4 mr-2 text-blue-600 dark:text-blue-400" />
                         How to Get Your API Key
@@ -2777,7 +2777,7 @@ const LetterMode: React.FC = () => {
           {/* Section 2: Letter Details & Recipients */}
           {templateFields.length > 0 && (
             <Card className="border-gray-200 dark:border-slate-800 shadow-lg overflow-hidden transition-all hover:shadow-xl bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm">
-              <CardHeader className="bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/40 dark:to-pink-900/40 px-6 py-5 border-b border-purple-100 dark:border-slate-800"> {/* Added border */}
+              <CardHeader className="bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-950/40 dark:to-pink-950/40 px-6 py-5 border-b border-purple-100 dark:border-slate-800"> {/* Added border */}
                 <h2 className="text-2xl font-semibold text-purple-800 dark:text-purple-200 flex items-center">
                   <span className="mr-3 flex h-8 w-8 items-center justify-center rounded-full bg-purple-600 text-white text-lg font-bold">2</span>
                   Letter Details & Recipients
@@ -2793,7 +2793,7 @@ const LetterMode: React.FC = () => {
           {/* Section 3: Notification Method & Send Action */}
           {templateFields.length > 0 && (
             <Card className="border-gray-200 dark:border-slate-800 shadow-lg overflow-hidden transition-all hover:shadow-xl bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm">
-              <CardHeader className="bg-gradient-to-r from-teal-50 to-cyan-50 dark:from-teal-900/40 dark:to-cyan-900/40 px-6 py-5 border-b border-teal-100 dark:border-slate-800"> {/* Added border */}
+              <CardHeader className="bg-gradient-to-r from-teal-50 to-cyan-50 dark:from-teal-950/40 dark:to-cyan-950/40 px-6 py-5 border-b border-teal-100 dark:border-slate-800"> {/* Added border */}
                 <h2 className="text-2xl font-semibold text-teal-800 dark:text-teal-200 flex items-center">
                   <span className="mr-3 flex h-8 w-8 items-center justify-center rounded-full bg-teal-600 text-white text-lg font-bold">3</span>
                   Notification & Sending
@@ -2804,7 +2804,7 @@ const LetterMode: React.FC = () => {
                 {/* Notification Method Selection */}
                 <div className="space-y-8"> {/* Increased spacing */}
                   {/* Notification Method Selection */}
-                  <div className="bg-blue-50 dark:bg-blue-900/20 p-6 rounded-lg border border-blue-100 dark:border-blue-800 shadow-sm"> {/* Increased padding */}
+                  <div className="bg-blue-50 dark:bg-blue-950/20 p-6 rounded-lg border border-blue-100 dark:border-blue-800 shadow-sm"> {/* Increased padding */}
                     <h3 className="font-semibold text-lg text-blue-800 dark:text-blue-200 mb-3">Notification Method</h3> {/* Larger text */}
                     <p className="text-sm text-blue-600 dark:text-blue-400 mb-5"> {/* Increased bottom margin */}
                       Select how recipients will be notified (Required)

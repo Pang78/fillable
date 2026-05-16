@@ -25,7 +25,7 @@ const UsageGuide: React.FC<UsageGuideProps> = ({ large = false }) => (
         <Button
           variant="outline"
           size="lg"
-          className="border-white bg-white/90 text-indigo-700 font-semibold px-8 py-3 rounded-full hover:bg-white focus:bg-white focus:text-indigo-900 flex items-center gap-2 transition-colors"
+          className="border-white bg-white/90 dark:bg-slate-900/90 dark:border-slate-800 text-indigo-700 dark:text-indigo-400 font-semibold px-8 py-3 rounded-full hover:bg-white dark:hover:bg-slate-800 focus:bg-white dark:focus:bg-slate-800 focus:text-indigo-900 dark:focus:text-indigo-300 flex items-center gap-2 transition-colors"
         >
           <svg width="22" height="22" fill="none" viewBox="0 0 24 24" className="inline-block align-middle mr-2"><path d="M8 5v14l11-7z" fill="currentColor"/></svg>
           See How It Works
@@ -66,9 +66,9 @@ const UsageGuide: React.FC<UsageGuideProps> = ({ large = false }) => (
               <li>You can then paste this URL into a browser to access the pre-filled form</li>
             </ol>
             
-            <Alert className="mt-4 bg-blue-50">
-              <Info className="h-4 w-4 text-blue-600" />
-              <AlertDescription className="text-blue-800">
+            <Alert className="mt-4 bg-blue-50 dark:bg-blue-950/20 border-blue-100 dark:border-blue-900/50">
+              <Info className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+              <AlertDescription className="text-blue-800 dark:text-blue-200">
                 <strong>Pro Tip:</strong> To find a field's ID in FormSG, click on a field in your form's edit view and look for the "Field ID" value. You'll need to enable pre-fill for the field first.
               </AlertDescription>
             </Alert>
@@ -93,9 +93,9 @@ const UsageGuide: React.FC<UsageGuideProps> = ({ large = false }) => (
               <li>You can then modify any values as needed and generate a new URL</li>
             </ol>
             
-            <Alert className="mt-4 bg-amber-50">
-              <Info className="h-4 w-4 text-amber-600" />
-              <AlertDescription className="text-amber-800">
+            <Alert className="mt-4 bg-amber-50 dark:bg-amber-950/20 border-amber-100 dark:border-amber-900/50">
+              <Info className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+              <AlertDescription className="text-amber-800 dark:text-amber-200">
                 <strong>Note:</strong> Deconstruct Mode is especially useful when you have a working pre-filled URL and want to make small modifications to it without recreating it from scratch.
               </AlertDescription>
             </Alert>
@@ -129,9 +129,9 @@ const UsageGuide: React.FC<UsageGuideProps> = ({ large = false }) => (
               </li>
             </ol>
             
-            <Alert className="mt-4 bg-green-50">
-              <Download className="h-4 w-4 text-green-600" />
-              <AlertDescription className="text-green-800">
+            <Alert className="mt-4 bg-green-50 dark:bg-emerald-950/20 border-green-100 dark:border-emerald-900/50">
+              <Download className="h-4 w-4 text-green-600 dark:text-emerald-400" />
+              <AlertDescription className="text-green-800 dark:text-emerald-200">
                 <strong>Batch Export Tips:</strong>
                 <ul className="list-disc pl-6 mt-1">
                   <li>Select "Export All Fields" to include all field values in your CSV</li>

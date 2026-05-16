@@ -30,9 +30,9 @@ const Toast: React.FC<ToastProps> = ({ message, type, onClose }) => {
   }, [onClose]);
 
   const bgColor = {
-    success: 'bg-green-50 dark:bg-green-900/30 border-green-200 dark:border-green-700 text-green-700 dark:text-green-300',
-    error: 'bg-red-50 dark:bg-red-900/30 border-red-200 dark:border-red-700 text-red-700 dark:text-red-300',
-    info: 'bg-blue-50 dark:bg-blue-900/30 border-blue-200 dark:border-blue-700 text-blue-700 dark:text-blue-300'
+    success: 'bg-green-50 dark:bg-emerald-950/30 border-green-200 dark:border-emerald-800 text-green-700 dark:text-emerald-300',
+    error: 'bg-red-50 dark:bg-red-950/30 border-red-200 dark:border-red-800 text-red-700 dark:text-red-300',
+    info: 'bg-blue-50 dark:bg-blue-950/30 border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300'
   };
 
   const iconColor = {
@@ -109,7 +109,7 @@ const InstructionalGuide = () => {
       title: 'FormSG Base URL and Field IDs',
       description: 'Share your form to locate Base URL and click on a short answer field to find its unique 24-digit hexadecimal ID',
       placeholder: (
-        <div className="space-y-4 max-h-[400px] overflow-y-auto p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
+        <div className="space-y-4 max-h-[400px] overflow-y-auto p-4 bg-gray-50 dark:bg-slate-800/50 rounded-lg">
           <div>
             <img
               src="/FormSG.png"
@@ -133,7 +133,7 @@ const InstructionalGuide = () => {
       title: 'Import CSV Template',
       description: 'Download and Populate a CSV with columns: FieldID, values [In a list format separated by a delimiter e.g Apple,Banana,Cherry. In this case "," is the delimiter], description (optional)',
       placeholder: (
-        <div className="space-y-4 max-h-[400px] overflow-y-auto p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
+        <div className="space-y-4 max-h-[400px] overflow-y-auto p-4 bg-gray-50 dark:bg-slate-800/50 rounded-lg">
           <div>
             <img
               src="/FormSG3.png"
@@ -174,7 +174,7 @@ const InstructionalGuide = () => {
       title: 'Exporting Prefilled Links',
       description: 'Click "Export Options and Export CSV" to download the csv',
       placeholder: (
-        <div className="space-y-4 max-h-[400px] overflow-y-auto p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
+        <div className="space-y-4 max-h-[400px] overflow-y-auto p-4 bg-gray-50 dark:bg-slate-800/50 rounded-lg">
           <div>
             <img
               src="/FormSG6.png"
@@ -761,10 +761,10 @@ const BatchFormPrefill = () => {
             <div className="flex flex-col items-center relative">
               <div
                 className={`w-12 h-12 rounded-full flex items-center justify-center border-2 transition-all duration-300 ${currentStep === step.key
-                  ? 'border-blue-600 bg-blue-50 text-blue-600 font-bold scale-110 shadow-md'
+                  ? 'border-blue-600 bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-300 font-bold scale-110 shadow-md'
                   : currentStep === steps[index + 1]?.key || currentStep === steps[index + 2]?.key || currentStep === steps[index + 3]?.key
-                    ? 'border-green-500 bg-green-50 text-green-500'
-                    : 'border-gray-300 bg-gray-50'
+                    ? 'border-green-500 bg-green-50 dark:bg-emerald-950/30 text-green-500 dark:text-emerald-400'
+                    : 'border-gray-300 dark:border-slate-800 bg-gray-50 dark:bg-slate-900'
                   }`}
               >
                 {currentStep === steps[index + 1]?.key || currentStep === steps[index + 2]?.key || currentStep === steps[index + 3]?.key ? (
@@ -839,8 +839,8 @@ const BatchFormPrefill = () => {
           {renderStepIndicator()}
 
           {successMessage && (
-            <Alert className="bg-green-50 border-green-200 animate-fadeIn">
-              <AlertDescription className="text-green-700 flex items-center">
+            <Alert className="bg-green-50 dark:bg-emerald-950/20 border-green-200 dark:border-emerald-800 animate-fadeIn">
+              <AlertDescription className="text-green-700 dark:text-emerald-300 flex items-center">
                 <svg className="h-5 w-5 text-green-500 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                 </svg>
@@ -850,9 +850,9 @@ const BatchFormPrefill = () => {
           )}
 
           {error && (
-            <Alert variant="destructive" className="bg-red-50 border-red-200 animate-fadeIn">
+            <Alert variant="destructive" className="bg-red-50 dark:bg-red-950/20 border-red-200 dark:border-red-900 animate-fadeIn">
               <XCircle className="h-4 w-4 text-red-500 mr-2" />
-              <AlertDescription className="text-red-700">{error}</AlertDescription>
+              <AlertDescription className="text-red-700 dark:text-red-400">{error}</AlertDescription>
             </Alert>
           )}
 
@@ -994,7 +994,7 @@ const BatchFormPrefill = () => {
                     <p className="text-blue-700 dark:text-blue-300 mb-2">
                       Upload a CSV file containing your form field values. Each row will generate a unique prefilled link.
                     </p>
-                    <div className="mt-3 bg-white dark:bg-slate-900 p-3 rounded border border-blue-100 dark:border-slate-800">
+                    <div className="mt-3 bg-white dark:bg-slate-950 p-3 rounded border border-blue-100 dark:border-slate-800">
                       <h4 className="font-medium text-blue-800 dark:text-blue-200 mb-1">How Values Are Processed</h4>
                       <p className="text-sm text-blue-700 dark:text-blue-300 mb-2">
                         When uploading a CSV with varying numbers of values per field:
@@ -1005,8 +1005,8 @@ const BatchFormPrefill = () => {
                         <li>If a field has <strong>only one value</strong>, it will be used for all generated links</li>
                       </ul>
                       <div className="mt-2 overflow-auto text-xs">
-                        <table className="min-w-full border border-blue-100 dark:border-slate-700 rounded">
-                          <thead className="bg-blue-50 dark:bg-slate-800">
+                        <table className="min-w-full border border-blue-100 dark:border-slate-800 rounded">
+                          <thead className="bg-blue-50 dark:bg-blue-950">
                             <tr>
                               <th className="p-1 border border-blue-100 dark:border-slate-700 text-left">Field Values in CSV</th>
                               <th className="p-1 border border-blue-100 dark:border-slate-700 text-left">Generated Links (3 entries)</th>
